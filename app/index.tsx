@@ -49,6 +49,8 @@ function LoginContent() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoComplete="off"
+                textContentType="none"
               />
             </View>
 
@@ -60,13 +62,15 @@ function LoginContent() {
               <View className={`flex-row items-center rounded-lg px-4 py-3 bg-slate-700 ${passwordFocused ? 'border-2 border-cyan-400' : 'border border-cyan-400 border-opacity-40'}`}>
                 <TextInput
                   className="flex-1 text-white text-base"
-                  placeholder="••••••••"
+                  placeholder="Contraseña"
                   placeholderTextColor="#64748b"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
+                  autoComplete="off"
+                  textContentType="none"
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="ml-2">
                   <Text className="text-cyan-400 text-lg font-bold">
