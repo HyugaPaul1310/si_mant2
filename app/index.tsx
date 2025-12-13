@@ -1,3 +1,5 @@
+import { loginUsuario } from '@/lib/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -10,8 +12,71 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const windowWidth = Dimensions.get('window').width;
   const isSmallScreen = windowWidth < 400;
+
+  // Ya no redirigimos automáticamente al iniciar la app.
+  // El usuario debe iniciar sesión manualmente.
+
+  const handleLogin = async () => {
+    console.log('=== handleLogin iniciado ===');
+    setErrorMessage(''); // Limpiar mensaje de error anterior
+    
+    if (!email.trim() || !password.trim()) {
+      console.log('Validación fallida - campos vacíos');
+      setErrorMessage('Por favor completa todos los campos');
+      return;
+    }
+
+    console.log('Validación pasada, estableciendo loading...');
+    setLoading(true);
+
+    try {
+      console.log('Llamando loginUsuario con:', email);
+      const resultado = await loginUsuario(email, password);
+      
+      console.log('Resultado login:', resultado);
+
+      if (!resultado.success) {
+        console.log('Login fallido:', resultado.error);
+        setErrorMessage(resultado.error || 'Error al iniciar sesión');
+        setLoading(false);
+        return;
+      }
+
+      if (!resultado.user) {
+        console.log('Usuario no retornado');
+        setErrorMessage('Error al obtener datos del usuario');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Login exitoso para:', resultado.user.email, 'Rol:', resultado.user.rol);
+      
+      // Guardar usuario en AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(resultado.user));
+
+      // Redirigir según el rol
+      if (resultado.user.rol === 'admin') {
+        console.log('Redirigiendo a admin');
+        router.replace('/admin');
+      } else if (resultado.user.rol === 'empleado') {
+        console.log('Redirigiendo a empleado-panel');
+        router.replace('/empleado-panel');
+      } else {
+        console.log('Redirigiendo a cliente-panel');
+        router.replace('/cliente-panel');
+      }
+
+    } catch (error: any) {
+      console.error('Exception en handleLogin:', error);
+      setErrorMessage('Ocurrió un error: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
@@ -80,6 +145,15 @@ function LoginContent() {
               </View>
             </View>
 
+            {/* Error Message */}
+            {errorMessage ? (
+              <View className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-3 mb-4">
+                <Text className="text-red-400 text-sm text-center font-semibold">
+                  {errorMessage}
+                </Text>
+              </View>
+            ) : null}
+
             {/* Forgot Password */}
             <TouchableOpacity className="mb-6">
               <Text className="text-cyan-400 text-xs font-semibold text-right">
@@ -88,9 +162,17 @@ function LoginContent() {
             </TouchableOpacity>
 
             {/* Login Button */}
-            <TouchableOpacity className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg py-3 mb-6 border border-red-400 shadow-lg shadow-red-500/30 active:shadow-red-500/50">
+            <TouchableOpacity 
+              onPress={handleLogin}
+              disabled={loading}
+              className={`rounded-lg py-3 mb-6 border shadow-lg ${
+                loading 
+                  ? 'bg-gray-500 border-gray-400 opacity-50' 
+                  : 'bg-gradient-to-r from-red-500 to-red-600 border-red-400 shadow-red-500/30'
+              }`}
+            >
               <Text className="text-white font-bold text-center text-base">
-                Iniciar Sesión
+                {loading ? 'Iniciando...' : 'Iniciar Sesión'}
               </Text>
             </TouchableOpacity>
 

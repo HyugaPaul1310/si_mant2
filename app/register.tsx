@@ -1,3 +1,4 @@
+import { registrarUsuario } from '@/lib/auth';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -6,20 +7,130 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 function RegisterContent() {
   const [name, setName] = useState('');
+  const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [estado, setEstado] = useState('');
+  const [showEstadoPicker, setShowEstadoPicker] = useState(false);
+  const [ciudad, setCiudad] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
   const windowWidth = Dimensions.get('window').width;
   const isSmallScreen = windowWidth < 400;
 
-  const handleRegister = () => {
-    // Aquí irá la lógica de registro
-    console.log('Registrando:', { name, email, password, confirmPassword });
+  const estados = [
+    'Aguascalientes',
+    'Baja California',
+    'Baja California Sur',
+    'Campeche',
+    'Chiapas',
+    'Chihuahua',
+    'Coahuila',
+    'Colima',
+    'Ciudad de México',
+    'Durango',
+    'Guanajuato',
+    'Guerrero',
+    'Hidalgo',
+    'Jalisco',
+    'México',
+    'Michoacán',
+    'Morelos',
+    'Nayarit',
+    'Nuevo León',
+    'Oaxaca',
+    'Puebla',
+    'Querétaro',
+    'Quintana Roo',
+    'San Luis Potosí',
+    'Sinaloa',
+    'Sonora',
+    'Tabasco',
+    'Tamaulipas',
+    'Tlaxcala',
+    'Veracruz',
+    'Yucatán',
+    'Zacatecas'
+  ];
+
+  const handleRegister = async () => {
+    setErrorMessage(''); // Limpiar errores anteriores
+    
+    // Validaciones
+    if (!name.trim()) {
+      setErrorMessage('Por favor ingresa tu nombre');
+      return;
+    }
+    if (!apellido.trim()) {
+      setErrorMessage('Por favor ingresa tu apellido');
+      return;
+    }
+    if (!email.trim()) {
+      setErrorMessage('Por favor ingresa tu email');
+      return;
+    }
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setErrorMessage('Por favor ingresa un email válido (ejemplo: usuario@gmail.com)');
+      return;
+    }
+    if (!telefono.trim()) {
+      setErrorMessage('Por favor ingresa tu teléfono');
+      return;
+    }
+    // Validar que el teléfono solo contenga números
+    if (!/^\d+$/.test(telefono.replace(/\s/g, ''))) {
+      setErrorMessage('El teléfono debe contener solo números');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage('Las contraseñas no coinciden');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // Registrar usuario
+      const resultado = await registrarUsuario({
+        nombre: name,
+        apellido,
+        email,
+        contraseña: password,
+        telefono,
+        fecha_nacimiento: fechaNacimiento,
+        ciudad: `${estado}${ciudad ? ', ' + ciudad : ''}`
+      });
+
+      if (!resultado.success) {
+        setErrorMessage(resultado.error || 'Error al registrar usuario');
+        setLoading(false);
+        return;
+      }
+
+      // No creamos sesión aquí; pedimos iniciar sesión
+      window.alert('Cuenta creada correctamente. Ahora inicia sesión.');
+      // Redirigir a pantalla de inicio de sesión
+      router.replace('/');
+      
+    } catch (error) {
+      setErrorMessage('Ocurrió un error al registrarse');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,7 +162,7 @@ function RegisterContent() {
             {/* Name Input */}
             <View className="mb-5">
               <Text className="text-sm font-semibold text-cyan-400 mb-2">
-                Nombre Completo
+                Nombre
               </Text>
               <TextInput
                 className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white text-base"
@@ -59,6 +170,21 @@ function RegisterContent() {
                 placeholderTextColor="#64748b"
                 value={name}
                 onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Apellido Input */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-cyan-400 mb-2">
+                Apellido
+              </Text>
+              <TextInput
+                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white text-base"
+                placeholder="Tu apellido"
+                placeholderTextColor="#64748b"
+                value={apellido}
+                onChangeText={setApellido}
                 autoCapitalize="words"
               />
             </View>
@@ -76,6 +202,103 @@ function RegisterContent() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+              />
+            </View>
+
+            {/* Telefono Input */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-cyan-400 mb-2">
+                Teléfono
+              </Text>
+              <TextInput
+                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white text-base"
+                placeholder="1234567890"
+                placeholderTextColor="#64748b"
+                value={telefono}
+                onChangeText={(text) => {
+                  // Solo permitir números
+                  const numericText = text.replace(/[^0-9]/g, '');
+                  setTelefono(numericText);
+                }}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+
+            {/* Fecha Nacimiento Input */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-cyan-400 mb-2">
+                Fecha de Nacimiento (Opcional)
+              </Text>
+              <TextInput
+                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white text-base"
+                placeholder="AAAAMMDD (Ej: 19900515)"
+                placeholderTextColor="#64748b"
+                value={fechaNacimiento}
+                onChangeText={(text) => {
+                  // Solo permitir números
+                  const numericText = text.replace(/[^0-9]/g, '');
+                  // Formatear automáticamente a AAAA-MM-DD
+                  let formatted = numericText;
+                  if (numericText.length > 4) {
+                    formatted = numericText.slice(0, 4) + '-' + numericText.slice(4);
+                  }
+                  if (numericText.length > 6) {
+                    formatted = numericText.slice(0, 4) + '-' + numericText.slice(4, 6) + '-' + numericText.slice(6, 8);
+                  }
+                  setFechaNacimiento(formatted);
+                }}
+                keyboardType="numeric"
+                maxLength={10}
+              />
+            </View>
+
+            {/* Estado Selector */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-cyan-400 mb-2">
+                Estado (Opcional)
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowEstadoPicker(!showEstadoPicker)}
+                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3"
+              >
+                <Text className={estado ? "text-white text-base" : "text-slate-400 text-base"}>
+                  {estado || 'Selecciona tu estado'}
+                </Text>
+              </TouchableOpacity>
+              
+              {showEstadoPicker && (
+                <View className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg mt-2 max-h-48">
+                  <ScrollView>
+                    {estados.map((est) => (
+                      <TouchableOpacity
+                        key={est}
+                        onPress={() => {
+                          setEstado(est);
+                          setShowEstadoPicker(false);
+                        }}
+                        className="px-4 py-3 border-b border-slate-600"
+                      >
+                        <Text className="text-white text-base">{est}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* Ciudad Input */}
+            <View className="mb-5">
+              <Text className="text-sm font-semibold text-cyan-400 mb-2">
+                Ciudad (Opcional)
+              </Text>
+              <TextInput
+                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white text-base"
+                placeholder="Tu ciudad"
+                placeholderTextColor="#64748b"
+                value={ciudad}
+                onChangeText={setCiudad}
+                autoCapitalize="words"
               />
             </View>
 
@@ -127,13 +350,27 @@ function RegisterContent() {
               </View>
             </View>
 
+            {/* Error Message */}
+            {errorMessage ? (
+              <View className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-3 mb-4">
+                <Text className="text-red-400 text-sm text-center font-semibold">
+                  {errorMessage}
+                </Text>
+              </View>
+            ) : null}
+
             {/* Register Button */}
             <TouchableOpacity 
               onPress={handleRegister}
-              className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg py-3 mb-6 border border-red-400 shadow-lg shadow-red-500/30 active:shadow-red-500/50"
+              disabled={loading}
+              className={`rounded-lg py-3 mb-6 border shadow-lg ${
+                loading 
+                  ? 'bg-gray-500 border-gray-400 opacity-50' 
+                  : 'bg-gradient-to-r from-red-500 to-red-600 border-red-400 shadow-red-500/30'
+              }`}
             >
               <Text className="text-white font-bold text-center text-base">
-                Crear Cuenta
+                {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Text>
             </TouchableOpacity>
 
