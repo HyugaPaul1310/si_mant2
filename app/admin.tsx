@@ -1,16 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+type Admin = {
+  nombre?: string;
+  email?: string;
+};
 
 
 function AdminPanelContent() {
   const router = useRouter();
-
+  const [usuario, setUsuario] = useState<Admin | null>(null);
   const [notifications] = useState(0);
   const [pending] = useState(0);
   const [accepted] = useState(2);
+  const [showLogout, setShowLogout] = useState(false);
+
+  useEffect(() => {
+    const obtenerUsuario = async () => {
+      try {
+        const user = await AsyncStorage.getItem('user');
+        if (user) {
+          setUsuario(JSON.parse(user));
+        } else {
+          router.replace('/');
+        }
+      } catch (error) {
+        router.replace('/');
+      }
+    };
+    obtenerUsuario();
+  }, [router]);
+
+  const initials = useMemo(() => {
+    const nombre = usuario?.nombre?.trim();
+    if (!nombre) return 'AD';
+    return nombre
+      .split(' ')
+      .map((n) => n.charAt(0).toUpperCase())
+      .join('')
+      .slice(0, 2);
+  }, [usuario?.nombre]);
 
   const stats = [
     {
@@ -66,12 +99,17 @@ function AdminPanelContent() {
     },
   ];
 
+  const confirmLogout = async () => {
+    await AsyncStorage.removeItem('user');
+    router.replace('/');
+  };
+
   const handleLogout = () => {
-    router.push('/');
+    setShowLogout(true);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900">
+    <SafeAreaView className="flex-1 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative">
       <ScrollView 
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
@@ -86,7 +124,7 @@ function AdminPanelContent() {
               {/* Profile Badge */}
               <View className="relative">
                 <View className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Text className="text-white font-bold text-xl tracking-wider">OP</Text>
+                  <Text className="text-white font-bold text-xl tracking-wider">{initials}</Text>
                 </View>
                 <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-950" />
               </View>
@@ -94,7 +132,7 @@ function AdminPanelContent() {
               {/* Welcome Text */}
               <View className="flex-1">
                 <Text className="text-white font-bold text-xl">Bienvenido</Text>
-                <Text className="text-cyan-400 font-semibold text-sm">P.Gonzalez</Text>
+                <Text className="text-cyan-400 font-semibold text-sm">{usuario?.nombre ?? 'Admin'}</Text>
                 <Text className="text-slate-500 text-xs mt-0.5">Panel de Control</Text>
               </View>
             </View>
@@ -174,6 +212,35 @@ function AdminPanelContent() {
           </View>
         </View>
       </ScrollView>
+      {showLogout && (
+        <View className="absolute inset-0 bg-black/70 items-center justify-center px-6 z-10">
+          <View className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
+            <View className="flex-row items-center gap-3 mb-4">
+              <View className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-400/50 items-center justify-center">
+                <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
+              </View>
+              <Text className="text-white font-bold text-lg">Cerrar sesión</Text>
+            </View>
+            <Text className="text-slate-300 text-sm mb-6">
+              ¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.
+            </Text>
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-xl border border-slate-700 bg-slate-800"
+                onPress={() => setShowLogout(false)}
+              >
+                <Text className="text-slate-200 font-semibold text-center">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 border border-red-400"
+                onPress={confirmLogout}
+              >
+                <Text className="text-white font-semibold text-center">Cerrar sesión</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

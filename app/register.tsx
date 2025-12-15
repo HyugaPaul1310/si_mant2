@@ -152,9 +152,6 @@ function RegisterContent() {
               }}
               resizeMode="contain"
             />
-            <Text className={`font-black text-white mb-2 tracking-wider ${isSmallScreen ? 'text-2xl' : 'text-3xl'}`}>
-              Crea tu cuenta
-            </Text>
           </View>
 
           {/* Register Card */}
