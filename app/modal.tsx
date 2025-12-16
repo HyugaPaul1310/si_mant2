@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Usuario = {
@@ -16,6 +16,9 @@ type Usuario = {
 
 export default function GenerarReporteScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -185,54 +188,54 @@ export default function GenerarReporteScreen() {
   ] as const;
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950">
+    <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
-        className="flex-1"
+        style={styles.scrollView}
       >
-        <View className="flex-1 px-5 py-4">
+        <View style={isMobile ? styles.contentMobile : styles.content}>
           {/* Header */}
-          <View className="flex-row items-center mb-5">
-            <TouchableOpacity onPress={() => router.back()} className="mr-3 bg-slate-900 rounded-lg p-2">
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={20} color="#06b6d4" />
             </TouchableOpacity>
-            <View className="flex-1">
-              <Text className="text-white font-bold text-xl">Generar reporte</Text>
-              <Text className="text-slate-400 text-xs">Completa la información del servicio</Text>
+            <View style={styles.headerTextContainer}>
+              <Text style={[styles.headerTitle, { fontFamily }]}>Generar reporte</Text>
+              <Text style={[styles.headerSubtitle, { fontFamily }]}>Completa la información del servicio</Text>
             </View>
           </View>
 
           {/* Info del usuario (readonly) */}
-          <View className="bg-slate-900 rounded-lg p-3 mb-4 border-l-4 border-cyan-500">
-            <View className="flex-row items-center mb-1.5">
-              <View className="bg-cyan-500/10 rounded-full p-1.5 mr-2">
+          <View style={styles.userInfoBox}>
+            <View style={styles.userInfoHeader}>
+              <View style={styles.userIconBg}>
                 <Ionicons name="person" size={14} color="#06b6d4" />
               </View>
-              <Text className="text-cyan-400 font-semibold text-xs uppercase tracking-wide">Solicitante</Text>
+              <Text style={[styles.userInfoLabel, { fontFamily }]}>Solicitante</Text>
             </View>
-            <Text className="text-white text-sm font-medium ml-7">
+            <Text style={[styles.userInfoName, { fontFamily }]}>
               {usuario?.nombre} {usuario?.apellido}
             </Text>
             {usuario?.empresa && (
-              <View className="flex-row items-center mt-1 ml-7">
+              <View style={styles.userInfoRow}>
                 <Ionicons name="business" size={12} color="#64748b" />
-                <Text className="text-slate-300 text-xs ml-1">{usuario.empresa}</Text>
+                <Text style={[styles.userInfoText, { fontFamily }]}>{usuario.empresa}</Text>
               </View>
             )}
-            <View className="flex-row items-center mt-1 ml-7">
+            <View style={styles.userInfoRow}>
               <Ionicons name="mail" size={12} color="#64748b" />
-              <Text className="text-slate-400 text-xs ml-1">{usuario?.email}</Text>
+              <Text style={[styles.userInfoEmail, { fontFamily }]}>{usuario?.email}</Text>
             </View>
           </View>
 
           {/* Formulario */}
-          <View className="space-y-3">
+          <View style={styles.formContainer}>
             {/* Sucursal */}
-            <View>
-              <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">Sucursal</Text>
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { fontFamily }]}>Sucursal</Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                style={[styles.textInput, { fontFamily }]}
                 value={sucursal}
                 onChangeText={setSucursal}
                 placeholder="Nombre de la sucursal"
@@ -241,10 +244,10 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Dirección */}
-            <View>
-              <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">Dirección del servicio</Text>
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { fontFamily }]}>Dirección del servicio</Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                style={[styles.textInputMulti, { fontFamily }]}
                 value={direccion}
                 onChangeText={setDireccion}
                 placeholder="Calle, número, colonia, ciudad..."
@@ -256,12 +259,12 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Equipo - Descripción */}
-            <View>
-              <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">
-                Equipo - Descripción <Text className="text-red-400">*</Text>
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { fontFamily }]}>
+                Equipo - Descripción <Text style={styles.requiredMark}>*</Text>
               </Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                style={[styles.textInput, { fontFamily }]}
                 value={equipoDescripcion}
                 onChangeText={setEquipoDescripcion}
                 placeholder="Ej: Aire acondicionado, Refrigerador..."
@@ -270,11 +273,11 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Modelo y Serie en fila */}
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">Modelo</Text>
+            <View style={styles.rowContainer}>
+              <View style={styles.halfField}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>Modelo</Text>
                 <TextInput
-                  className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                  style={[styles.textInput, { fontFamily }]}
                   value={equipoModelo}
                   onChangeText={setEquipoModelo}
                   placeholder="Modelo"
@@ -282,10 +285,10 @@ export default function GenerarReporteScreen() {
                 />
               </View>
 
-              <View className="flex-1">
-                <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">Serie</Text>
+              <View style={styles.halfField}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>Serie</Text>
                 <TextInput
-                  className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                  style={[styles.textInput, { fontFamily }]}
                   value={equipoSerie}
                   onChangeText={setEquipoSerie}
                   placeholder="Nº serie"
@@ -295,17 +298,17 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Comentario */}
-            <View>
-              <View className="flex-row items-center justify-between mb-1.5">
-                <Text className="text-cyan-400 font-medium text-xs uppercase tracking-wide">
-                  Comentario / Problema <Text className="text-red-400">*</Text>
+            <View style={styles.fieldContainer}>
+              <View style={styles.fieldLabelRow}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>
+                  Comentario / Problema <Text style={styles.requiredMark}>*</Text>
                 </Text>
-                <Text className={`text-xs ${comentario.length >= 20 ? 'text-green-400' : 'text-slate-500'}`}>
+                <Text style={[styles.charCounter, { fontFamily, color: comentario.length >= 20 ? '#4ade80' : '#64748b' }]}>
                   {comentario.length}/20 min
                 </Text>
               </View>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 text-white text-sm"
+                style={[styles.textInputMulti, { fontFamily, minHeight: 80 }]}
                 value={comentario}
                 onChangeText={setComentario}
                 placeholder="Describe el problema o servicio requerido (mínimo 20 caracteres)..."
@@ -317,32 +320,32 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Prioridad */}
-            <View>
-              <Text className="text-cyan-400 font-medium text-xs mb-1.5 uppercase tracking-wide">Prioridad</Text>
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { fontFamily }]}>Prioridad</Text>
               <TouchableOpacity
                 onPress={() => setShowPriorityPicker(!showPriorityPicker)}
-                className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2.5 flex-row items-center justify-between"
+                style={styles.priorityButton}
               >
-                <View className="flex-row items-center gap-2">
-                  <View className={`w-2.5 h-2.5 rounded-full ${prioridades.find(p => p.value === prioridad)?.color}`} />
-                  <Text className="text-white text-sm capitalize">{prioridad}</Text>
+                <View style={styles.priorityButtonContent}>
+                  <View style={[styles.priorityDot, { backgroundColor: prioridad === 'urgente' ? '#ef4444' : prioridad === 'media' ? '#f59e0b' : '#22c55e' }]} />
+                  <Text style={[styles.priorityText, { fontFamily, textTransform: 'capitalize' }]}>{prioridad}</Text>
                 </View>
                 <Ionicons name="chevron-down" size={16} color="#475569" />
               </TouchableOpacity>
 
               {showPriorityPicker && (
-                <View className="bg-slate-900 border border-slate-800 rounded-lg mt-1.5">
-                  {prioridades.map((p) => (
+                <View style={styles.priorityPicker}>
+                  {prioridades.map((p, index) => (
                     <TouchableOpacity
                       key={p.value}
                       onPress={() => {
                         setPrioridad(p.value);
                         setShowPriorityPicker(false);
                       }}
-                      className="px-3 py-2.5 flex-row items-center gap-2.5 border-b border-slate-800 last:border-b-0"
+                      style={[styles.priorityOption, index < prioridades.length - 1 && styles.priorityOptionBorder]}
                     >
-                      <View className={`w-2.5 h-2.5 rounded-full ${p.color}`} />
-                      <Text className="text-white text-sm">{p.label}</Text>
+                      <View style={[styles.priorityDot, { backgroundColor: p.value === 'urgente' ? '#ef4444' : p.value === 'media' ? '#f59e0b' : '#22c55e' }]} />
+                      <Text style={[styles.priorityOptionText, { fontFamily }]}>{p.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -350,11 +353,11 @@ export default function GenerarReporteScreen() {
             </View>
 
             {/* Imágenes */}
-            <View className="bg-slate-900 border border-slate-800 rounded-lg p-3">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-cyan-400 font-medium text-xs uppercase tracking-wide">Imágenes del equipo</Text>
-                <View className="bg-slate-800 rounded-full px-2 py-0.5">
-                  <Text className="text-slate-400 text-xs font-medium">{imagenes.length}/3</Text>
+            <View style={styles.mediaBox}>
+              <View style={styles.mediaHeader}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>Imágenes del equipo</Text>
+                <View style={styles.counterBadge}>
+                  <Text style={[styles.counterText, { fontFamily }]}>{imagenes.length}/3</Text>
                 </View>
               </View>
               
@@ -362,19 +365,19 @@ export default function GenerarReporteScreen() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  className="mb-2.5"
+                  style={styles.imageList}
                   contentContainerStyle={{ gap: 8 }}
                 >
                   {imagenes.map((uri, index) => (
-                    <View key={index} className="relative">
+                    <View key={index} style={styles.imageWrapper}>
                       <Image
                         source={{ uri }}
-                        className="w-20 h-20 rounded-lg border border-slate-800"
+                        style={styles.imagePreview}
                         resizeMode="cover"
                       />
                       <TouchableOpacity
                         onPress={() => eliminarImagen(index)}
-                        className="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full w-5 h-5 items-center justify-center shadow-lg"
+                        style={styles.deleteImageButton}
                       >
                         <Ionicons name="close" size={12} color="white" />
                       </TouchableOpacity>
@@ -386,40 +389,36 @@ export default function GenerarReporteScreen() {
               <TouchableOpacity
                 onPress={seleccionarImagen}
                 disabled={imagenes.length >= 3}
-                className={`flex-row items-center justify-center gap-2 rounded-lg py-2.5 border ${
-                  imagenes.length >= 3
-                    ? 'bg-slate-800 border-slate-700'
-                    : 'bg-cyan-500/10 border-cyan-500/30'
-                }`}
+                style={[styles.addMediaButton, imagenes.length >= 3 ? styles.addMediaButtonDisabled : styles.addMediaButtonActive]}
               >
                 <Ionicons
                   name="camera"
                   size={16}
                   color={imagenes.length >= 3 ? '#475569' : '#06b6d4'}
                 />
-                <Text className={`text-xs font-medium ${imagenes.length >= 3 ? 'text-slate-500' : 'text-cyan-400'}`}>
+                <Text style={[styles.addMediaButtonText, { fontFamily, color: imagenes.length >= 3 ? '#64748b' : '#22d3ee' }]}>
                   {imagenes.length >= 3 ? 'Límite alcanzado' : 'Agregar imagen'}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Video */}
-            <View className="bg-slate-900 border border-slate-800 rounded-lg p-3">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-cyan-400 font-medium text-xs uppercase tracking-wide">Video del equipo</Text>
-                <View className="bg-slate-800 rounded-full px-2 py-0.5">
-                  <Text className="text-slate-400 text-xs font-medium">{video ? '1/1' : '0/1'}</Text>
+            <View style={styles.mediaBox}>
+              <View style={styles.mediaHeader}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>Video del equipo</Text>
+                <View style={styles.counterBadge}>
+                  <Text style={[styles.counterText, { fontFamily }]}>{video ? '1/1' : '0/1'}</Text>
                 </View>
               </View>
               
               {video && (
-                <View className="relative mb-2.5">
-                  <View className="bg-slate-800 rounded-lg p-3 flex-row items-center gap-3">
+                <View style={styles.videoPreviewContainer}>
+                  <View style={styles.videoPreview}>
                     <Ionicons name="videocam" size={24} color="#06b6d4" />
-                    <Text className="text-white text-xs flex-1" numberOfLines={1}>Video seleccionado (máx 30s)</Text>
+                    <Text style={[styles.videoText, { fontFamily }]} numberOfLines={1}>Video seleccionado (máx 30s)</Text>
                     <TouchableOpacity
                       onPress={eliminarVideo}
-                      className="bg-red-500 rounded-full w-5 h-5 items-center justify-center"
+                      style={styles.deleteVideoButton}
                     >
                       <Ionicons name="close" size={12} color="white" />
                     </TouchableOpacity>
@@ -430,18 +429,14 @@ export default function GenerarReporteScreen() {
               <TouchableOpacity
                 onPress={seleccionarVideo}
                 disabled={!!video}
-                className={`flex-row items-center justify-center gap-2 rounded-lg py-2.5 border ${
-                  video
-                    ? 'bg-slate-800 border-slate-700'
-                    : 'bg-cyan-500/10 border-cyan-500/30'
-                }`}
+                style={[styles.addMediaButton, video ? styles.addMediaButtonDisabled : styles.addMediaButtonActive]}
               >
                 <Ionicons
                   name="videocam"
                   size={16}
                   color={video ? '#475569' : '#06b6d4'}
                 />
-                <Text className={`text-xs font-medium ${video ? 'text-slate-500' : 'text-cyan-400'}`}>
+                <Text style={[styles.addMediaButtonText, { fontFamily, color: video ? '#64748b' : '#22d3ee' }]}>
                   {video ? 'Video agregado' : 'Agregar video (máx 30s)'}
                 </Text>
               </TouchableOpacity>
@@ -449,9 +444,9 @@ export default function GenerarReporteScreen() {
 
             {/* Error Message */}
             {errorMessage ? (
-              <View className="bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 flex-row items-center gap-2">
+              <View style={styles.errorBox}>
                 <Ionicons name="alert-circle" size={16} color="#ef4444" />
-                <Text className="text-red-400 text-xs flex-1">{errorMessage}</Text>
+                <Text style={[styles.errorText, { fontFamily }]}>{errorMessage}</Text>
               </View>
             ) : null}
 
@@ -459,13 +454,9 @@ export default function GenerarReporteScreen() {
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={loading}
-              className={`rounded-lg py-3.5 shadow-lg mt-2 ${
-                loading
-                  ? 'bg-slate-700'
-                  : 'bg-cyan-500'
-              }`}
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]}
             >
-              <Text className="text-white font-semibold text-center text-sm">
+              <Text style={[styles.submitButtonText, { fontFamily }]}>
                 {loading ? 'Generando reporte...' : 'Generar reporte'}
               </Text>
             </TouchableOpacity>
@@ -474,15 +465,15 @@ export default function GenerarReporteScreen() {
       </ScrollView>
 
       {showSuccessBanner && (
-        <View className="absolute bottom-6 left-4 right-4 bg-gradient-to-r from-cyan-500 to-sky-600 border border-cyan-300/60 rounded-2xl px-4 py-3 shadow-xl shadow-cyan-900/40">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3 flex-1">
-              <View className="bg-white/20 rounded-full p-2">
+        <View style={styles.successBanner}>
+          <View style={styles.successContent}>
+            <View style={styles.successLeft}>
+              <View style={styles.successIcon}>
                 <Ionicons name="sparkles" size={18} color="#0ea5e9" />
               </View>
-              <View className="flex-1">
-                <Text className="text-white font-semibold text-sm">Reporte enviado</Text>
-                <Text className="text-slate-100 text-xs">¡Gracias! El equipo lo revisará enseguida.</Text>
+              <View style={styles.successTextContainer}>
+                <Text style={[styles.successTitle, { fontFamily }]}>Reporte enviado</Text>
+                <Text style={[styles.successMessage, { fontFamily }]}>¡Gracias! El equipo lo revisará enseguida.</Text>
               </View>
             </View>
             <Ionicons name="checkmark-circle" size={22} color="white" />
@@ -492,3 +483,361 @@ export default function GenerarReporteScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+  },
+  contentMobile: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButton: {
+    marginRight: 12,
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  headerSubtitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  userInfoBox: {
+    backgroundColor: '#0f172a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#06b6d4',
+  },
+  userInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  userIconBg: {
+    backgroundColor: '#06b6d41a',
+    borderRadius: 20,
+    padding: 6,
+    marginRight: 8,
+  },
+  userInfoLabel: {
+    color: '#22d3ee',
+    fontWeight: '600',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  userInfoName: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 28,
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginLeft: 28,
+  },
+  userInfoText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  userInfoEmail: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  formContainer: {
+    gap: 12,
+  },
+  fieldContainer: {
+    marginBottom: 12,
+  },
+  fieldLabel: {
+    color: '#22d3ee',
+    fontWeight: '500',
+    fontSize: 12,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  requiredMark: {
+    color: '#f87171',
+  },
+  charCounter: {
+    fontSize: 12,
+  },
+  textInput: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: 'white',
+    fontSize: 14,
+  },
+  textInputMulti: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: 'white',
+    fontSize: 14,
+    minHeight: 60,
+  },
+  rowContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  halfField: {
+    flex: 1,
+  },
+  priorityButton: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  priorityButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  priorityDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  priorityText: {
+    color: 'white',
+    fontSize: 14,
+  },
+  priorityPicker: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    marginTop: 6,
+  },
+  priorityOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  priorityOptionBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+  },
+  priorityOptionText: {
+    color: 'white',
+    fontSize: 14,
+  },
+  mediaBox: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  mediaHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  counterBadge: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  counterText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  imageList: {
+    marginBottom: 10,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  deleteImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMediaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  addMediaButtonActive: {
+    backgroundColor: '#06b6d41a',
+    borderColor: '#06b6d44d',
+  },
+  addMediaButtonDisabled: {
+    backgroundColor: '#1e293b',
+    borderColor: '#334155',
+  },
+  addMediaButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  videoPreviewContainer: {
+    marginBottom: 10,
+  },
+  videoPreview: {
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  videoText: {
+    color: 'white',
+    fontSize: 12,
+    flex: 1,
+  },
+  deleteVideoButton: {
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorBox: {
+    backgroundColor: '#ef44441a',
+    borderWidth: 1,
+    borderColor: '#ef44444d',
+    borderRadius: 8,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#f87171',
+    fontSize: 12,
+    flex: 1,
+  },
+  submitButton: {
+    borderRadius: 8,
+    paddingVertical: 14,
+    backgroundColor: '#06b6d4',
+    marginTop: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#334155',
+  },
+  submitButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: 14,
+  },
+  successBanner: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    right: 16,
+    backgroundColor: '#06b6d4',
+    borderWidth: 1,
+    borderColor: '#67e8f999',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  successContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  successLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  successIcon: {
+    backgroundColor: '#ffffff33',
+    borderRadius: 20,
+    padding: 8,
+  },
+  successTextContainer: {
+    flex: 1,
+  },
+  successTitle: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  successMessage: {
+    color: '#f1f5f9',
+    fontSize: 12,
+  },
+});

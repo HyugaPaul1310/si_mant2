@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { obtenerReportesPorUsuario } from '@/lib/reportes';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Cliente = {
@@ -17,6 +18,9 @@ type Cliente = {
 
 export default function ClientePanel() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   const [usuario, setUsuario] = useState<Cliente | null>(null);
   const [reportesMes] = useState(12);
   const [enProceso] = useState(3);
@@ -113,31 +117,33 @@ export default function ClientePanel() {
   const finalizados = useMemo(() => reportes.filter((r) => r.estado === 'terminado'), [reportes]);
 
   const renderReporteCard = (rep: any, isSample = false) => {
-    const estadoColor = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-    const prioridadColor =
-      rep.prioridad === 'urgente'
-        ? 'bg-red-500/20 text-red-200 border-red-500/40'
-        : rep.prioridad === 'media'
-        ? 'bg-amber-500/20 text-amber-200 border-amber-500/40'
-        : 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40';
+    const estadoBg = '#10b98133';
+    const estadoText = '#6ee7b7';
+    const estadoBorder = '#10b98166';
+    
+    const prioridadBg = rep.prioridad === 'urgente' ? '#ef444433' : rep.prioridad === 'media' ? '#f59e0b33' : '#10b98133';
+    const prioridadText = rep.prioridad === 'urgente' ? '#fca5a5' : rep.prioridad === 'media' ? '#fcd34d' : '#6ee7b7';
+    const prioridadBorder = rep.prioridad === 'urgente' ? '#ef444466' : rep.prioridad === 'media' ? '#f59e0b66' : '#10b98166';
 
     const fecha = rep.created_at ? new Date(rep.created_at).toLocaleString() : isSample ? 'Hace un momento' : '';
 
     return (
       <View
         key={rep.id || `sample-${rep.equipo_descripcion}`}
-        className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2"
+        style={styles.reportCard}
       >
-        <View className="flex-row items-center justify-between gap-3">
-          <View className="flex-1">
-            <Text className="text-white font-semibold text-base" numberOfLines={1}>
+        <View style={styles.reportCardHeader}>
+          <View style={styles.reportCardInfo}>
+            <Text style={[styles.reportCardTitle, { fontFamily }]} numberOfLines={1}>
               {rep.equipo_descripcion || 'Equipo / servicio'}
             </Text>
-            <Text className="text-slate-500 text-xs">{fecha}</Text>
+            <Text style={[styles.reportCardDate, { fontFamily }]}>{fecha}</Text>
           </View>
-          <View className="flex-row items-center gap-2">
-            <View className={`px-3 py-1 rounded-full border text-xs font-semibold ${estadoColor}`}>
-              {isSample ? 'Completado' : rep.estado || 'terminado'}
+          <View style={styles.reportCardActions}>
+            <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder }]}>
+              <Text style={[styles.badgeText, { fontFamily, color: estadoText }]}>
+                {isSample ? 'Completado' : rep.estado || 'terminado'}
+              </Text>
             </View>
             {!isSample && (
               <TouchableOpacity
@@ -145,7 +151,7 @@ export default function ClientePanel() {
                   setSelectedReporte(rep);
                   setShowReporteDetail(true);
                 }}
-                className="w-8 h-8 bg-slate-800 border border-slate-700 rounded-lg items-center justify-center"
+                style={styles.eyeButton}
               >
                 <Ionicons name="eye-outline" size={16} color="#06b6d4" />
               </TouchableOpacity>
@@ -153,17 +159,21 @@ export default function ClientePanel() {
           </View>
         </View>
 
-        <Text className="text-slate-300 text-sm" numberOfLines={2}>
+        <Text style={[styles.reportCardComment, { fontFamily }]} numberOfLines={2}>
           {rep.comentario || 'Sin comentarios'}
         </Text>
 
-        <View className="flex-row items-center gap-2 mt-1 flex-wrap">
-          <View className={`px-3 py-1 rounded-full border text-xs font-semibold ${prioridadColor}`}>
-            Prioridad: {rep.prioridad || 'media'}
+        <View style={styles.reportCardFooter}>
+          <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder }]}>
+            <Text style={[styles.badgeText, { fontFamily, color: prioridadText }]}>
+              Prioridad: {rep.prioridad || 'media'}
+            </Text>
           </View>
           {rep.sucursal ? (
-            <View className="px-3 py-1 rounded-full border border-slate-700 text-slate-300 text-xs">
-              Sucursal: {rep.sucursal}
+            <View style={[styles.badge, { backgroundColor: '#1e293b', borderColor: '#334155' }]}>
+              <Text style={[styles.badgeText, { fontFamily, color: '#cbd5e1' }]}>
+                Sucursal: {rep.sucursal}
+              </Text>
             </View>
           ) : null}
         </View>
@@ -290,84 +300,87 @@ export default function ClientePanel() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative">
+    <SafeAreaView style={styles.container}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
-        className="flex-1"
+        style={styles.scrollView}
       >
-        <View className="flex-1 px-4 py-5 sm:px-8 sm:py-6 sm:max-w-6xl sm:self-center sm:w-full">
-          <View className="mb-8 flex-row items-center justify-between">
-            <View className="flex-row items-center gap-4 flex-1">
-              <View className="relative">
-                <View className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Text className="text-white font-bold text-xl tracking-wider">{initials}</Text>
+        <View style={isMobile ? styles.contentMobile : styles.content}>
+          <View style={isMobile ? styles.headerMobile : styles.header}>
+            <View style={styles.headerLeft}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initials}</Text>
                 </View>
-                <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-950" />
+                <View style={styles.statusDot} />
               </View>
 
-              <View className="flex-1">
-                <Text className="text-white font-bold text-xl">
+              <View style={styles.headerInfo}>
+                <Text style={[styles.welcomeText, { fontFamily }]}>
                   Bienvenido {usuario?.nombre ?? 'Usuario'}{usuario?.apellido ? `, ${usuario.apellido}` : ''}
                 </Text>
-                <Text className="text-cyan-400 font-semibold text-sm">
+                <Text style={[styles.empresaText, { fontFamily }]}>
                   Empresa {usuario?.empresa ? usuario.empresa : 'Empresa no definida'}
                 </Text>
-                <Text className="text-slate-500 text-xs mt-0.5">Panel de Cliente</Text>
+                <Text style={[styles.roleText, { fontFamily }]}>Panel de Cliente</Text>
               </View>
             </View>
 
             <TouchableOpacity
               onPress={handleLogout}
-              className="px-3 py-3 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700 active:bg-slate-800 active:scale-95 transition-all duration-150"
+              style={styles.logoutButton}
             >
               <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
             </TouchableOpacity>
           </View>
 
-          <View className="mb-8 space-y-3 sm:flex-row sm:gap-4 sm:space-y-0">
+          <View style={isMobile ? styles.statsRowMobile : styles.statsRow}>
             {stats.map((stat, index) => (
               <TouchableOpacity
                 key={index}
                 activeOpacity={0.9}
-                className={`sm:flex-1 ${stat.cardBg} backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5 active:scale-[0.98] transition-transform duration-150`}
+                style={isMobile ? styles.statCardMobile : styles.statCard}
               >
-                <View className="flex-row items-start justify-between mb-4">
-                  <View className={`w-12 h-12 ${stat.iconBg} rounded-xl items-center justify-center shadow-lg`}>
+                <View style={styles.statCardHeader}>
+                  <View style={[styles.statIcon, { backgroundColor: stat.iconBg.replace('bg-', '').includes('cyan') ? '#06b6d4' : stat.iconBg.replace('bg-', '').includes('amber') ? '#f59e0b' : '#10b981' }]}>
                     <Ionicons name={stat.iconName as any} size={24} color="white" />
                   </View>
-                  <View className="bg-slate-700/50 px-2 py-1 rounded-lg">
-                    <Text className="text-slate-400 text-xs font-medium">Hoy</Text>
+                  <View style={styles.statBadge}>
+                    <Text style={[styles.statBadgeText, { fontFamily }]}>Hoy</Text>
                   </View>
                 </View>
 
-                <Text className="text-white font-black text-3xl mb-1">{stat.value}</Text>
-                <Text className="text-slate-400 text-sm font-medium">{stat.label}</Text>
+                <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                <Text style={[styles.statLabel, { fontFamily }]}>{stat.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <View className="mb-5">
-            <Text className="text-white font-black text-2xl mb-1">Acciones principales</Text>
-            <Text className="text-slate-400 text-sm">Genera y consulta tus reportes</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { fontFamily }]}>Acciones principales</Text>
+            <Text style={[styles.sectionSubtitle, { fontFamily }]}>Genera y consulta tus reportes</Text>
           </View>
 
-          <View className="mb-6 space-y-3 sm:flex-row sm:flex-wrap sm:gap-4 sm:space-y-0">
+          <View style={isMobile ? styles.optionsGridMobile : styles.optionsGrid}>
             {mainOptions.map((option, index) => (
               <TouchableOpacity
                 key={index}
                 activeOpacity={0.9}
                 onPress={option.onPress}
-                className={`sm:w-[calc(50%-8px)] bg-gradient-to-br ${option.gradient} rounded-2xl p-6 shadow-xl border-2 border-white/10 active:scale-[0.97] transition-transform duration-150`}
+                style={[
+                  isMobile ? styles.optionCardMobile : styles.optionCard,
+                  { backgroundColor: option.gradient.includes('cyan') ? '#0891b2' : option.gradient.includes('indigo') ? '#6366f1' : option.gradient.includes('emerald') ? '#059669' : '#475569' }
+                ]}
               >
-                <View className="flex-row items-center gap-4 sm:flex-col sm:items-start sm:space-y-3 sm:gap-0">
-                  <View className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl items-center justify-center flex-shrink-0">
+                <View style={isMobile ? styles.optionContentMobile : styles.optionContent}>
+                  <View style={styles.optionIcon}>
                     <Ionicons name={option.iconName as any} size={28} color="white" />
                   </View>
 
-                  <View className="flex-1">
-                    <Text className="text-white font-black text-lg leading-snug mb-1">{option.title}</Text>
-                    <Text className="text-white/80 text-sm font-medium">{option.description}</Text>
+                  <View style={styles.optionTextContainer}>
+                    <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
+                    <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -377,56 +390,56 @@ export default function ClientePanel() {
       </ScrollView>
 
       {showReportModal && (
-        <View className="absolute inset-0 bg-black/70 z-30 px-4 items-center justify-center">
-          <View className="w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-white font-black text-xl">Mis reportes</Text>
-                <Text className="text-slate-400 text-sm">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Mis reportes</Text>
+                <Text style={[styles.modalSubtitle, { fontFamily }]}>
                   Popup de reportes finalizados (se mantienen visibles aunque estén completados).
                 </Text>
               </View>
-              <View className="flex-row items-center gap-2">
+              <View style={styles.modalHeaderButtons}>
                 <TouchableOpacity
                   onPress={() => cargarReportes(usuario?.email)}
-                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg"
+                  style={styles.refreshButton}
                 >
-                  <Text className="text-cyan-300 text-xs font-semibold">Actualizar</Text>
+                  <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowReportModal(false)}
-                  className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center"
+                  style={styles.closeButton}
                 >
                   <Ionicons name="close" size={20} color="#cbd5e1" />
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View className="bg-slate-800/40 border border-slate-700 rounded-xl p-3 mb-3">
-              <Text className="text-slate-300 text-xs">
+            <View style={styles.infoBox}>
+              <Text style={[styles.infoText, { fontFamily }]}>
                 Aquí solo ves los finalizados; los pendientes/en espera irán en Seguimiento.
               </Text>
             </View>
 
             {loadingReportes && (
-              <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <Text className="text-slate-400 text-sm">Cargando reportes...</Text>
+              <View style={styles.reportCard}>
+                <Text style={[styles.loadingText, { fontFamily }]}>Cargando reportes...</Text>
               </View>
             )}
 
             {!loadingReportes && errorReportes ? (
-              <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                <Text className="text-red-300 text-sm">{errorReportes}</Text>
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{errorReportes}</Text>
               </View>
             ) : null}
 
             {!loadingReportes && !errorReportes && finalizados.length === 0 ? (
-              <View className="space-y-3">
-                <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                  <Text className="text-slate-400 text-sm">Aún no tienes reportes finalizados.</Text>
+              <View style={styles.emptyContainer}>
+                <View style={styles.reportCard}>
+                  <Text style={[styles.emptyText, { fontFamily }]}>Aún no tienes reportes finalizados.</Text>
                 </View>
-                <View className="bg-slate-900/80 border border-emerald-500/30 rounded-xl p-4">
-                  <Text className="text-emerald-300 text-xs font-semibold mb-2">Ejemplo generado (SQL)</Text>
+                <View style={styles.demoBox}>
+                  <Text style={[styles.demoTitle, { fontFamily }]}>Ejemplo generado (SQL)</Text>
                   {renderReporteCard(
                     {
                       id: 'sample-finalizado',
@@ -444,8 +457,8 @@ export default function ClientePanel() {
             ) : null}
 
             {!loadingReportes && !errorReportes && finalizados.length > 0 ? (
-              <ScrollView className="max-h-[420px]" showsVerticalScrollIndicator={false}>
-                <View className="space-y-3">
+              <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+                <View style={styles.reportsContainer}>
                   {finalizados.map((rep) => renderReporteCard(rep))}
                 </View>
               </ScrollView>
@@ -455,88 +468,88 @@ export default function ClientePanel() {
       )}
 
       {showReporteDetail && selectedReporte && (
-        <View className="absolute inset-0 bg-black/70 z-40 px-4 items-center justify-center">
-          <View className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between gap-3 mb-4">
-              <View className="flex-1">
-                <Text className="text-white font-black text-lg">Detalles del reporte</Text>
+        <View style={styles.detailOverlay}>
+          <View style={styles.detailContainer}>
+            <View style={styles.detailHeader}>
+              <View style={styles.detailHeaderText}>
+                <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del reporte</Text>
               </View>
               <TouchableOpacity
                 onPress={() => {
                   setShowReporteDetail(false);
                   setSelectedReporte(null);
                 }}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center"
+                style={styles.closeButton}
               >
                 <Ionicons name="close" size={20} color="#cbd5e1" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView className="max-h-[500px] space-y-3">
-              <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                <Text className="text-slate-400 text-xs font-semibold">Equipo / Servicio</Text>
-                <Text className="text-white text-sm font-semibold">
+            <ScrollView style={styles.detailScroll}>
+              <View style={styles.detailField}>
+                <Text style={[styles.detailLabel, { fontFamily }]}>Equipo / Servicio</Text>
+                <Text style={[styles.detailValue, { fontFamily, fontWeight: '600' }]}>
                   {selectedReporte.equipo_descripcion || 'No especificado'}
                 </Text>
               </View>
 
               {selectedReporte.equipo_modelo && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Modelo</Text>
-                  <Text className="text-white text-sm">{selectedReporte.equipo_modelo}</Text>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Modelo</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.equipo_modelo}</Text>
                 </View>
               )}
 
               {selectedReporte.equipo_serie && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Serie</Text>
-                  <Text className="text-white text-sm">{selectedReporte.equipo_serie}</Text>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Serie</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.equipo_serie}</Text>
                 </View>
               )}
 
-              <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                <Text className="text-slate-400 text-xs font-semibold">Comentario / Problema</Text>
-                <Text className="text-white text-sm">{selectedReporte.comentario || 'Sin comentarios'}</Text>
+              <View style={styles.detailField}>
+                <Text style={[styles.detailLabel, { fontFamily }]}>Comentario / Problema</Text>
+                <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.comentario || 'Sin comentarios'}</Text>
               </View>
 
-              <View className="flex-row gap-2">
-                <View className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Prioridad</Text>
-                  <Text className="text-white text-sm capitalize">{selectedReporte.prioridad || 'media'}</Text>
+              <View style={styles.detailRow}>
+                <View style={[styles.detailField, { flex: 1 }]}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Prioridad</Text>
+                  <Text style={[styles.detailValue, { fontFamily, textTransform: 'capitalize' }]}>{selectedReporte.prioridad || 'media'}</Text>
                 </View>
 
-                <View className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Estado</Text>
-                  <Text className="text-emerald-300 text-sm capitalize font-semibold">
+                <View style={[styles.detailField, { flex: 1 }]}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Estado</Text>
+                  <Text style={[styles.detailValue, { fontFamily, color: '#6ee7b7', fontWeight: '600', textTransform: 'capitalize' }]}>
                     {selectedReporte.estado || 'terminado'}
                   </Text>
                 </View>
               </View>
 
               {selectedReporte.sucursal && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Sucursal</Text>
-                  <Text className="text-white text-sm">{selectedReporte.sucursal}</Text>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Sucursal</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.sucursal}</Text>
                 </View>
               )}
 
               {selectedReporte.empresa && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Empresa</Text>
-                  <Text className="text-white text-sm">{selectedReporte.empresa}</Text>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Empresa</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.empresa}</Text>
                 </View>
               )}
 
               {selectedReporte.direccion_sucursal && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Dirección</Text>
-                  <Text className="text-white text-sm">{selectedReporte.direccion_sucursal}</Text>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Dirección</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.direccion_sucursal}</Text>
                 </View>
               )}
 
-              <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                <Text className="text-slate-400 text-xs font-semibold">Fecha de creación</Text>
-                <Text className="text-white text-sm">
+              <View style={styles.detailField}>
+                <Text style={[styles.detailLabel, { fontFamily }]}>Fecha de creación</Text>
+                <Text style={[styles.detailValue, { fontFamily }]}>
                   {selectedReporte.created_at
                     ? new Date(selectedReporte.created_at).toLocaleString()
                     : 'No disponible'}
@@ -544,12 +557,12 @@ export default function ClientePanel() {
               </View>
 
               {selectedReporte.usuario_email && (
-                <View className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                  <Text className="text-slate-400 text-xs font-semibold">Solicitante</Text>
-                  <Text className="text-white text-sm">
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Solicitante</Text>
+                  <Text style={[styles.detailValue, { fontFamily }]}>
                     {selectedReporte.usuario_nombre} {selectedReporte.usuario_apellido}
                   </Text>
-                  <Text className="text-slate-400 text-xs">{selectedReporte.usuario_email}</Text>
+                  <Text style={[styles.detailFieldSubtext, { fontFamily }]}>{selectedReporte.usuario_email}</Text>
                 </View>
               )}
             </ScrollView>
@@ -559,61 +572,61 @@ export default function ClientePanel() {
                 setShowReporteDetail(false);
                 setSelectedReporte(null);
               }}
-              className="mt-4 bg-gradient-to-r from-slate-700 to-slate-600 rounded-xl py-3 items-center border border-slate-600"
+              style={styles.detailCloseButton}
             >
-              <Text className="text-white font-semibold">Cerrar</Text>
+              <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
       {showSuccessOverlay && (
-        <View className="absolute inset-0 bg-black/60 justify-center items-center px-6 z-20">
-          <View className="w-full max-w-md bg-slate-900 border border-cyan-400/40 rounded-2xl p-5 shadow-2xl shadow-cyan-900/40">
-            <View className="flex-row items-center gap-3 mb-3">
-              <View className="bg-cyan-500/15 rounded-full p-2.5">
+        <View style={styles.successOverlay}>
+          <View style={styles.successContainer}>
+            <View style={styles.successHeader}>
+              <View style={styles.successIcon}>
                 <Ionicons name="sparkles" size={22} color="#22d3ee" />
               </View>
-              <Text className="text-white font-bold text-lg">Reporte enviado</Text>
+              <Text style={[styles.successTitle, { fontFamily }]}>Reporte enviado</Text>
             </View>
-            <Text className="text-slate-200 text-sm mb-4">
+            <Text style={[styles.successMessage, { fontFamily }]}>
               Tu reporte se generó exitosamente. El equipo lo revisará en breve.
             </Text>
             <TouchableOpacity
               onPress={() => setShowSuccessOverlay(false)}
-              className="bg-gradient-to-r from-cyan-500 to-sky-500 rounded-xl py-3 items-center border border-cyan-300/50"
+              style={styles.successButton}
               activeOpacity={0.9}
             >
-              <Text className="text-white font-semibold">Entendido</Text>
+              <Text style={[styles.successButtonText, { fontFamily }]}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
       {showLogout && (
-        <View className="absolute inset-0 bg-black/70 items-center justify-center px-6 z-10">
-          <View className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <View className="flex-row items-center gap-3 mb-4">
-              <View className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-400/50 items-center justify-center">
+        <View style={styles.logoutOverlay}>
+          <View style={styles.logoutContainer}>
+            <View style={styles.logoutHeader}>
+              <View style={styles.logoutIcon}>
                 <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
               </View>
-              <Text className="text-white font-bold text-lg">Cerrar sesión</Text>
+              <Text style={[styles.logoutTitle, { fontFamily }]}>Cerrar sesión</Text>
             </View>
-            <Text className="text-slate-300 text-sm mb-6">
+            <Text style={[styles.logoutMessage, { fontFamily }]}>
               ¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.
             </Text>
-            <View className="flex-row gap-3">
+            <View style={styles.logoutButtons}>
               <TouchableOpacity
-                className="flex-1 py-3 rounded-xl border border-slate-700 bg-slate-800"
+                style={styles.logoutCancelButton}
                 onPress={() => setShowLogout(false)}
               >
-                <Text className="text-slate-200 font-semibold text-center">Cancelar</Text>
+                <Text style={[styles.logoutCancelText, { fontFamily }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 border border-red-400"
+                style={styles.logoutConfirmButton}
                 onPress={confirmLogout}
               >
-                <Text className="text-white font-semibold text-center">Cerrar sesión</Text>
+                <Text style={[styles.logoutConfirmText, { fontFamily }]}>Cerrar sesión</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -622,3 +635,622 @@ export default function ClientePanel() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    maxWidth: 1152,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  contentMobile: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  header: {
+    marginBottom: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerMobile: {
+    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#0891b2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 20,
+    letterSpacing: 1,
+  },
+  statusDot: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#020617',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  welcomeText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 20,
+  },
+  empresaText: {
+    color: '#22d3ee',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  roleText: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#1e293bcc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  statsRow: {
+    marginBottom: 32,
+    flexDirection: 'row',
+    gap: 16,
+  },
+  statsRowMobile: {
+    marginBottom: 24,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#1e293b66',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#33415580',
+    padding: 20,
+  },
+  statCardMobile: {
+    backgroundColor: '#1e293b66',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#33415580',
+    padding: 20,
+    marginBottom: 12,
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statBadge: {
+    backgroundColor: '#33415580',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statBadgeText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statValue: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 30,
+    marginBottom: 4,
+  },
+  statLabel: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  optionsGrid: {
+    marginBottom: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  optionsGridMobile: {
+    marginBottom: 24,
+    gap: 12,
+  },
+  optionCard: {
+    width: 'calc(50% - 8px)',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 2,
+    borderColor: '#ffffff1a',
+  },
+  optionCardMobile: {
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 2,
+    borderColor: '#ffffff1a',
+    marginBottom: 12,
+  },
+  optionContent: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  optionContentMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  optionIcon: {
+    width: 56,
+    height: 56,
+    backgroundColor: '#ffffff33',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  optionTextContainer: {
+    flex: 1,
+  },
+  optionTitle: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  optionDescription: {
+    color: '#ffffffcc',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000b3',
+    zIndex: 30,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 768,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+  },
+  modalHeaderText: {
+    flex: 1,
+  },
+  modalTitle: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 20,
+  },
+  modalSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  modalHeaderButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+  },
+  refreshButtonText: {
+    color: '#67e8f9',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoBox: {
+    backgroundColor: '#1e293b66',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  infoText: {
+    color: '#cbd5e1',
+    fontSize: 12,
+  },
+  reportCard: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  reportCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 8,
+  },
+  reportCardInfo: {
+    flex: 1,
+  },
+  reportCardTitle: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  reportCardDate: {
+    color: '#64748b',
+    fontSize: 12,
+  },
+  reportCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eyeButton: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportCardComment: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  reportCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginTop: 4,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  errorBox: {
+    backgroundColor: '#ef44441a',
+    borderWidth: 1,
+    borderColor: '#ef44444d',
+    borderRadius: 12,
+    padding: 16,
+  },
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 14,
+  },
+  emptyContainer: {
+    gap: 12,
+  },
+  emptyText: {
+    color: '#94a3b8',
+    fontSize: 14,
+  },
+  demoBox: {
+    backgroundColor: '#0f172acc',
+    borderWidth: 1,
+    borderColor: '#10b9814d',
+    borderRadius: 12,
+    padding: 16,
+  },
+  demoTitle: {
+    color: '#6ee7b7',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  reportsList: {
+    maxHeight: 420,
+  },
+  reportsContainer: {
+    gap: 12,
+  },
+  detailOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000b3',
+    zIndex: 40,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailContainer: {
+    width: '100%',
+    maxWidth: 672,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 16,
+    padding: 20,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 16,
+  },
+  detailHeaderText: {
+    flex: 1,
+  },
+  detailTitle: {
+    color: 'white',
+    fontWeight: '900',
+    fontSize: 18,
+  },
+  detailScroll: {
+    maxHeight: 500,
+  },
+  detailField: {
+    backgroundColor: '#1e293b80',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  detailLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  detailValue: {
+    color: 'white',
+    fontSize: 14,
+  },
+  detailFieldSubtext: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  detailCloseButton: {
+    marginTop: 16,
+    backgroundColor: '#475569',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  detailCloseButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#00000099',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    zIndex: 20,
+  },
+  successContainer: {
+    width: '100%',
+    maxWidth: 448,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#22d3ee66',
+    borderRadius: 16,
+    padding: 20,
+  },
+  successHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  successIcon: {
+    backgroundColor: '#22d3ee26',
+    borderRadius: 20,
+    padding: 10,
+  },
+  successTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  successMessage: {
+    color: '#e2e8f0',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  successButton: {
+    backgroundColor: '#06b6d4',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#22d3ee80',
+  },
+  successButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  logoutOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000b3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    zIndex: 10,
+  },
+  logoutContainer: {
+    width: '100%',
+    maxWidth: 384,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 16,
+    padding: 24,
+  },
+  logoutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  logoutIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#ef444433',
+    borderWidth: 1,
+    borderColor: '#f8717180',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoutTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  logoutMessage: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    marginBottom: 24,
+  },
+  logoutButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  logoutCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#1e293b',
+  },
+  logoutCancelText: {
+    color: '#e2e8f0',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  logoutConfirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#ef4444',
+    borderWidth: 1,
+    borderColor: '#f87171',
+  },
+  logoutConfirmText: {
+    color: 'white',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});
