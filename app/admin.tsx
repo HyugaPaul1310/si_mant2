@@ -1,9 +1,18 @@
 import { actualizarEstadoReporte, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Admin = {
@@ -14,6 +23,7 @@ type Admin = {
 
 function AdminPanelContent() {
   const router = useRouter();
+  const fontFamily = Platform.OS === 'ios' ? 'System' : 'Roboto';
   const [usuario, setUsuario] = useState<Admin | null>(null);
   const [notifications] = useState(0);
   const [pending] = useState(0);
@@ -115,26 +125,23 @@ function AdminPanelContent() {
     {
       label: 'Notificaciones',
       value: notifications,
-      iconBg: 'bg-blue-500',
+      iconBg: '#3b82f6',
       iconName: 'notifications-outline',
-      cardBg: 'bg-slate-800/40',
-      accent: 'text-blue-400',
+      accent: '#60a5fa',
     },
     {
       label: 'Pendientes',
       value: pending,
-      iconBg: 'bg-amber-500',
+      iconBg: '#f59e0b',
       iconName: 'time-outline',
-      cardBg: 'bg-slate-800/40',
-      accent: 'text-amber-400',
+      accent: '#fbbf24',
     },
     {
       label: 'Aceptados',
       value: accepted,
-      iconBg: 'bg-emerald-500',
+      iconBg: '#10b981',
       iconName: 'checkmark-circle-outline',
-      cardBg: 'bg-slate-800/40',
-      accent: 'text-emerald-400',
+      accent: '#34d399',
     },
   ];
 
@@ -142,41 +149,58 @@ function AdminPanelContent() {
     {
       title: 'Historial de Reportes',
       description: 'Ver reportes',
-      gradient: 'from-blue-600 to-blue-500',
+      gradient: ['#2563eb', '#3b82f6'] as const,
       iconName: 'document-text-outline',
     },
     {
       title: 'Reportes Terminados',
       description: 'Ver reportes terminados',
-      gradient: 'from-violet-600 to-violet-500',
+      gradient: ['#7c3aed', '#8b5cf6'] as const,
       iconName: 'checkmark-circle-outline',
     },
     {
       title: 'Gestion de Usuarios',
       description: 'Administrar permisos de usuarios',
-      gradient: 'from-cyan-600 to-cyan-500',
+      gradient: ['#06b6d4', '#0ea5e9'] as const,
       iconName: 'people-outline',
     },
     {
       title: 'Gestion de inventario',
       description: 'Administrar productos',
-      gradient: 'from-red-600 to-red-500',
+      gradient: ['#dc2626', '#ef4444'] as const,
       iconName: 'cube-outline',
     },
     {
       title: 'Generar Tareas',
       description: 'Crear nuevas tareas para el equipo',
-      gradient: 'from-orange-600 to-orange-500',
+      gradient: ['#ea580c', '#f97316'] as const,
       iconName: 'create-outline',
     },
     {
       title: 'Generar Correo Electrónico',
       description: 'Redactar y enviar correos',
-      gradient: 'from-violet-600 to-violet-500',
+      gradient: ['#7c3aed', '#8b5cf6'] as const,
       iconName: 'mail-outline',
     },
-
   ];
+
+  const estadoBadgeStyle = (estado: EstadoReporte) => {
+    if (estado === 'pendiente') {
+      return { bg: 'rgba(245, 158, 11, 0.2)', border: 'rgba(245, 158, 11, 0.4)', text: '#fbbf24' };
+    }
+    if (estado === 'en_proceso') {
+      return { bg: 'rgba(59, 130, 246, 0.2)', border: 'rgba(59, 130, 246, 0.4)', text: '#93c5fd' };
+    }
+    if (estado === 'en espera') {
+      return { bg: 'rgba(234, 179, 8, 0.2)', border: 'rgba(234, 179, 8, 0.4)', text: '#facc15' };
+    }
+    return { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.4)', text: '#6ee7b7' };
+  };
+
+  const estadoBotonStyle = (active: boolean) =>
+    active
+      ? { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.4)', text: '#bbf7d0' }
+      : { bg: '#334155', border: '#475569', text: '#e2e8f0' };
 
   const openEmailModalIfOption = (title: string) => {
     if (title === 'Historial de Reportes') {
@@ -212,187 +236,169 @@ function AdminPanelContent() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 relative">
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 32 }}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        className="flex-1"
       >
-        {/* Container with max width for larger screens */}
-        <View className="flex-1 px-4 py-5 sm:px-8 sm:py-6 sm:max-w-7xl sm:self-center sm:w-full">
-          
-          {/* Header Section */}
-          <View className="mb-8 flex-row items-center justify-between">
-            <View className="flex-row items-center gap-4 flex-1">
-              {/* Profile Badge */}
-              <View className="relative">
-                <View className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600 items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Text className="text-white font-bold text-xl tracking-wider">{initials}</Text>
+          <View style={styles.container}>
+            <View style={styles.headerRow}>
+              <View style={styles.headerLeft}>
+                <View style={styles.badgeWrapper}>
+                  <LinearGradient
+                    colors={['#06b6d4', '#0891b2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.badge}
+                  >
+                    <Text style={[styles.badgeText, { fontFamily }]}>{initials}</Text>
+                  </LinearGradient>
+                  <View style={styles.badgeDot} />
                 </View>
-                <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-950" />
-              </View>
-              
-              {/* Welcome Text */}
-              <View className="flex-1">
-                <Text className="text-white font-bold text-xl">Bienvenido <Text className="text-cyan-400">{usuario?.nombre ?? 'Usuario'}</Text></Text>
-                <Text className="text-slate-400 text-sm mt-1">Panel de Administrador</Text>
-              </View>
-            </View>
 
-            {/* Logout Button */}
-            <TouchableOpacity 
-              onPress={handleLogout}
-              className="px-3 py-3 bg-slate-800/80 backdrop-blur-sm rounded-xl border border-slate-700 active:bg-slate-800 active:scale-95 transition-all duration-150"
-            >
-              <Ionicons
-                name="log-out-outline"
-                size={18}
-                color="#94a3b8"
-              />
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats Cards Section */}
-          <View className="mb-8 space-y-3 sm:flex-row sm:gap-4 sm:space-y-0">
-            {stats.map((stat, index) => (
-              <TouchableOpacity
-                key={index}
-                activeOpacity={0.9}
-                className={`sm:flex-1 ${stat.cardBg} backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5 active:scale-[0.98] transition-transform duration-150`}
-              >
-                <View className="flex-row items-start justify-between mb-4">
-                  <View className={`w-12 h-12 ${stat.iconBg} rounded-xl items-center justify-center shadow-lg`}>
-                    <Ionicons name={stat.iconName as any} size={24} color="white" />
-                  </View>
-                  <View className="bg-slate-700/50 px-2 py-1 rounded-lg">
-                    <Text className="text-slate-400 text-xs font-medium">Hoy</Text>
-                  </View>
+                <View style={styles.welcomeTextWrapper}>
+                  <Text style={[styles.welcomeTitle, { fontFamily }]}>Bienvenido <Text style={styles.welcomeName}>{usuario?.nombre ?? 'Usuario'}</Text></Text>
+                  <Text style={[styles.welcomeSubtitle, { fontFamily }]}>Panel de Administrador</Text>
                 </View>
-                
-                <Text className="text-white font-black text-3xl mb-1">
-                  {stat.value}
-                </Text>
-                <Text className="text-slate-400 text-sm font-medium">
-                  {stat.label}
-                </Text>
+              </View>
+
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
+                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
 
-          {/* Section Title */}
-          <View className="mb-5">
-            <Text className="text-white font-black text-2xl mb-1">Opciones Principales</Text>
-            <Text className="text-slate-400 text-sm">Accede a las herramientas del sistema</Text>
-          </View>
-
-          {/* Main Options Grid */}
-          <View className="mb-6 space-y-3 sm:flex-row sm:flex-wrap sm:gap-4 sm:space-y-0">
-            {mainOptions.map((option, index) => (
-              <TouchableOpacity
-                key={index}
-                activeOpacity={0.9}
-                className={`sm:w-[calc(50%-8px)] bg-gradient-to-br ${option.gradient} rounded-2xl p-6 shadow-xl border-2 border-white/10 active:scale-[0.97] transition-transform duration-150`}
-                onPress={() => openEmailModalIfOption(option.title)}
-              >
-                <View className="flex-row items-center gap-4 sm:flex-col sm:items-start sm:space-y-3 sm:gap-0">
-                  {/* Icon Container */}
-                  <View className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-xl items-center justify-center flex-shrink-0">
-                    <Ionicons name={option.iconName as any} size={28} color="white" />
+            <View style={styles.statsRow}>
+              {stats.map((stat, index) => (
+                <View key={index} style={styles.statCard}>
+                  <View style={styles.statHeader}>
+                    <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
+                      <Ionicons name={stat.iconName as any} size={24} color="white" />
+                    </View>
+                    <View style={styles.statChip}>
+                      <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
+                    </View>
                   </View>
-                  
-                  {/* Text Content */}
-                  <View className="flex-1">
-                    <Text className="text-white font-black text-lg leading-snug mb-1">
-                      {option.title}
-                    </Text>
-                    <Text className="text-white/80 text-sm font-medium">
-                      {option.description}
-                    </Text>
-                  </View>
+                  <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                  <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
                 </View>
-              </TouchableOpacity>
-            ))}
+              ))}
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { fontFamily }]}>Opciones Principales</Text>
+              <Text style={[styles.sectionSubtitle, { fontFamily }]}>Accede a las herramientas del sistema</Text>
+            </View>
+
+            <View style={styles.optionsGrid}>
+              {mainOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  style={styles.optionTouchable}
+                  onPress={() => openEmailModalIfOption(option.title)}
+                >
+                  <LinearGradient
+                    colors={option.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.optionCard}
+                  >
+                    <View style={styles.optionContent}>
+                      <View style={styles.optionIconWrapper}>
+                        <Ionicons name={option.iconName as any} size={28} color="white" />
+                      </View>
+                      <View style={styles.optionTextWrapper}>
+                        <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
+                        <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
-      </ScrollView>
-      {showLogout && (
-        <View className="absolute inset-0 bg-black/70 items-center justify-center px-6 z-10">
-          <View className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <View className="flex-row items-center gap-3 mb-4">
-              <View className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-400/50 items-center justify-center">
-                <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
+        </ScrollView>
+
+        {showLogout && (
+          <View style={styles.overlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(248, 113, 113, 0.2)', borderColor: 'rgba(248, 113, 113, 0.5)' }]}>
+                  <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Cerrar sesión</Text>
               </View>
-              <Text className="text-white font-bold text-lg">Cerrar sesión</Text>
-            </View>
-            <Text className="text-slate-300 text-sm mb-6">
-              ¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.
-            </Text>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 py-3 rounded-xl border border-slate-700 bg-slate-800"
-                onPress={() => setShowLogout(false)}
-              >
-                <Text className="text-slate-200 font-semibold text-center">Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 border border-red-400"
-                onPress={confirmLogout}
-              >
-                <Text className="text-white font-semibold text-center">Cerrar sesión</Text>
-              </TouchableOpacity>
+              <Text style={[styles.modalBodyText, { fontFamily }]}>¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.</Text>
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.modalSecondary} onPress={() => setShowLogout(false)}>
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#ef4444', '#dc2626']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity onPress={confirmLogout} activeOpacity={0.85}>
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>Cerrar sesión</Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
             </View>
           </View>
-        </View>
-      )}
-      {showEmailModal && (
-        <View className="absolute inset-0 bg-black/70 items-center justify-center px-6 z-10">
-          <View className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <View className="flex-row items-center gap-3 mb-4">
-              <View className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-400/50 items-center justify-center">
-                <Ionicons name="mail-outline" size={22} color="#a78bfa" />
+        )}
+
+        {showEmailModal && (
+          <View style={styles.overlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
+                  <Ionicons name="mail-outline" size={22} color="#a78bfa" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Generar cuenta</Text>
               </View>
-              <Text className="text-white font-bold text-lg">Generar cuenta</Text>
-            </View>
-            {createError ? (
-              <View className="bg-red-500/20 border border-red-400 rounded-lg p-2 mb-3">
-                <Text className="text-red-400 text-xs text-center">{createError}</Text>
-              </View>
-            ) : null}
-            <View className="space-y-3 mb-4">
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Empresa</Text>
+
+              {createError ? (
+                <View style={styles.errorBox}>
+                  <Text style={[styles.errorText, { fontFamily }]}>{createError}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Empresa</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserCompany}
                   onChangeText={setNewUserCompany}
                   placeholder="Empresa"
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Nombre</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Nombre</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserName}
                   onChangeText={setNewUserName}
                   placeholder="Nombre completo"
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Apellido</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Apellido</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserLastName}
                   onChangeText={setNewUserLastName}
                   placeholder="Apellido"
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Correo electrónico</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Correo electrónico</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserEmail}
                   onChangeText={setNewUserEmail}
                   placeholder="usuario@correo.com"
@@ -405,10 +411,10 @@ function AdminPanelContent() {
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Teléfono</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Teléfono</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserPhone}
                   onChangeText={setNewUserPhone}
                   placeholder="555-555-5555"
@@ -416,38 +422,39 @@ function AdminPanelContent() {
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Fecha de nacimiento</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Fecha de nacimiento</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserBirth}
                   onChangeText={setNewUserBirth}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Ciudad</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Ciudad</Text>
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                  style={[styles.input, { fontFamily }]}
                   value={newUserCity}
                   onChangeText={setNewUserCity}
                   placeholder="Ciudad"
                   placeholderTextColor="#64748b"
                 />
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Estado (Opcional)</Text>
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Estado (Opcional)</Text>
                 <TouchableOpacity
                   onPress={() => setShowStatePicker(!showStatePicker)}
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2"
+                  style={styles.select}
+                  activeOpacity={0.85}
                 >
-                  <Text className={newUserState ? 'text-white' : 'text-slate-400'}>
+                  <Text style={[styles.selectText, { fontFamily, color: newUserState ? '#fff' : '#94a3b8' }]}>
                     {newUserState || 'Selecciona tu estado'}
                   </Text>
                 </TouchableOpacity>
                 {showStatePicker && (
-                  <View className="bg-slate-800 border border-slate-700 rounded-lg mt-2 max-h-48">
+                  <View style={styles.selectList}>
                     <ScrollView>
                       {[
                         'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Coahuila','Colima','Ciudad de México','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','México','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
@@ -458,21 +465,21 @@ function AdminPanelContent() {
                             setNewUserState(est);
                             setShowStatePicker(false);
                           }}
-                          className="px-3 py-2 border-b border-slate-700"
+                          style={styles.selectItem}
                         >
-                          <Text className="text-white">{est}</Text>
+                          <Text style={[styles.selectItemText, { fontFamily }]}>{est}</Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
                   </View>
                 )}
               </View>
-              <View>
-                <Text className="text-slate-300 text-xs mb-1">Contraseña</Text>
-                <View className="flex-row items-center bg-slate-800 border border-slate-700 rounded-lg px-3">
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { fontFamily }]}>Contraseña</Text>
+                <View style={styles.passwordWrapper}>
                   <TextInput
                     key={`pwd-${passwordFieldKey}`}
-                    className="flex-1 py-2 text-white"
+                    style={[styles.passwordInput, { fontFamily }]}
                     value={newUserPassword}
                     onChangeText={setNewUserPassword}
                     placeholder="••••••••"
@@ -483,296 +490,291 @@ function AdminPanelContent() {
                     importantForAutofill="no"
                     placeholderTextColor="#64748b"
                   />
-                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} className="ml-2 py-2">
+                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} style={styles.eyeButton}>
                     <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={20} color="#a78bfa" />
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 py-3 rounded-xl border border-slate-700 bg-slate-800"
-                onPress={() => {
-                  setShowEmailModal(false);
-                  setNewUserCompany('');
-                  setNewUserName('');
-                  setNewUserLastName('');
-                  setNewUserEmail('');
-                  setNewUserPassword('');
-                  setNewUserPhone('');
-                  setNewUserBirth('');
-                  setNewUserCity('');
-                  setNewUserState('');
-                  setShowStatePicker(false);
-                  setShowNewPassword(false);
-                  setCreateError(null);
-                }}
-              >
-                <Text className="text-slate-200 font-semibold text-center">Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className={`flex-1 py-3 rounded-xl ${creatingUser ? 'bg-gray-600 border border-gray-500' : 'bg-gradient-to-r from-violet-500 to-violet-600 border border-violet-400'}`}
-                onPress={async () => {
-                  if (creatingUser) return;
-                  setCreateError(null);
-                  const name = newUserName.trim();
-                  const email = newUserEmail.trim().toLowerCase();
-                  const pwd = newUserPassword.trim();
-                  const phone = newUserPhone.trim();
-                  const birth = newUserBirth.trim();
-                  const city = newUserCity.trim();
-                  const company = newUserCompany.trim();
-                  const state = newUserState.trim();
-                  // Validaciones básicas
-                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  if (!name || !email || !pwd) {
-                    setCreateError('Completa nombre, correo y contraseña.');
-                    return;
-                  }
-                  if (!emailRegex.test(email)) {
-                    setCreateError('Correo inválido.');
-                    return;
-                  }
-                  if (pwd.length < 6) {
-                    setCreateError('La contraseña debe tener al menos 6 caracteres.');
-                    return;
-                  }
-                  setCreatingUser(true);
-                  try {
-                    const { registrarUsuario } = await import('../lib/auth');
-                    const res = await registrarUsuario({
-                      nombre: name,
-                      apellido: newUserLastName.trim() || undefined,
-                      email,
-                      contraseña: pwd,
-                      telefono: phone || undefined,
-                      fecha_nacimiento: birth || undefined,
-                      ciudad: (() => {
-                        const parts = [] as string[];
-                        if (state) parts.push(state);
-                        if (city) parts.push(city);
-                        return parts.length ? parts.join(', ') : undefined;
-                      })(),
-                      empresa: company || undefined,
-                    });
-                    if (!res.success) {
-                      setCreateError(res.error || 'No se pudo crear la cuenta');
-                    } else {
-                      setShowEmailModal(false);
-                      setNewUserCompany('');
-                      setNewUserName('');
-                      setNewUserLastName('');
-                      setNewUserEmail('');
-                      setNewUserPassword('');
-                      setNewUserPhone('');
-                      setNewUserBirth('');
-                      setNewUserCity('');
-                      setNewUserState('');
-                    }
-                  } catch (e: any) {
-                    setCreateError(e?.message || 'Error inesperado');
-                  } finally {
-                    setCreatingUser(false);
-                  }
-                }}
-              >
-                <Text className="text-white font-semibold text-center">{creatingUser ? 'Generando…' : 'Generar'}</Text>
-              </TouchableOpacity>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondary}
+                  onPress={() => {
+                    setShowEmailModal(false);
+                    setNewUserCompany('');
+                    setNewUserName('');
+                    setNewUserLastName('');
+                    setNewUserEmail('');
+                    setNewUserPassword('');
+                    setNewUserPhone('');
+                    setNewUserBirth('');
+                    setNewUserCity('');
+                    setNewUserState('');
+                    setShowStatePicker(false);
+                    setShowNewPassword(false);
+                    setCreateError(null);
+                  }}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={creatingUser ? ['#6b7280', '#6b7280'] : ['#8b5cf6', '#7c3aed']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity
+                    disabled={creatingUser}
+                    onPress={async () => {
+                      if (creatingUser) return;
+                      setCreateError(null);
+                      const name = newUserName.trim();
+                      const email = newUserEmail.trim().toLowerCase();
+                      const pwd = newUserPassword.trim();
+                      const phone = newUserPhone.trim();
+                      const birth = newUserBirth.trim();
+                      const city = newUserCity.trim();
+                      const company = newUserCompany.trim();
+                      const state = newUserState.trim();
+                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                      if (!name || !email || !pwd) {
+                        setCreateError('Completa nombre, correo y contraseña.');
+                        return;
+                      }
+                      if (!emailRegex.test(email)) {
+                        setCreateError('Correo inválido.');
+                        return;
+                      }
+                      if (pwd.length < 6) {
+                        setCreateError('La contraseña debe tener al menos 6 caracteres.');
+                        return;
+                      }
+                      setCreatingUser(true);
+                      try {
+                        const { registrarUsuario } = await import('../lib/auth');
+                        const res = await registrarUsuario({
+                          nombre: name,
+                          apellido: newUserLastName.trim() || undefined,
+                          email,
+                          contraseña: pwd,
+                          telefono: phone || undefined,
+                          fecha_nacimiento: birth || undefined,
+                          ciudad: (() => {
+                            const parts = [] as string[];
+                            if (state) parts.push(state);
+                            if (city) parts.push(city);
+                            return parts.length ? parts.join(', ') : undefined;
+                          })(),
+                          empresa: company || undefined,
+                        });
+                        if (!res.success) {
+                          setCreateError(res.error || 'No se pudo crear la cuenta');
+                        } else {
+                          setShowEmailModal(false);
+                          setNewUserCompany('');
+                          setNewUserName('');
+                          setNewUserLastName('');
+                          setNewUserEmail('');
+                          setNewUserPassword('');
+                          setNewUserPhone('');
+                          setNewUserBirth('');
+                          setNewUserCity('');
+                          setNewUserState('');
+                        }
+                      } catch (e: any) {
+                        setCreateError(e?.message || 'Error inesperado');
+                      } finally {
+                        setCreatingUser(false);
+                      }
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {creatingUser ? 'Generando…' : 'Generar'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
 
-      {showHistorialModal && (
-        <View className="absolute inset-0 bg-black/70 z-30 px-4 items-center justify-center">
-          <View className="w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-white font-black text-xl">Historial de Reportes</Text>
-                <Text className="text-slate-400 text-sm">Todos los reportes y su estado</Text>
+        {showHistorialModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.largeModal}>
+              <View style={styles.largeModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, { fontFamily }]}>Historial de Reportes</Text>
+                  <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Todos los reportes y su estado</Text>
+                </View>
+                <View style={styles.largeModalActions}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setLoadingReportes(true);
+                      const { success, data, error } = await obtenerTodosLosReportes();
+                      if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+                      else setReportes(data || []);
+                      setLoadingReportes(false);
+                    }}
+                    style={styles.refreshButton}
+                  >
+                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowHistorialModal(false)} style={styles.closeButton}>
+                    <Ionicons name="close" size={20} color="#cbd5e1" />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={async () => {
-                    setLoadingReportes(true);
-                    const { success, data, error } = await obtenerTodosLosReportes();
-                    if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
-                    else setReportes(data || []);
-                    setLoadingReportes(false);
-                  }}
-                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg"
-                >
-                  <Text className="text-cyan-300 text-xs font-semibold">Actualizar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowHistorialModal(false)}
-                  className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center"
-                >
-                  <Ionicons name="close" size={20} color="#cbd5e1" />
-                </TouchableOpacity>
-              </View>
-            </View>
 
-            {loadingReportes && (
-              <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <Text className="text-slate-400 text-sm">Cargando reportes...</Text>
-              </View>
-            )}
+              {loadingReportes && (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
+                </View>
+              )}
 
-            {!loadingReportes && errorReportes ? (
-              <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-3">
-                <Text className="text-red-300 text-sm">{errorReportes}</Text>
-              </View>
-            ) : null}
+              {!loadingReportes && errorReportes ? (
+                <View style={styles.errorPanel}>
+                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
+                </View>
+              ) : null}
 
-            {!loadingReportes && !errorReportes && reportesPendientes.length === 0 ? (
-              <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <Text className="text-slate-400 text-sm">No hay reportes pendientes.</Text>
-              </View>
-            ) : null}
+              {!loadingReportes && !errorReportes && reportesPendientes.length === 0 ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes pendientes.</Text>
+                </View>
+              ) : null}
 
-            {!loadingReportes && !errorReportes && reportesPendientes.length > 0 ? (
-              <ScrollView className="max-h-[450px]" showsVerticalScrollIndicator={false}>
-                <View className="space-y-3">
-                  {reportesPendientes.map((rep) => {
-                    const estadoColor =
-                      rep.estado === 'pendiente'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        : rep.estado === 'en_proceso'
-                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                        : rep.estado === 'en espera'
-                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
-
-                    return (
-                      <View
-                        key={rep.id}
-                        className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3"
-                      >
-                        <View className="flex-row items-center justify-between">
-                          <View className="flex-1 pr-3">
-                            <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                              {rep.equipo_descripcion || 'Equipo / servicio'}
-                            </Text>
-                            <Text className="text-slate-400 text-xs" numberOfLines={1}>
-                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
-                            </Text>
-                            <Text className="text-slate-500 text-xs" numberOfLines={1}>
-                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
-                            </Text>
-                          </View>
-                          <View className="flex-row items-center gap-2">
-                            <TouchableOpacity
-                              onPress={() => {
-                                setSelectedReporteDetail(rep);
-                                setShowReporteDetailModal(true);
-                              }}
-                              className="w-8 h-8 bg-slate-700 border border-slate-600 rounded-lg items-center justify-center"
-                            >
-                              <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                            </TouchableOpacity>
-                            <View className={`px-3 py-1 rounded-full border text-xs font-semibold ${estadoColor}`}>
-                              {rep.estado}
+              {!loadingReportes && !errorReportes && reportesPendientes.length > 0 ? (
+                <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {reportesPendientes.map((rep) => {
+                      const badge = estadoBadgeStyle(rep.estado);
+                      return (
+                        <View key={rep.id} style={styles.reportCard}>
+                          <View style={styles.reportHeader}>
+                            <View style={styles.reportHeaderText}>
+                              <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                                {rep.equipo_descripcion || 'Equipo / servicio'}
+                              </Text>
+                              <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                                {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                              </Text>
+                              <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                                {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                              </Text>
+                            </View>
+                            <View style={styles.reportActions}>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setSelectedReporteDetail(rep);
+                                  setShowReporteDetailModal(true);
+                                }}
+                                style={styles.eyeCard}
+                              >
+                                <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                              </TouchableOpacity>
+                              <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                                <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{rep.estado}</Text>
+                              </View>
                             </View>
                           </View>
+
+                          <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                            {rep.comentario || 'Sin comentarios'}
+                          </Text>
+
+                          <View style={styles.estadoButtonsRow}>
+                            {estadosDisponibles.map((op) => {
+                              const active = rep.estado === op.value;
+                              const btn = estadoBotonStyle(active);
+                              return (
+                                <TouchableOpacity
+                                  key={op.value}
+                                  onPress={() => handleCambiarEstado(rep.id, op.value)}
+                                  disabled={updatingId === rep.id}
+                                  style={[
+                                    styles.estadoButton,
+                                    {
+                                      backgroundColor: btn.bg,
+                                      borderColor: btn.border,
+                                      opacity: updatingId === rep.id ? 0.7 : 1,
+                                    },
+                                  ]}
+                                >
+                                  <Text style={[styles.estadoButtonText, { fontFamily, color: btn.text }]}>{op.label}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
                         </View>
-
-                        <Text className="text-slate-300 text-sm" numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
-                        </Text>
-
-                        <View className="flex-row flex-wrap gap-2">
-                          {estadosDisponibles.map((op) => (
-                            <TouchableOpacity
-                              key={op.value}
-                              onPress={() => handleCambiarEstado(rep.id, op.value)}
-                              disabled={updatingId === rep.id}
-                              className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-                                rep.estado === op.value
-                                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-200'
-                                  : 'bg-slate-700 border-slate-600 text-slate-200'
-                              } ${updatingId === rep.id ? 'opacity-70' : ''}`}
-                            >
-                              {op.label}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            ) : null}
-          </View>
-        </View>
-      )}
-
-      {showTerminadosModal && (
-        <View className="absolute inset-0 bg-black/70 z-30 px-4 items-center justify-center">
-          <View className="w-full max-w-3xl bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-white font-black text-xl">Reportes Terminados</Text>
-                <Text className="text-slate-400 text-sm">Todos los reportes completados</Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={async () => {
-                    setLoadingReportes(true);
-                    const { success, data, error } = await obtenerTodosLosReportes();
-                    if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
-                    else setReportes(data || []);
-                    setLoadingReportes(false);
-                  }}
-                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg"
-                >
-                  <Text className="text-cyan-300 text-xs font-semibold">Actualizar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setShowTerminadosModal(false)}
-                  className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center"
-                >
-                  <Ionicons name="close" size={20} color="#cbd5e1" />
-                </TouchableOpacity>
-              </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              ) : null}
             </View>
+          </View>
+        )}
 
-            {loadingReportes && (
-              <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <Text className="text-slate-400 text-sm">Cargando reportes...</Text>
+        {showTerminadosModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.largeModal}>
+              <View style={styles.largeModalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, { fontFamily }]}>Reportes Terminados</Text>
+                  <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Todos los reportes completados</Text>
+                </View>
+                <View style={styles.largeModalActions}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setLoadingReportes(true);
+                      const { success, data, error } = await obtenerTodosLosReportes();
+                      if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+                      else setReportes(data || []);
+                      setLoadingReportes(false);
+                    }}
+                    style={styles.refreshButton}
+                  >
+                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowTerminadosModal(false)} style={styles.closeButton}>
+                    <Ionicons name="close" size={20} color="#cbd5e1" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
 
-            {!loadingReportes && errorReportes ? (
-              <View className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-3">
-                <Text className="text-red-300 text-sm">{errorReportes}</Text>
-              </View>
-            ) : null}
+              {loadingReportes && (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
+                </View>
+              )}
 
-            {!loadingReportes && !errorReportes && reportesTerminados.length === 0 ? (
-              <View className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-                <Text className="text-slate-400 text-sm">No hay reportes terminados.</Text>
-              </View>
-            ) : null}
+              {!loadingReportes && errorReportes ? (
+                <View style={styles.errorPanel}>
+                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
+                </View>
+              ) : null}
 
-            {!loadingReportes && !errorReportes && reportesTerminados.length > 0 ? (
-              <ScrollView className="max-h-[450px]" showsVerticalScrollIndicator={false}>
-                <View className="space-y-3">
-                  {reportesTerminados.map((rep) => {
-                    return (
-                      <View
-                        key={rep.id}
-                        className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-3"
-                      >
-                        <View className="flex-row items-center justify-between">
-                          <View className="flex-1 pr-3">
-                            <Text className="text-white font-semibold text-base" numberOfLines={1}>
+              {!loadingReportes && !errorReportes && reportesTerminados.length === 0 ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes terminados.</Text>
+                </View>
+              ) : null}
+
+              {!loadingReportes && !errorReportes && reportesTerminados.length > 0 ? (
+                <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {reportesTerminados.map((rep) => (
+                      <View key={rep.id} style={styles.reportCard}>
+                        <View style={styles.reportHeader}>
+                          <View style={styles.reportHeaderText}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
                               {rep.equipo_descripcion || 'Equipo / servicio'}
                             </Text>
-                            <Text className="text-slate-400 text-xs" numberOfLines={1}>
+                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
                               {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
                             </Text>
-                            <Text className="text-slate-500 text-xs" numberOfLines={1}>
+                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
                               {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
                             </Text>
                           </View>
@@ -781,160 +783,138 @@ function AdminPanelContent() {
                               setSelectedReporteDetail(rep);
                               setShowReporteDetailModal(true);
                             }}
-                            className="w-8 h-8 bg-slate-700 border border-slate-600 rounded-lg items-center justify-center"
+                            style={styles.eyeCard}
                           >
                             <Ionicons name="eye-outline" size={16} color="#06b6d4" />
                           </TouchableOpacity>
                         </View>
 
-                        <Text className="text-slate-300 text-sm" numberOfLines={2}>
+                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
                           {rep.comentario || 'Sin comentarios'}
                         </Text>
 
-                        <View className="px-3 py-1 rounded-full border bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-xs font-semibold self-start">
-                          <Text className="text-emerald-300">{rep.estado}</Text>
+                        <View style={styles.estadoSoloBadge}>
+                          <Text style={[styles.estadoSoloText, { fontFamily }]}>{rep.estado}</Text>
                         </View>
                       </View>
-                    );
-                  })}
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {showReporteDetailModal && selectedReporteDetail && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.detailModal}>
+              <View style={styles.detailHeader}>
+                <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del Reporte</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowReporteDetailModal(false);
+                    setSelectedReporteDetail(null);
+                  }}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.detailScroll}>
+                <View style={styles.detailContent}>
+                  <View style={styles.detailItem}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>EQUIPO / SERVICIO</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.equipo_descripcion || 'N/A'}</Text>
+                  </View>
+
+                  {selectedReporteDetail.modelo ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>MODELO</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.serie ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>SERIE</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>SOLICITANTE</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>
+                        {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
+                      </Text>
+                      <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.empresa ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>EMPRESA</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.sucursal ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>SUCURSAL</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.direccion ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>DIRECCIÓN</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.comentario ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>COMENTARIO</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.prioridad ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>PRIORIDAD</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.estado ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>ESTADO</Text>
+                      <View style={[styles.estadoBadge, { backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg, borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border }]}>
+                        <Text style={[styles.estadoBadgeText, { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text }]}>{selectedReporteDetail.estado}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.created_at ? (
+                    <View style={styles.detailItem}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>FECHA DE CREACIÓN</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>
+                        {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </ScrollView>
-            ) : null}
-          </View>
-        </View>
-      )}
-
-      {showReporteDetailModal && selectedReporteDetail && (
-        <View className="absolute inset-0 bg-black/70 z-40 px-4 items-center justify-center">
-          <View className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl p-5 shadow-2xl">
-            <View className="flex-row items-center justify-between gap-3 mb-4">
-              <Text className="text-white font-black text-lg flex-1">Detalles del Reporte</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowReporteDetailModal(false);
-                  setSelectedReporteDetail(null);
-                }}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color="#cbd5e1" />
-              </TouchableOpacity>
             </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} className="max-h-[500px]">
-              <View className="space-y-4">
-                {/* Equipo */}
-                <View>
-                  <Text className="text-slate-400 text-xs font-semibold mb-1">EQUIPO / SERVICIO</Text>
-                  <Text className="text-white text-base">{selectedReporteDetail.equipo_descripcion || 'N/A'}</Text>
-                </View>
-
-                {/* Modelo */}
-                {selectedReporteDetail.modelo && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">MODELO</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.modelo}</Text>
-                  </View>
-                )}
-
-                {/* Serie */}
-                {selectedReporteDetail.serie && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">SERIE</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.serie}</Text>
-                  </View>
-                )}
-
-                {/* Solicitante */}
-                {(selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email) && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">SOLICITANTE</Text>
-                    <Text className="text-white text-base">
-                      {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
-                    </Text>
-                    <Text className="text-slate-400 text-sm">{selectedReporteDetail.usuario_email}</Text>
-                  </View>
-                )}
-
-                {/* Empresa */}
-                {selectedReporteDetail.empresa && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">EMPRESA</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.empresa}</Text>
-                  </View>
-                )}
-
-                {/* Sucursal */}
-                {selectedReporteDetail.sucursal && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">SUCURSAL</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.sucursal}</Text>
-                  </View>
-                )}
-
-                {/* Dirección */}
-                {selectedReporteDetail.direccion && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">DIRECCIÓN</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.direccion}</Text>
-                  </View>
-                )}
-
-                {/* Comentario */}
-                {selectedReporteDetail.comentario && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">COMENTARIO</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.comentario}</Text>
-                  </View>
-                )}
-
-                {/* Prioridad */}
-                {selectedReporteDetail.prioridad && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">PRIORIDAD</Text>
-                    <Text className="text-white text-base">{selectedReporteDetail.prioridad}</Text>
-                  </View>
-                )}
-
-                {/* Estado */}
-                {selectedReporteDetail.estado && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">ESTADO</Text>
-                    <View
-                      className={`inline-flex px-3 py-1 rounded-full border text-xs font-semibold self-start ${
-                        selectedReporteDetail.estado === 'pendiente'
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : selectedReporteDetail.estado === 'en_proceso'
-                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                          : selectedReporteDetail.estado === 'en espera'
-                          ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                      }`}
-                    >
-                      <Text>{selectedReporteDetail.estado}</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Fecha de creación */}
-                {selectedReporteDetail.created_at && (
-                  <View>
-                    <Text className="text-slate-400 text-xs font-semibold mb-1">FECHA DE CREACIÓN</Text>
-                    <Text className="text-white text-base">
-                      {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
           </View>
-        </View>
-      )}
+        )}
     </SafeAreaView>
   );
 }
@@ -942,3 +922,397 @@ function AdminPanelContent() {
 export default function AdminPanel() {
   return <AdminPanelContent />;
 }
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#0f172a' },
+  scroll: { flex: 1, backgroundColor: '#0f172a' },
+  scrollContent: { paddingBottom: 32, backgroundColor: '#0f172a' },
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  headerRow: {
+    marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  badgeWrapper: { position: 'relative', marginRight: 16 },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#06b6d4',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  badgeText: { color: '#fff', fontSize: 20, fontWeight: '700', letterSpacing: 1 },
+  badgeDot: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#020617',
+  },
+  welcomeTextWrapper: { flex: 1 },
+  welcomeTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  welcomeName: { color: '#22d3ee', fontWeight: '800' },
+  welcomeSubtitle: { color: '#94a3b8', fontSize: 13, marginTop: 4 },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  statsRow: {
+    marginBottom: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  statCard: {
+    flexBasis: '100%',
+    flexGrow: 1,
+    backgroundColor: 'rgba(30,41,59,0.4)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(51,65,85,0.5)',
+    padding: 20,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  statIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  statChip: {
+    backgroundColor: 'rgba(51,65,85,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statChipText: { color: '#cbd5e1', fontSize: 11, fontWeight: '600' },
+  statValue: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  statLabel: { color: '#cbd5e1', fontSize: 14, fontWeight: '600' },
+  sectionHeader: { marginBottom: 16 },
+  sectionTitle: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  sectionSubtitle: { color: '#94a3b8', fontSize: 13 },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 10,
+    rowGap: 10,
+    marginBottom: 8,
+  },
+  optionTouchable: { flexBasis: '100%' },
+  optionCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.1)',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  optionContent: { flexDirection: 'row', alignItems: 'flex-start' },
+  optionIconWrapper: {
+    width: 48,
+    height: 48,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    flexShrink: 0,
+  },
+  optionTextWrapper: { flex: 1 },
+  optionTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  optionDescription: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  overlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    zIndex: 10,
+  },
+  overlayHeavy: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    zIndex: 30,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  modalHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  modalIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  modalBodyText: { color: '#cbd5e1', fontSize: 14, marginBottom: 18 },
+  modalActions: { flexDirection: 'row', gap: 12 },
+  modalSecondary: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: '#1f2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalSecondaryText: { color: '#e2e8f0', fontWeight: '700' },
+  modalPrimary: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalPrimaryText: { color: '#fff', fontWeight: '700', textAlign: 'center', paddingVertical: 12 },
+  errorBox: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#f87171',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 12,
+  },
+  errorText: { color: '#fca5a5', fontSize: 12, textAlign: 'center', fontWeight: '700' },
+  formGroup: { marginBottom: 12 },
+  label: { color: '#cbd5e1', fontSize: 12, marginBottom: 6, fontWeight: '600' },
+  input: {
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 15,
+  },
+  select: {
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  selectText: { fontSize: 15 },
+  selectList: {
+    marginTop: 8,
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    maxHeight: 200,
+  },
+  selectItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  selectItemText: { color: '#fff', fontSize: 14 },
+  passwordWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+  },
+  passwordInput: { flex: 1, paddingVertical: 10, color: '#fff', fontSize: 15 },
+  eyeButton: { paddingLeft: 8, paddingVertical: 8 },
+  largeModal: {
+    width: '100%',
+    maxWidth: 900,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  largeModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    gap: 12,
+  },
+  largeModalTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  largeModalSubtitle: { color: '#94a3b8', fontSize: 13 },
+  largeModalActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refreshButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#1f2937',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  refreshText: { color: '#67e8f9', fontSize: 12, fontWeight: '700' },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoBox: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  infoText: { color: '#94a3b8', fontSize: 14 },
+  errorPanel: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  errorPanelText: { color: '#fca5a5', fontSize: 14 },
+  listScroll: { maxHeight: 450 },
+  listSpacing: { gap: 12 },
+  reportCard: {
+    backgroundColor: 'rgba(30,41,59,0.5)',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reportHeaderText: { flex: 1, paddingRight: 12 },
+  reportTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  reportSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+  reportMeta: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  reportActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  eyeCard: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: '#475569',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  estadoBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  estadoBadgeText: { fontSize: 12, fontWeight: '700' },
+  reportComment: { color: '#cbd5e1', fontSize: 13 },
+  estadoButtonsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  estadoButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
+  estadoButtonText: { fontSize: 12, fontWeight: '700' },
+  estadoSoloBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  estadoSoloText: { color: '#6ee7b7', fontSize: 12, fontWeight: '700' },
+  detailModal: {
+    width: '100%',
+    maxWidth: 720,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  detailTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  detailScroll: { maxHeight: 520 },
+  detailContent: { gap: 16 },
+  detailItem: { gap: 4 },
+  detailLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
+  detailValue: { color: '#fff', fontSize: 15 },
+  detailSubValue: { color: '#94a3b8', fontSize: 13 },
+});

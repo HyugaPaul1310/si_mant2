@@ -4,195 +4,267 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-
-function LoginContent() {
+export default function Login() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const isSmallScreen = width < 400;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const windowWidth = Dimensions.get('window').width;
-  const isSmallScreen = windowWidth < 400;
-
-  // Ya no redirigimos automáticamente al iniciar la app.
-  // El usuario debe iniciar sesión manualmente.
 
   const handleLogin = async () => {
-    console.log('=== handleLogin iniciado ===');
-    setErrorMessage(''); // Limpiar mensaje de error anterior
-    
     if (!email.trim() || !password.trim()) {
-      console.log('Validación fallida - campos vacíos');
       setErrorMessage('Por favor completa todos los campos');
       return;
     }
 
-    console.log('Validación pasada, estableciendo loading...');
     setLoading(true);
+    setErrorMessage('');
 
     try {
-      console.log('Llamando loginUsuario con:', email);
       const resultado = await loginUsuario(email, password);
-      
-      console.log('Resultado login:', resultado);
 
-      if (!resultado.success) {
-        console.log('Login fallido:', resultado.error);
-        setErrorMessage(resultado.error || 'Error al iniciar sesión');
-        setLoading(false);
+      if (!resultado?.success || !resultado.user) {
+        setErrorMessage(resultado?.error || 'Error al iniciar sesión');
         return;
       }
 
-      if (!resultado.user) {
-        console.log('Usuario no retornado');
-        setErrorMessage('Error al obtener datos del usuario');
-        setLoading(false);
-        return;
-      }
-
-      console.log('Login exitoso para:', resultado.user.email, 'Rol:', resultado.user.rol);
-      
-      // Guardar usuario en AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(resultado.user));
 
-      // Redirigir según el rol
-      if (resultado.user.rol === 'admin') {
-        console.log('Redirigiendo a admin');
-        router.replace('/admin');
-      } else if (resultado.user.rol === 'empleado') {
-        console.log('Redirigiendo a empleado-panel');
-        router.replace('/empleado-panel');
-      } else {
-        console.log('Redirigiendo a cliente-panel');
-        router.replace('/cliente-panel');
+      switch (resultado.user.rol) {
+        case 'admin':
+          router.replace('/admin');
+          break;
+        case 'empleado':
+          router.replace('/empleado-panel');
+          break;
+        default:
+          router.replace('/cliente-panel');
       }
-
-    } catch (error: any) {
-      console.error('Exception en handleLogin:', error);
-      setErrorMessage('Ocurrió un error: ' + error.message);
+    } catch (e: any) {
+      setErrorMessage(e.message || 'Ocurrió un error');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1">
+    <SafeAreaView style={{ flex: 1 }}>
+      {/* Fondo */}
       <LinearGradient
-        colors={["#0f172a", "#0b1b3d", "#0f172a"]}
+        colors={['#0f172a', '#0b1b3d', '#0f172a']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ flex: 1 }}
       >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
-        className="flex-1"
-      >
-        <View className="flex-1 justify-center items-center px-4 py-8">
-          {/* Logo/Header */}
-          <View className="items-center mb-6 w-full">
-            <Image
-              source={require('../assets/images/logosimant.png')}
-              style={{
-                width: isSmallScreen ? 100 : 120,
-                height: isSmallScreen ? 100 : 120,
-                marginBottom: 12
-              }}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Login Card */}
-          <View
-            className={`rounded-2xl border border-cyan-400 border-opacity-30 shadow-2xl ${isSmallScreen ? 'p-6' : 'p-8'}`}
-            style={{
-              width: '100%',
-              maxWidth: 420,
-              backgroundColor: 'rgba(30, 41, 59, 0.6)'
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              justifyContent: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 20,
             }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {/* Email Input */}
-            <View className="mb-5">
-              <Text className="text-base font-semibold text-cyan-400 mb-2">
-                Email
-              </Text>
-              <TextInput
-                className="bg-slate-700 border border-cyan-400 border-opacity-40 rounded-lg px-4 py-3 text-white"
-                placeholder="usuario@email.com"
-                placeholderTextColor="#64748b"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="off"
-                textContentType="none"
+            {/* Logo */}
+            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+              <Image
+                source={require('../assets/images/logosimant.png')}
+                resizeMode="contain"
+                style={{
+                  width: isSmallScreen ? 96 : 120,
+                  height: isSmallScreen ? 96 : 120,
+                }}
               />
             </View>
 
-            {/* Password Input */}
-            <View className="mb-6">
-              <Text className="text-base font-semibold text-cyan-400 mb-2">
-                Contraseña
-              </Text>
-              <View className={`flex-row items-center rounded-lg px-4 py-3 bg-slate-700 ${passwordFocused ? 'border-2 border-cyan-400' : 'border border-cyan-400 border-opacity-40'}`}>
-                <TextInput
-                  className="flex-1 text-white"
-                  placeholder="Contraseña"
-                  placeholderTextColor="#64748b"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
-                  autoComplete="off"
-                  textContentType="none"
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="ml-2">
-                  <Ionicons
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={22}
-                    color="#22d3ee"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Error Message */}
-            {errorMessage ? (
-              <View className="bg-red-500 bg-opacity-20 border border-red-400 rounded-lg p-3 mb-4">
-                <Text className="text-red-400 text-sm text-center font-semibold">
-                  {errorMessage}
-                </Text>
-              </View>
-            ) : null}
-
-            {/* Login Button */}
-            <TouchableOpacity 
-              onPress={handleLogin}
-              disabled={loading}
-              className={`rounded-lg py-4 mb-6 border shadow-lg ${
-                loading 
-                  ? 'bg-gray-500 border-gray-400 opacity-50' 
-                  : 'bg-gradient-to-r from-red-500 to-red-600 border-red-400 shadow-red-500/30'
-              }`}
+            {/* Card */}
+            <View
+              style={{
+                alignSelf: 'center',
+                width: '100%',
+                maxWidth: 400,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(34, 211, 238, 0.4)',
+                backgroundColor: 'rgba(30, 41, 59, 0.85)',
+                padding: isSmallScreen ? 20 : 28,
+              }}
             >
-              <Text className="text-white font-bold text-center text-lg">
-                {loading ? 'Iniciando...' : 'Iniciar Sesión'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+              {/* Email */}
+              <View style={{ marginBottom: 20 }}>
+                <Text
+                  style={{
+                    color: '#22d3ee',
+                    fontSize: 14,
+                    fontWeight: '600',
+                    marginBottom: 8,
+                  }}
+                >
+                  Email
+                </Text>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="usuario@email.com"
+                  placeholderTextColor="#64748b"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!loading}
+                  style={{
+                    backgroundColor: '#334155',
+                    color: '#ffffff',
+                    borderWidth: 1,
+                    borderColor: 'rgba(34, 211, 238, 0.4)',
+                    borderRadius: 8,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    fontSize: 16,
+                    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+                  }}
+                />
+              </View>
+
+              {/* Password */}
+              <View style={{ marginBottom: 24 }}>
+                <Text
+                  style={{
+                    color: '#22d3ee',
+                    fontSize: 14,
+                    fontWeight: '600',
+                    marginBottom: 8,
+                  }}
+                >
+                  Contraseña
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 16,
+                    borderWidth: passwordFocused ? 2 : 1,
+                    borderColor: passwordFocused
+                      ? '#22d3ee'
+                      : 'rgba(34, 211, 238, 0.4)',
+                  }}
+                >
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholder="Contraseña"
+                    placeholderTextColor="#64748b"
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
+                    editable={!loading}
+                    style={{
+                      flex: 1,
+                      color: '#ffffff',
+                      paddingVertical: 12,
+                      fontSize: 16,
+                      fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+                    }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    disabled={loading}
+                    style={{ marginLeft: 8, padding: 4 }}
+                  >
+                    <Ionicons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={22}
+                      color="#22d3ee"
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Error */}
+              {errorMessage ? (
+                <View
+                  style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    borderWidth: 1,
+                    borderColor: '#f87171',
+                    borderRadius: 8,
+                    padding: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#fca5a5',
+                      textAlign: 'center',
+                      fontSize: 13,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {errorMessage}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Button */}
+              <LinearGradient
+                colors={
+                  loading
+                    ? ['#64748b', '#64748b']
+                    : ['#ef4444', '#dc2626']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ borderRadius: 8, overflow: 'hidden' }}
+              >
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  disabled={loading}
+                  style={{
+                    paddingVertical: 16,
+                    paddingHorizontal: 20,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#ffffff',
+                      fontWeight: '700',
+                      textAlign: 'center',
+                      fontSize: 16,
+                    }}
+                  >
+                    {loading ? 'Iniciando...' : 'Iniciar Sesión'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
   );
-}
-
-export default function Index() {
-  return <LoginContent />;
 }
