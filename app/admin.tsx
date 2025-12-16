@@ -57,6 +57,28 @@ function AdminPanelContent() {
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
 
+  const handlePhoneChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 10);
+    setNewUserPhone(digits);
+  };
+
+  const handleBirthChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (!digits) {
+      setNewUserBirth('');
+      return;
+    }
+    if (digits.length <= 4) {
+      setNewUserBirth(digits);
+      return;
+    }
+    if (digits.length <= 6) {
+      setNewUserBirth(`${digits.slice(0, 4)}-${digits.slice(4)}`);
+      return;
+    }
+    setNewUserBirth(`${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`);
+  };
+
   useEffect(() => {
     const obtenerUsuario = async () => {
       try {
@@ -355,7 +377,7 @@ function AdminPanelContent() {
 
         {showEmailModal && (
           <View style={styles.overlay}>
-            <View style={styles.modalCard}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
               <View style={styles.modalHeaderRow}>
                 <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
                   <Ionicons name="mail-outline" size={22} color="#a78bfa" />
@@ -368,139 +390,144 @@ function AdminPanelContent() {
                   <Text style={[styles.errorText, { fontFamily }]}>{createError}</Text>
                 </View>
               ) : null}
-
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Empresa</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserCompany}
-                  onChangeText={setNewUserCompany}
-                  placeholder="Empresa"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Nombre</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserName}
-                  onChangeText={setNewUserName}
-                  placeholder="Nombre completo"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Apellido</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserLastName}
-                  onChangeText={setNewUserLastName}
-                  placeholder="Apellido"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Correo electrónico</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserEmail}
-                  onChangeText={setNewUserEmail}
-                  placeholder="usuario@correo.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="off"
-                  textContentType="none"
-                  importantForAutofill="no"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Teléfono</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserPhone}
-                  onChangeText={setNewUserPhone}
-                  placeholder="555-555-5555"
-                  keyboardType="phone-pad"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Fecha de nacimiento</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserBirth}
-                  onChangeText={setNewUserBirth}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Ciudad</Text>
-                <TextInput
-                  style={[styles.input, { fontFamily }]}
-                  value={newUserCity}
-                  onChangeText={setNewUserCity}
-                  placeholder="Ciudad"
-                  placeholderTextColor="#64748b"
-                />
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Estado (Opcional)</Text>
-                <TouchableOpacity
-                  onPress={() => setShowStatePicker(!showStatePicker)}
-                  style={styles.select}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.selectText, { fontFamily, color: newUserState ? '#fff' : '#94a3b8' }]}>
-                    {newUserState || 'Selecciona tu estado'}
-                  </Text>
-                </TouchableOpacity>
-                {showStatePicker && (
-                  <View style={styles.selectList}>
-                    <ScrollView>
-                      {[
-                        'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Coahuila','Colima','Ciudad de México','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','México','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
-                      ].map((est) => (
-                        <TouchableOpacity
-                          key={est}
-                          onPress={() => {
-                            setNewUserState(est);
-                            setShowStatePicker(false);
-                          }}
-                          style={styles.selectItem}
-                        >
-                          <Text style={[styles.selectItemText, { fontFamily }]}>{est}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.label, { fontFamily }]}>Contraseña</Text>
-                <View style={styles.passwordWrapper}>
+              <ScrollView
+                style={styles.modalFormScroll}
+                contentContainerStyle={styles.modalFormContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Empresa</Text>
                   <TextInput
-                    key={`pwd-${passwordFieldKey}`}
-                    style={[styles.passwordInput, { fontFamily }]}
-                    value={newUserPassword}
-                    onChangeText={setNewUserPassword}
-                    placeholder="••••••••"
-                    secureTextEntry={!showNewPassword}
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserCompany}
+                    onChangeText={setNewUserCompany}
+                    placeholder="Empresa"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Nombre</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserName}
+                    onChangeText={setNewUserName}
+                    placeholder="Nombre completo"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Apellido</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserLastName}
+                    onChangeText={setNewUserLastName}
+                    placeholder="Apellido"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Correo electrónico</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserEmail}
+                    onChangeText={setNewUserEmail}
+                    placeholder="usuario@correo.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="off"
                     textContentType="none"
                     importantForAutofill="no"
                     placeholderTextColor="#64748b"
                   />
-                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} style={styles.eyeButton}>
-                    <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={20} color="#a78bfa" />
-                  </TouchableOpacity>
                 </View>
-              </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Teléfono</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserPhone}
+                    onChangeText={handlePhoneChange}
+                    placeholder="555-555-5555"
+                    keyboardType="phone-pad"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserBirth}
+                    onChangeText={handleBirthChange}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Ciudad (opcional)</Text>
+                  <TextInput
+                    style={[styles.input, { fontFamily }]}
+                    value={newUserCity}
+                    onChangeText={setNewUserCity}
+                    placeholder="Ciudad"
+                    placeholderTextColor="#64748b"
+                  />
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Estado (Opcional)</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowStatePicker(!showStatePicker)}
+                    style={styles.select}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.selectText, { fontFamily, color: newUserState ? '#fff' : '#94a3b8' }]}>
+                      {newUserState || 'Selecciona tu estado'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showStatePicker && (
+                    <View style={styles.selectList}>
+                      <ScrollView nestedScrollEnabled>
+                        {[
+                          'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Coahuila','Colima','Ciudad de México','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','México','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
+                        ].map((est) => (
+                          <TouchableOpacity
+                            key={est}
+                            onPress={() => {
+                              setNewUserState(est);
+                              setShowStatePicker(false);
+                            }}
+                            style={styles.selectItem}
+                          >
+                            <Text style={[styles.selectItemText, { fontFamily }]}>{est}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { fontFamily }]}>Contraseña</Text>
+                  <View style={styles.passwordWrapper}>
+                    <TextInput
+                      key={`pwd-${passwordFieldKey}`}
+                      style={[styles.passwordInput, { fontFamily }]}
+                      value={newUserPassword}
+                      onChangeText={setNewUserPassword}
+                      placeholder="••••••••"
+                      secureTextEntry={!showNewPassword}
+                      autoCorrect={false}
+                      autoComplete="off"
+                      textContentType="none"
+                      importantForAutofill="no"
+                      placeholderTextColor="#64748b"
+                    />
+                    <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} style={styles.eyeButton}>
+                      <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={20} color="#a78bfa" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </ScrollView>
 
-              <View style={styles.modalActions}>
+              <View style={[styles.modalActions, isMobile && styles.modalActionsMobile]}>
                 <TouchableOpacity
                   style={styles.modalSecondary}
                   onPress={() => {
@@ -551,6 +578,14 @@ function AdminPanelContent() {
                       }
                       if (pwd.length < 6) {
                         setCreateError('La contraseña debe tener al menos 6 caracteres.');
+                        return;
+                      }
+                      if (phone && phone.length !== 10) {
+                        setCreateError('El teléfono debe tener 10 dígitos numéricos.');
+                        return;
+                      }
+                      if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+                        setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
                         return;
                       }
                       setCreatingUser(true);
@@ -813,7 +848,10 @@ function AdminPanelContent() {
           <View style={styles.overlayHeavy}>
             <View style={styles.detailModal}>
               <View style={styles.detailHeader}>
-                <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del Reporte</Text>
+                <View style={styles.detailHeaderText}>
+                  <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del reporte</Text>
+                  <Text style={[styles.detailSubtitle, { fontFamily }]}>Resumen completo del ticket</Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => {
                     setShowReporteDetailModal(false);
@@ -827,95 +865,148 @@ function AdminPanelContent() {
 
               <ScrollView showsVerticalScrollIndicator={false} style={styles.detailScroll}>
                 <View style={styles.detailContent}>
-                  <View style={styles.detailItem}>
-                    <Text style={[styles.detailLabel, { fontFamily }]}>EQUIPO / SERVICIO</Text>
-                    <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.equipo_descripcion || 'N/A'}</Text>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Equipo / Servicio</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>
+                        {selectedReporteDetail.equipo_descripcion || 'N/A'}
+                      </Text>
+                    </View>
                   </View>
 
                   {selectedReporteDetail.modelo ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>MODELO</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.serie ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>SERIE</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>SOLICITANTE</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>
-                        {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
-                      </Text>
-                      <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.empresa ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>EMPRESA</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.sucursal ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>SUCURSAL</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.direccion ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>DIRECCIÓN</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.comentario ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>COMENTARIO</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.prioridad ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>PRIORIDAD</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.estado ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>ESTADO</Text>
-                      <View style={[styles.estadoBadge, { backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg, borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border }]}>
-                        <Text style={[styles.estadoBadgeText, { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text }]}>{selectedReporteDetail.estado}</Text>
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Modelo</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
                       </View>
                     </View>
                   ) : null}
 
+                  {selectedReporteDetail.serie ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Serie</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Solicitante</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>
+                          {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
+                        </Text>
+                        <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.empresa ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Empresa</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.sucursal ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Sucursal</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.direccion ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Dirección</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.comentario ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Comentario / Problema</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  <View style={styles.detailRow}>
+                    {selectedReporteDetail.prioridad ? (
+                      <View style={[styles.detailField, styles.detailFieldHalf]}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Prioridad</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    {selectedReporteDetail.estado ? (
+                      <View style={[styles.detailField, styles.detailFieldHalf]}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
+                        <View
+                          style={[
+                            styles.detailValueBox,
+                            styles.detailPillBox,
+                            {
+                              backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
+                              borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.detailPillText,
+                              { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
+                            ]}
+                          >
+                            {selectedReporteDetail.estado}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+
                   {selectedReporteDetail.created_at ? (
-                    <View style={styles.detailItem}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>FECHA DE CREACIÓN</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>
-                        {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </Text>
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Fecha de creación</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>
+                          {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                      </View>
                     </View>
                   ) : null}
                 </View>
               </ScrollView>
+
+              <View style={styles.detailFooter}>
+                <TouchableOpacity
+                  style={styles.detailCloseButton}
+                  onPress={() => {
+                    setShowReporteDetailModal(false);
+                    setSelectedReporteDetail(null);
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         )}
@@ -1129,6 +1220,15 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
   },
+  modalCardMobile: {
+    maxWidth: '96%',
+    width: '96%',
+    alignSelf: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    maxHeight: '90%',
+    borderRadius: 18,
+  },
   modalHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   modalIconWrapper: {
     width: 40,
@@ -1140,7 +1240,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
   modalBodyText: { color: '#cbd5e1', fontSize: 14, marginBottom: 18 },
-  modalActions: { flexDirection: 'row', gap: 12 },
+  modalActions: { flexDirection: 'row', gap: 14, marginTop: 6 },
+  modalActionsMobile: { gap: 10, paddingTop: 4 },
   modalSecondary: {
     flex: 1,
     paddingVertical: 12,
@@ -1169,7 +1270,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   errorText: { color: '#fca5a5', fontSize: 12, textAlign: 'center', fontWeight: '700' },
-  formGroup: { marginBottom: 12 },
+  formGroup: { marginBottom: 14 },
+  modalFormScroll: { maxHeight: 520 },
+  modalFormContent: { paddingBottom: 10 },
   label: { color: '#cbd5e1', fontSize: 12, marginBottom: 6, fontWeight: '600' },
   input: {
     backgroundColor: '#1f2937',
@@ -1177,7 +1280,7 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     color: '#fff',
     fontSize: 15,
   },
@@ -1196,7 +1299,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 10,
-    maxHeight: 200,
+    maxHeight: 260,
   },
   selectItem: {
     paddingHorizontal: 12,
@@ -1335,12 +1438,12 @@ const styles = StyleSheet.create({
   estadoSoloText: { color: '#6ee7b7', fontSize: 12, fontWeight: '700' },
   detailModal: {
     width: '100%',
-    maxWidth: 720,
-    backgroundColor: '#0f172a',
+    maxWidth: 760,
+    backgroundColor: '#0b1220',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: '#1f2937',
     borderRadius: 18,
-    padding: 20,
+    padding: 22,
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowRadius: 16,
@@ -1351,12 +1454,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+    gap: 12,
   },
-  detailTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  detailHeaderText: { flex: 1, gap: 4 },
+  detailTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  detailSubtitle: { color: '#94a3b8', fontSize: 13 },
   detailScroll: { maxHeight: 520 },
-  detailContent: { gap: 16 },
-  detailItem: { gap: 4 },
-  detailLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
-  detailValue: { color: '#fff', fontSize: 15 },
-  detailSubValue: { color: '#94a3b8', fontSize: 13 },
+  detailContent: { gap: 22, paddingTop: 6 },
+  detailField: { gap: 10, flex: 1 },
+  detailFieldHalf: { minWidth: 160, flexBasis: '48%' },
+  detailRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  detailFieldLabel: { color: '#9ca3af', fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  detailValueBox: {
+    backgroundColor: '#111827',
+    borderWidth: 1,
+    borderColor: '#1f2937',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  detailValueText: { color: '#e5e7eb', fontSize: 15, lineHeight: 20 },
+  detailSubValue: { color: '#9ca3af', fontSize: 13, marginTop: 4 },
+  detailPillBox: { paddingVertical: 10, paddingHorizontal: 12 },
+  detailPillText: { fontSize: 13, fontWeight: '800' },
+  detailFooter: { marginTop: 18 },
+  detailCloseButton: {
+    width: '100%',
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailCloseText: { color: '#e5e7eb', fontSize: 15, fontWeight: '700' },
 });
