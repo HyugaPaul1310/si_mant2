@@ -191,6 +191,12 @@ function AdminPanelContent() {
       iconName: 'people-outline',
     },
     {
+      title: 'Gestion de Empresas',
+      description: 'Administrar empresas y sucursales',
+      gradient: ['#7c3aed', '#8b5cf6'] as const,
+      iconName: 'business-outline',
+    },
+    {
       title: 'Gestion de inventario',
       description: 'Administrar productos',
       gradient: ['#dc2626', '#ef4444'] as const,
@@ -233,6 +239,8 @@ function AdminPanelContent() {
       setShowHistorialModal(true);
     } else if (title === 'Reportes Terminados') {
       setShowTerminadosModal(true);
+    } else if (title === 'Gestion de Empresas') {
+      router.push('/gestion-empresas');
     } else if (title === 'Generar Correo Electrónico') {
       // Reset all fields each time modal opens
       setNewUserCompany('');

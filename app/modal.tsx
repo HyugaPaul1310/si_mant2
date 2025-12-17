@@ -1,3 +1,4 @@
+import { obtenerSucursalesPorUsuario, type Sucursal } from '@/lib/empresas';
 import { crearReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,13 +25,14 @@ export default function GenerarReporteScreen() {
   const [errorMessage, setErrorMessage] = useState('');
 
   // Campos del formulario
-  const [sucursal, setSucursal] = useState('');
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState<Sucursal | null>(null);
+  const [showSucursalPicker, setShowSucursalPicker] = useState(false);
   const [equipoDescripcion, setEquipoDescripcion] = useState('');
   const [equipoModelo, setEquipoModelo] = useState('');
   const [equipoSerie, setEquipoSerie] = useState('');
   const [comentario, setComentario] = useState('');
   const [prioridad, setPrioridad] = useState<'baja' | 'media' | 'urgente'>('media');
-  const [direccion, setDireccion] = useState('');
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [video, setVideo] = useState<string | null>(null);
@@ -41,12 +43,27 @@ export default function GenerarReporteScreen() {
       try {
         const user = await AsyncStorage.getItem('user');
         if (user) {
-          setUsuario(JSON.parse(user));
+          const userData = JSON.parse(user);
+          setUsuario(userData);
+          console.log('Usuario cargado:', userData);
+          
+          // Cargar sucursales de la empresa del usuario
+          if (userData.email) {
+            const resultado = await obtenerSucursalesPorUsuario(userData.email);
+            console.log('Resultado sucursales:', resultado);
+            if (resultado.success && resultado.data) {
+              setSucursales(resultado.data);
+              console.log('Sucursales cargadas:', resultado.data);
+            } else {
+              console.error('Error al cargar sucursales:', resultado.error);
+            }
+          }
         } else {
           Alert.alert('Error', 'No se encontró usuario activo');
           router.back();
         }
       } catch (error) {
+        console.error('Error en cargarUsuario:', error);
         Alert.alert('Error', 'Error al cargar datos del usuario');
         router.back();
       }
@@ -123,6 +140,10 @@ export default function GenerarReporteScreen() {
     setErrorMessage('');
 
     // Validaciones
+    if (!sucursalSeleccionada) {
+      setErrorMessage('Debes seleccionar una sucursal');
+      return;
+    }
     if (!equipoDescripcion.trim()) {
       setErrorMessage('La descripción del equipo es obligatoria');
       return;
@@ -149,13 +170,14 @@ export default function GenerarReporteScreen() {
         usuario_nombre: usuario.nombre,
         usuario_apellido: usuario.apellido,
         empresa: usuario.empresa,
-        sucursal: sucursal.trim() || undefined,
+        sucursal: sucursalSeleccionada.nombre,
+        sucursal_id: sucursalSeleccionada.id,
         equipo_descripcion: equipoDescripcion.trim(),
         equipo_modelo: equipoModelo.trim() || undefined,
         equipo_serie: equipoSerie.trim() || undefined,
         comentario: comentario.trim(),
         prioridad,
-        direccion_sucursal: direccion.trim() || undefined,
+        direccion_sucursal: sucursalSeleccionada.direccion,
         imagenes_reporte: imagenes.length > 0 ? imagenes : undefined,
         video_url: video || undefined,
       });
@@ -233,30 +255,74 @@ export default function GenerarReporteScreen() {
           <View style={styles.formContainer}>
             {/* Sucursal */}
             <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { fontFamily }]}>Sucursal</Text>
-              <TextInput
-                style={[styles.textInput, { fontFamily }]}
-                value={sucursal}
-                onChangeText={setSucursal}
-                placeholder="Nombre de la sucursal"
-                placeholderTextColor="#475569"
-              />
+              <Text style={[styles.fieldLabel, { fontFamily }]}>
+                Sucursal <Text style={styles.requiredMark}>*</Text>
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowSucursalPicker(!showSucursalPicker)}
+                style={styles.priorityButton}
+              >
+                <View style={styles.priorityButtonContent}>
+                  <Ionicons name="location" size={16} color="#06b6d4" />
+                  <Text style={[styles.priorityText, { fontFamily }]}>
+                    {sucursalSeleccionada?.nombre || 'Selecciona una sucursal'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={16} color="#475569" />
+              </TouchableOpacity>
+
+              {showSucursalPicker && (
+                <View style={[styles.priorityPicker, { maxHeight: 250 }]}>
+                  <ScrollView showsVerticalScrollIndicator={true}>
+                    {sucursales.length === 0 ? (
+                      <View style={styles.priorityOption}>
+                        <Text style={[styles.priorityOptionText, { fontFamily, color: '#94a3b8' }]}>
+                          No hay sucursales disponibles
+                        </Text>
+                      </View>
+                    ) : (
+                      sucursales.map((sucursal, index) => (
+                        <TouchableOpacity
+                          key={sucursal.id}
+                          onPress={() => {
+                            setSucursalSeleccionada(sucursal);
+                            setShowSucursalPicker(false);
+                          }}
+                          style={[
+                            styles.priorityOption,
+                            index < sucursales.length - 1 && styles.priorityOptionBorder,
+                          ]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.priorityOptionText, { fontFamily }]}>
+                              {sucursal.nombre}
+                            </Text>
+                            <Text style={[styles.priorityOptionText, { fontFamily, fontSize: 11, color: '#64748b', marginTop: 2 }]}>
+                              {sucursal.direccion}
+                            </Text>
+                          </View>
+                          {sucursalSeleccionada?.id === sucursal.id && (
+                            <Ionicons name="checkmark-circle" size={18} color="#06b6d4" />
+                          )}
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+              )}
             </View>
 
-            {/* Dirección */}
-            <View style={styles.fieldContainer}>
-              <Text style={[styles.fieldLabel, { fontFamily }]}>Dirección del servicio</Text>
-              <TextInput
-                style={[styles.textInputMulti, { fontFamily }]}
-                value={direccion}
-                onChangeText={setDireccion}
-                placeholder="Calle, número, colonia, ciudad..."
-                placeholderTextColor="#475569"
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-              />
-            </View>
+            {/* Dirección (solo lectura, se llena automáticamente) */}
+            {sucursalSeleccionada && (
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>Dirección del servicio</Text>
+                <View style={[styles.textInputMulti, { backgroundColor: '#1e293b', borderColor: '#334155', paddingVertical: 12 }]}>
+                  <Text style={[{ fontFamily, color: '#94a3b8', fontSize: 13 }]}>
+                    {sucursalSeleccionada.direccion}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Equipo - Descripción */}
             <View style={styles.fieldContainer}>
