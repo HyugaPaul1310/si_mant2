@@ -6,6 +6,7 @@ interface ReporteData {
   usuario_apellido?: string;
   empresa?: string;
   sucursal?: string;
+  sucursal_id?: string;
   equipo_descripcion: string;
   equipo_modelo?: string;
   equipo_serie?: string;
@@ -29,6 +30,7 @@ export async function crearReporte(datos: ReporteData) {
           usuario_apellido: datos.usuario_apellido || null,
           empresa: datos.empresa || null,
           sucursal: datos.sucursal || null,
+          sucursal_id: datos.sucursal_id || null,
           equipo_descripcion: datos.equipo_descripcion,
           equipo_modelo: datos.equipo_modelo || null,
           equipo_serie: datos.equipo_serie || null,
