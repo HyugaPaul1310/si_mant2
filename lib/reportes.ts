@@ -132,3 +132,75 @@ export async function actualizarEstadoReporte(id: string, estado: EstadoEntrada)
     return { success: false, error: error.message };
   }
 }
+
+// Asignar reporte a un empleado
+export async function asignarReporteAEmpleado(reporteId: string, empleadoEmail: string, empleadoNombre: string) {
+  try {
+    const { data, error } = await supabase
+      .from('reportes')
+      .update({ 
+        empleado_asignado_email: empleadoEmail,
+        empleado_asignado_nombre: empleadoNombre,
+        estado: 'en_proceso'
+      })
+      .eq('id', reporteId)
+      .select();
+
+    if (error) throw error;
+    return { success: true, data: data?.[0] };
+  } catch (error: any) {
+    console.error('Error al asignar reporte:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Obtener reportes asignados a un empleado
+export async function obtenerReportesAsignados(empleadoEmail: string) {
+  try {
+    const { data, error } = await supabase
+      .from('reportes')
+      .select('*')
+      .eq('empleado_asignado_email', empleadoEmail)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener reportes asignados:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Actualizar estado de reporte por empleado asignado
+export async function actualizarEstadoReporteAsignado(reporteId: string, nuevoEstado: string) {
+  const ESTADOS_PERMITIDOS = ['en_proceso', 'en espera', 'terminado'];
+  const key = nuevoEstado.trim().toLowerCase();
+  const mapa: Record<string, string> = {
+    'en proceso': 'en_proceso',
+    'en_proceso': 'en_proceso',
+    'en espera': 'en espera',
+    'en_espera': 'en espera',
+    terminado: 'terminado',
+    finalizado: 'terminado',
+  };
+
+  const normalized = mapa[key] || key;
+
+  if (!ESTADOS_PERMITIDOS.includes(normalized)) {
+    return { success: false, error: 'Estado no permitido' };
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('reportes')
+      .update({ estado: normalized })
+      .eq('id', reporteId)
+      .select();
+
+    if (error) throw error;
+    return { success: true, data: data?.[0] };
+  } catch (error: any) {
+    console.error('Error al actualizar estado del reporte:', error);
+    return { success: false, error: error.message };
+  }
+}

@@ -1,19 +1,20 @@
 // @ts-nocheck
-import { actualizarEstadoReporte, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
+import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
+import { crearTarea, obtenerEmpleados } from '@/lib/tareas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -56,6 +57,20 @@ function AdminPanelContent() {
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
+  const [showTareasModal, setShowTareasModal] = useState(false);
+  const [empleados, setEmpleados] = useState<any[]>([]);
+  const [selectedEmpleado, setSelectedEmpleado] = useState<string>('');
+  const [tareasDescripcion, setTareasDescripcion] = useState('');
+  const [creandoTarea, setCreandoTarea] = useState(false);
+  const [tareasError, setTareasError] = useState<string | null>(null);
+  const [showEmpleadoDropdown, setShowEmpleadoDropdown] = useState(false);
+  const [tareasExito, setTareasExito] = useState(false);
+  const [showAsignarEmpleadoModal, setShowAsignarEmpleadoModal] = useState(false);
+  const [reporteAAsignar, setReporteAAsignar] = useState<any>(null);
+  const [selectedEmpleadoReporte, setSelectedEmpleadoReporte] = useState<string>('');
+  const [showEmpleadoDropdownReporte, setShowEmpleadoDropdownReporte] = useState(false);
+  const [asignandoReporte, setAsignandoReporte] = useState(false);
+  const [asignarError, setAsignarError] = useState<string | null>(null);
 
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -105,6 +120,22 @@ function AdminPanelContent() {
       setLoadingReportes(false);
     };
     cargar();
+  }, []);
+
+  useEffect(() => {
+    const cargarEmpleados = async () => {
+      try {
+        const { success, data } = await obtenerEmpleados();
+        if (success && data) {
+          setEmpleados(data);
+        } else {
+          console.error('Error cargando empleados');
+        }
+      } catch (error) {
+        console.error('Error en cargarEmpleados:', error);
+      }
+    };
+    cargarEmpleados();
   }, []);
 
   const initials = useMemo(() => {
@@ -241,6 +272,11 @@ function AdminPanelContent() {
       setShowTerminadosModal(true);
     } else if (title === 'Gestion de Empresas') {
       router.push('/gestion-empresas');
+    } else if (title === 'Generar Tareas') {
+      setSelectedEmpleado('');
+      setTareasDescripcion('');
+      setTareasError(null);
+      setShowTareasModal(true);
     } else if (title === 'Generar Correo Electrónico') {
       // Reset all fields each time modal opens
       setNewUserCompany('');
@@ -257,6 +293,85 @@ function AdminPanelContent() {
       setCreateError(null);
       setPasswordFieldKey((k) => k + 1);
       setShowEmailModal(true);
+    }
+  };
+
+  const handleCrearTarea = async () => {
+    if (!selectedEmpleado || !tareasDescripcion.trim()) {
+      setTareasError('Por favor completa todos los campos');
+      return;
+    }
+
+    setCreandoTarea(true);
+    setTareasError(null);
+
+    try {
+      const empleadoData = empleados.find(e => e.email === selectedEmpleado);
+      const result = await crearTarea({
+        admin_email: usuario?.email || '',
+        admin_nombre: usuario?.nombre || '',
+        empleado_email: selectedEmpleado,
+        descripcion: tareasDescripcion.trim(),
+      });
+
+      if (result.success) {
+        setTareasExito(true);
+        setTimeout(() => {
+          setShowTareasModal(false);
+          setSelectedEmpleado('');
+          setTareasDescripcion('');
+          setTareasExito(false);
+        }, 1500);
+      } else {
+        setTareasError(result.error || 'Error al crear la tarea');
+      }
+    } catch (error) {
+      console.error('Error en handleCrearTarea:', error);
+      setTareasError('Error al crear la tarea. Intenta de nuevo.');
+    } finally {
+      setCreandoTarea(false);
+    }
+  };
+
+  const handleAsignarReporte = async () => {
+    if (!selectedEmpleadoReporte || !reporteAAsignar?.id) {
+      setAsignarError('Por favor selecciona un empleado');
+      return;
+    }
+
+    setAsignandoReporte(true);
+    setAsignarError(null);
+
+    try {
+      const empleadoData = empleados.find(e => e.email === selectedEmpleadoReporte);
+      const result = await asignarReporteAEmpleado(
+        reporteAAsignar.id,
+        selectedEmpleadoReporte,
+        empleadoData?.nombre || 'Empleado'
+      );
+
+      if (result.success) {
+        // Actualizar la lista de reportes
+        const reportesActualizados = reportes.map((r: any) =>
+          r.id === reporteAAsignar.id 
+            ? { ...r, empleado_asignado_email: selectedEmpleadoReporte, empleado_asignado_nombre: empleadoData?.nombre, estado: 'en_proceso' }
+            : r
+        );
+        setReportes(reportesActualizados);
+        
+        // Cerrar ambos modales para volver al panel principal
+        setShowAsignarEmpleadoModal(false);
+        setShowHistorialModal(false);
+        setReporteAAsignar(null);
+        setSelectedEmpleadoReporte('');
+      } else {
+        setAsignarError(result.error || 'Error al asignar reporte');
+      }
+    } catch (error) {
+      console.error('Error en handleAsignarReporte:', error);
+      setAsignarError('Error al asignar reporte. Intenta de nuevo.');
+    } finally {
+      setAsignandoReporte(false);
     }
   };
 
@@ -646,6 +761,124 @@ function AdminPanelContent() {
           </View>
         )}
 
+        {showAsignarEmpleadoModal && reporteAAsignar && (
+          <View style={styles.overlay}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                  <Ionicons name="person-add-outline" size={22} color="#3b82f6" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Reporte a Empleado</Text>
+              </View>
+
+              {asignarError ? (
+                <View style={styles.errorBox}>
+                  <Text style={[styles.errorText, { fontFamily }]}>{asignarError}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.modalForm}>
+                {/* Reporte Info */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Equipo/Servicio</Text>
+                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                    <Text style={[styles.formInputText, { color: '#9ca3af' }]}>{reporteAAsignar.equipo_descripcion}</Text>
+                  </View>
+                </View>
+
+                {/* Usuario que reportó */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Reportado por</Text>
+                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                    <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
+                      {reporteAAsignar.usuario_nombre} {reporteAAsignar.usuario_apellido || ''}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Empleado Selector */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Asignar a empleado*</Text>
+                  <TouchableOpacity
+                    style={[styles.formInput, { paddingRight: 12 }]}
+                    onPress={() => setShowEmpleadoDropdownReporte(!showEmpleadoDropdownReporte)}
+                  >
+                    <Text style={[styles.formInputText, { color: selectedEmpleadoReporte ? '#f0f9ff' : '#9ca3af' }]}>
+                      {selectedEmpleadoReporte 
+                        ? empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre + ' (' + selectedEmpleadoReporte + ')'
+                        : 'Selecciona un empleado'
+                      }
+                    </Text>
+                    <Ionicons name={showEmpleadoDropdownReporte ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                  
+                  {showEmpleadoDropdownReporte && (
+                    <View style={[styles.dropdownList, { maxHeight: 250 }]}>
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        {empleados.length === 0 ? (
+                          <View style={styles.dropdownItem}>
+                            <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
+                              No hay empleados disponibles
+                            </Text>
+                          </View>
+                        ) : (
+                          empleados.map((empleado, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={[
+                                styles.dropdownItem,
+                                selectedEmpleadoReporte === empleado.email && { backgroundColor: 'rgba(59, 130, 246, 0.2)' }
+                              ]}
+                              onPress={() => {
+                                setSelectedEmpleadoReporte(empleado.email);
+                                setShowEmpleadoDropdownReporte(false);
+                              }}
+                            >
+                              <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
+                                {empleado.nombre} ({empleado.email})
+                              </Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.modalSecondary} 
+                  onPress={() => {
+                    setShowAsignarEmpleadoModal(false);
+                    setReporteAAsignar(null);
+                    setSelectedEmpleadoReporte('');
+                  }}
+                  disabled={asignandoReporte}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#3b82f6', '#1e40af']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity 
+                    onPress={handleAsignarReporte}
+                    disabled={asignandoReporte}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {asignandoReporte ? 'Asignando...' : 'Asignar Reporte'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
+            </View>
+          </View>
+        )}
+
         {showHistorialModal && (
           <View style={styles.overlayHeavy}>
             <View style={styles.largeModal}>
@@ -753,6 +986,34 @@ function AdminPanelContent() {
                               );
                             })}
                           </View>
+
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReporteAAsignar(rep);
+                              setSelectedEmpleadoReporte('');
+                              setAsignarError(null);
+                              setShowHistorialModal(false);
+                              setShowAsignarEmpleadoModal(true);
+                            }}
+                            style={{
+                              marginTop: 12,
+                              backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                              borderColor: '#3b82f6',
+                              borderWidth: 1,
+                              borderRadius: 8,
+                              paddingVertical: 8,
+                              paddingHorizontal: 12,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
+                            <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
+                              Asignar a empleado
+                            </Text>
+                          </TouchableOpacity>
                         </View>
                       );
                     })}
@@ -1014,6 +1275,131 @@ function AdminPanelContent() {
                 >
                   <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
                 </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {showTareasModal && (
+          <View style={styles.overlay}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(249, 115, 22, 0.2)', borderColor: 'rgba(249, 115, 22, 0.5)' }]}>
+                  <Ionicons name="create-outline" size={22} color="#fb923c" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Crear Nueva Tarea</Text>
+              </View>
+
+              {tareasError ? (
+                <View style={styles.errorBox}>
+                  <Text style={[styles.errorText, { fontFamily }]}>{tareasError}</Text>
+                </View>
+              ) : null}
+
+              {tareasExito ? (
+                <View style={[styles.errorBox, { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981' }]}>
+                  <Text style={[styles.errorText, { color: '#86efac' }]}>✓ Tarea creada exitosamente</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.modalForm}>
+                {/* Admin Name - Read Only */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Creado por</Text>
+                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                    <Text style={[styles.formInputText, { color: '#9ca3af' }]}>{usuario?.nombre || 'Admin'}</Text>
+                  </View>
+                </View>
+
+                {/* Empleado Selector */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Asignar a empleado*</Text>
+                  <TouchableOpacity
+                    style={[styles.formInput, { paddingRight: 12 }]}
+                    onPress={() => setShowEmpleadoDropdown(!showEmpleadoDropdown)}
+                  >
+                    <Text style={[styles.formInputText, { color: selectedEmpleado ? '#f0f9ff' : '#9ca3af' }]}>
+                      {selectedEmpleado 
+                        ? empleados.find(e => e.email === selectedEmpleado)?.nombre + ' (' + selectedEmpleado + ')'
+                        : 'Selecciona un empleado'
+                      }
+                    </Text>
+                    <Ionicons name={showEmpleadoDropdown ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                  
+                  {showEmpleadoDropdown && (
+                    <View style={[styles.dropdownList, { maxHeight: 250 }]}>
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        {empleados.length === 0 ? (
+                          <View style={styles.dropdownItem}>
+                            <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
+                              No hay empleados disponibles
+                            </Text>
+                          </View>
+                        ) : (
+                          empleados.map((empleado, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={[
+                                styles.dropdownItem,
+                                selectedEmpleado === empleado.email && { backgroundColor: 'rgba(10, 184, 111, 0.2)' }
+                              ]}
+                              onPress={() => {
+                                setSelectedEmpleado(empleado.email);
+                                setShowEmpleadoDropdown(false);
+                              }}
+                            >
+                              <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
+                                {empleado.nombre} ({empleado.email})
+                              </Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {/* Descripción */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Descripción de la tarea*</Text>
+                  <TextInput
+                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
+                    placeholder="Describe la tarea a realizar..."
+                    placeholderTextColor="#6b7280"
+                    multiline
+                    numberOfLines={4}
+                    value={tareasDescripcion}
+                    onChangeText={setTareasDescripcion}
+                    editable={!creandoTarea}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.modalSecondary} 
+                  onPress={() => setShowTareasModal(false)}
+                  disabled={creandoTarea}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#ea580c', '#f97316']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity 
+                    onPress={handleCrearTarea}
+                    disabled={creandoTarea}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {creandoTarea ? 'Creando...' : 'Crear Tarea'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
               </View>
             </View>
           </View>
@@ -1497,4 +1883,59 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   detailCloseText: { color: '#e5e7eb', fontSize: 15, fontWeight: '700' },
+  modalForm: { marginBottom: 14 },
+  formLabel: { color: '#cbd5e1', fontSize: 12, marginBottom: 6, fontWeight: '600' },
+  formInput: {
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: '#f0f9ff',
+    fontSize: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  formInputDisabled: {
+    backgroundColor: 'rgba(31, 41, 55, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.4)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: '#9ca3af',
+  },
+  formInputText: { fontSize: 14, fontWeight: '500' },
+  formTextArea: {
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    textAlignVertical: 'top',
+    minHeight: 100,
+  },
+  dropdownList: {
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    marginTop: 8,
+    maxHeight: 250,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
 });
