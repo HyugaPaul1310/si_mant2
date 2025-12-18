@@ -9,6 +9,7 @@ interface RegistroData {
   fecha_nacimiento?: string
   ciudad?: string
   empresa?: string
+  empresa_id?: string
 }
 
 // Registrar nuevo usuario
@@ -28,6 +29,7 @@ export async function registrarUsuario(datos: RegistroData) {
           fecha_nacimiento: datos.fecha_nacimiento || null,
           ciudad: datos.ciudad || '',
           empresa: datos.empresa || '',
+          empresa_id: datos.empresa_id || null,
           rol: 'cliente',
           estado: 'activo'
         }

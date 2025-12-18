@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Cliente = {
@@ -22,17 +22,17 @@ export default function ClientePanel() {
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   const [usuario, setUsuario] = useState<Cliente | null>(null);
-  const [reportesMes] = useState(12);
-  const [enProceso] = useState(3);
-  const [resueltos] = useState(9);
+  // Contadores dinámicos se calculan a partir de "reportes"
   const [showLogout, setShowLogout] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showSeguimientoModal, setShowSeguimientoModal] = useState(false);
   const [showReporteDetail, setShowReporteDetail] = useState(false);
   const [selectedReporte, setSelectedReporte] = useState<any | null>(null);
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
+  const [showStats, setShowStats] = useState(true);
   
 
   useEffect(() => {
@@ -114,7 +114,52 @@ export default function ClientePanel() {
     refrescarPerfil();
   }, [usuario?.email, usuario?.empresa, usuario?.apellido]);
 
-  const finalizados = useMemo(() => reportes.filter((r) => r.estado === 'terminado'), [reportes]);
+  const finalizados = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
+    [reportes]
+  );
+  const ahora = useMemo(() => new Date(), []);
+  const reportesDelMes = useMemo(
+    () =>
+      reportes.filter((r) => {
+        if (!r.created_at) return false;
+        const d = new Date(r.created_at);
+        return d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
+      }).length,
+    [reportes, ahora]
+  );
+  // Pendientes específicamente
+  const pendientesCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'pendiente').length,
+    [reportes]
+  );
+  // En proceso
+  const enProcesoCount = useMemo(
+    () => reportes.filter((r) => ((r.estado || '').toLowerCase().replace('_', ' ')) === 'en proceso').length,
+    [reportes]
+  );
+  // En espera
+  const enEsperaCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en espera').length,
+    [reportes]
+  );
+  // Terminados
+  const resueltosCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado').length,
+    [reportes]
+  );
+  const activos = useMemo(() => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado'), [reportes]);
+  const activosPorEstado = useMemo(() => {
+    const grupos: Record<string, any[]> = {};
+    activos.forEach((r) => {
+      let key = (r.estado || 'pendiente').toLowerCase();
+      if (key === 'en_proceso') key = 'en proceso';
+      if (key === 'en_espera') key = 'en espera';
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(r);
+    });
+    return grupos;
+  }, [activos]);
 
   const renderReporteCard = (rep: any, isSample = false) => {
     const estadoBg = '#10b98133';
@@ -142,7 +187,11 @@ export default function ClientePanel() {
           <View style={styles.reportCardActions}>
             <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder }]}>
               <Text style={[styles.badgeText, { fontFamily, color: estadoText }]}>
-                {isSample ? 'Completado' : rep.estado || 'terminado'}
+                {isSample
+                  ? 'Completado'
+                  : ((rep.estado || '').toLowerCase() === 'en_proceso'
+                      ? 'en proceso'
+                      : (rep.estado || 'terminado'))}
               </Text>
             </View>
             {!isSample && (
@@ -230,30 +279,59 @@ export default function ClientePanel() {
 
   const stats = [
     {
-      label: 'Reportes del mes',
-      value: reportesMes,
+      label: 'Reportes Generados',
+      value: reportesDelMes,
       iconBg: 'bg-cyan-500',
       iconName: 'document-text-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-cyan-400',
     },
     {
-      label: 'En proceso',
-      value: enProceso,
+      label: 'Pendientes',
+      value: pendientesCount,
       iconBg: 'bg-amber-500',
       iconName: 'time-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-amber-400',
     },
     {
+      label: 'En proceso',
+      value: enProcesoCount,
+      iconBg: 'bg-blue-500',
+      iconName: 'hourglass-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-blue-400',
+    },
+    {
+      label: 'En espera',
+      value: enEsperaCount,
+      iconBg: 'bg-yellow-500',
+      iconName: 'pause-circle-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-yellow-400',
+    },
+    {
       label: 'Resueltos',
-      value: resueltos,
+      value: resueltosCount,
       iconBg: 'bg-emerald-500',
       iconName: 'checkmark-done-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-emerald-400',
     },
   ];
+
+  const abrirWhatsAppSoporte = async () => {
+    try {
+      const phone = '5216634387533';
+      const urlApp = `whatsapp://send?phone=${phone}`;
+      const urlWeb = `https://wa.me/${phone}`;
+      const supported = await Linking.canOpenURL(urlApp);
+      const target = supported ? urlApp : urlWeb;
+      await Linking.openURL(target);
+    } catch (e) {
+      Alert.alert('Soporte', 'No se pudo abrir WhatsApp.');
+    }
+  };
 
   const mainOptions = [
     {
@@ -279,14 +357,17 @@ export default function ClientePanel() {
       description: 'Revisa el estado de tus casos',
       gradient: 'from-emerald-600 to-teal-500',
       iconName: 'pulse-outline',
-      onPress: () => Alert.alert('Seguimiento', 'Navegación a seguimiento'),
+      onPress: async () => {
+        setShowSeguimientoModal(true);
+        await cargarReportes(usuario?.email);
+      },
     },
     {
-      title: 'Contactar soporte',
+      title: 'Contactar soporte directo',
       description: 'Chat o correo con el equipo',
       gradient: 'from-slate-700 to-slate-600',
       iconName: 'headset-outline',
-      onPress: () => Alert.alert('Soporte', 'Navegación a contacto'),
+      onPress: abrirWhatsAppSoporte,
     },
   ];
 
@@ -327,35 +408,52 @@ export default function ClientePanel() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={styles.logoutButton}
-            >
-              <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={isMobile ? styles.statsRowMobile : styles.statsRow}>
-            {stats.map((stat, index) => (
+            <View style={styles.headerActions}>
               <TouchableOpacity
-                key={index}
-                activeOpacity={0.9}
-                style={isMobile ? styles.statCardMobile : styles.statCard}
+                onPress={() => setShowStats(!showStats)}
+                style={styles.toggleButton}
               >
-                <View style={styles.statCardHeader}>
-                  <View style={[styles.statIcon, { backgroundColor: stat.iconBg.replace('bg-', '').includes('cyan') ? '#06b6d4' : stat.iconBg.replace('bg-', '').includes('amber') ? '#f59e0b' : '#10b981' }]}>
-                    <Ionicons name={stat.iconName as any} size={24} color="white" />
-                  </View>
-                  <View style={styles.statBadge}>
-                    <Text style={[styles.statBadgeText, { fontFamily }]}>Hoy</Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { fontFamily }]}>{stat.label}</Text>
+                <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
               </TouchableOpacity>
-            ))}
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.logoutButton}
+              >
+                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {showStats && (
+            <View style={isMobile ? styles.statsRowMobile : styles.statsRow}>
+              {stats.map((stat, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  style={isMobile ? styles.statCardMobile : styles.statCard}
+                >
+                  <View style={styles.statCardHeader}>
+                    <View style={[styles.statIcon, { 
+                      backgroundColor: stat.iconBg.includes('cyan') ? '#06b6d4' 
+                        : stat.iconBg.includes('amber') ? '#f59e0b'
+                        : stat.iconBg.includes('blue') ? '#3b82f6'
+                        : stat.iconBg.includes('yellow') ? '#eab308'
+                        : stat.iconBg.includes('emerald') ? '#10b981'
+                        : '#06b6d4'
+                    }]}>
+                      <Ionicons name={stat.iconName as any} size={24} color="white" />
+                    </View>
+                    <View style={styles.statBadge}>
+                      <Text style={[styles.statBadgeText, { fontFamily }]}>Hoy</Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                  <Text style={[styles.statLabel, { fontFamily }]}>{stat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { fontFamily }]}>Acciones principales</Text>
@@ -460,6 +558,76 @@ export default function ClientePanel() {
               <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
                 <View style={styles.reportsContainer}>
                   {finalizados.map((rep) => renderReporteCard(rep))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {showSeguimientoModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Seguimiento</Text>
+                <Text style={[styles.modalSubtitle, { fontFamily }]}>Reportes activos (pendiente, en proceso, etc.).</Text>
+              </View>
+              <View style={styles.modalHeaderButtons}>
+                <TouchableOpacity
+                  onPress={() => cargarReportes(usuario?.email)}
+                  style={styles.refreshButton}
+                >
+                  <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowSeguimientoModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingReportes && (
+              <View style={styles.reportCard}>
+                <Text style={[styles.loadingText, { fontFamily }]}>Cargando reportes...</Text>
+              </View>
+            )}
+
+            {!loadingReportes && errorReportes ? (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{errorReportes}</Text>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && activos.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.reportCard}>
+                  <Text style={[styles.emptyText, { fontFamily }]}>No tienes reportes en seguimiento.</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && activos.length > 0 ? (
+              <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+                <View style={styles.reportsContainer}>
+                  {['pendiente', 'en proceso', 'programado', 'asignado', 'pausado']
+                    .filter((e) => activosPorEstado[e])
+                    .map((estado) => (
+                      <View key={estado}>
+                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                      </View>
+                    ))}
+                  {Object.keys(activosPorEstado)
+                    .filter((e) => !['pendiente', 'en proceso', 'programado', 'asignado', 'pausado'].includes(e))
+                    .map((estado) => (
+                      <View key={estado}>
+                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                      </View>
+                    ))}
                 </View>
               </ScrollView>
             ) : null}
@@ -720,6 +888,19 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 12,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#1e293bcc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   logoutButton: {
     paddingHorizontal: 12,
