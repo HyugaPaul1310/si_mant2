@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Cliente = {
@@ -33,6 +33,9 @@ export default function ClientePanel() {
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
   const [showStats, setShowStats] = useState(true);
+  const [filtroEstado, setFiltroEstado] = useState<string[]>([]);
+  const [filtroPrioridad, setFiltroPrioridad] = useState<string[]>([]);
+  const [showFiltros, setShowFiltros] = useState(false);
   
 
   useEffect(() => {
@@ -149,9 +152,32 @@ export default function ClientePanel() {
     [reportes]
   );
   const activos = useMemo(() => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado'), [reportes]);
+
+  const activosFiltrados = useMemo(() => {
+    let lista = [...activos];
+
+    if (filtroEstado.length > 0) {
+      lista = lista.filter((r) => {
+        let key = (r.estado || 'pendiente').toLowerCase();
+        if (key === 'en_proceso') key = 'en proceso';
+        if (key === 'en_espera') key = 'en espera';
+        return filtroEstado.includes(key);
+      });
+    }
+
+    if (filtroPrioridad.length > 0) {
+      lista = lista.filter((r) => {
+        const prioridad = (r.prioridad || 'media').toLowerCase();
+        return filtroPrioridad.includes(prioridad);
+      });
+    }
+
+    return lista;
+  }, [activos, filtroEstado, filtroPrioridad]);
+
   const activosPorEstado = useMemo(() => {
     const grupos: Record<string, any[]> = {};
-    activos.forEach((r) => {
+    activosFiltrados.forEach((r) => {
       let key = (r.estado || 'pendiente').toLowerCase();
       if (key === 'en_proceso') key = 'en proceso';
       if (key === 'en_espera') key = 'en espera';
@@ -159,12 +185,29 @@ export default function ClientePanel() {
       grupos[key].push(r);
     });
     return grupos;
-  }, [activos]);
+  }, [activosFiltrados]);
 
   const renderReporteCard = (rep: any, isSample = false) => {
-    const estadoBg = '#10b98133';
-    const estadoText = '#6ee7b7';
-    const estadoBorder = '#10b98166';
+    // Colores dinámicos según el estado
+    const getEstadoStyles = () => {
+      const estado = (rep.estado || '').toLowerCase();
+      if (estado === 'pendiente') {
+        return { bg: '#f59e0b33', text: '#fcd34d', border: '#f59e0b66' };
+      } else if (estado === 'en_proceso' || estado === 'en proceso') {
+        return { bg: '#06b6d433', text: '#67e8f9', border: '#06b6d466' };
+      } else if (estado === 'programado' || estado === 'asignado') {
+        return { bg: '#8b5cf633', text: '#d8b4fe', border: '#8b5cf666' };
+      } else if (estado === 'pausado') {
+        return { bg: '#64748b33', text: '#cbd5e1', border: '#64748b66' };
+      } else {
+        return { bg: '#10b98133', text: '#6ee7b7', border: '#10b98166' };
+      }
+    };
+
+    const estadoStyles = getEstadoStyles();
+    const estadoBg = estadoStyles.bg;
+    const estadoText = estadoStyles.text;
+    const estadoBorder = estadoStyles.border;
     
     const prioridadBg = rep.prioridad === 'urgente' ? '#ef444433' : rep.prioridad === 'media' ? '#f59e0b33' : '#10b98133';
     const prioridadText = rep.prioridad === 'urgente' ? '#fca5a5' : rep.prioridad === 'media' ? '#fcd34d' : '#6ee7b7';
@@ -186,12 +229,15 @@ export default function ClientePanel() {
           </View>
           <View style={styles.reportCardActions}>
             <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder }]}>
-              <Text style={[styles.badgeText, { fontFamily, color: estadoText }]}>
+              <Text style={[styles.badgeText, { fontFamily, color: estadoText, fontWeight: '600' }]}>
                 {isSample
                   ? 'Completado'
                   : ((rep.estado || '').toLowerCase() === 'en_proceso'
-                      ? 'en proceso'
-                      : (rep.estado || 'terminado'))}
+                      ? 'En proceso'
+                      : (rep.estado || 'terminado')
+                          .split('_')
+                          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(' '))}
               </Text>
             </View>
             {!isSample && (
@@ -266,6 +312,23 @@ export default function ClientePanel() {
     },
     [usuario]
   );
+
+  const toggleFiltroEstado = (estado: string) => {
+    setFiltroEstado((prev) =>
+      prev.includes(estado) ? prev.filter((e) => e !== estado) : [...prev, estado]
+    );
+  };
+
+  const toggleFiltroPrioridad = (prioridad: string) => {
+    setFiltroPrioridad((prev) =>
+      prev.includes(prioridad) ? prev.filter((p) => p !== prioridad) : [...prev, prioridad]
+    );
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroEstado([]);
+    setFiltroPrioridad([]);
+  };
 
   const initials = useMemo(() => {
     const nombre = usuario?.nombre?.trim();
@@ -343,7 +406,7 @@ export default function ClientePanel() {
     },
     {
       title: 'Ver mis reportes',
-      description: 'Consulta historial y estados',
+      description: 'Consulta historial de reportes finalizados',
       gradient: 'from-indigo-600 to-purple-500',
       iconName: 'folder-open-outline',
       onPress: async () => {
@@ -500,9 +563,14 @@ export default function ClientePanel() {
               <View style={styles.modalHeaderButtons}>
                 <TouchableOpacity
                   onPress={() => cargarReportes(usuario?.email)}
-                  style={styles.refreshButton}
+                  disabled={loadingReportes}
+                  style={[styles.refreshButton, loadingReportes && styles.refreshButtonDisabled]}
                 >
-                  <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
+                  {loadingReportes ? (
+                    <ActivityIndicator size="small" color="#67e8f9" />
+                  ) : (
+                    <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
+                  )}
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setShowReportModal(false)}
@@ -568,12 +636,21 @@ export default function ClientePanel() {
       {showSeguimientoModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, isMobile && styles.modalHeaderMobile]}>
               <View style={styles.modalHeaderText}>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Seguimiento</Text>
-                <Text style={[styles.modalSubtitle, { fontFamily }]}>Reportes activos (pendiente, en proceso, etc.).</Text>
+                <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Seguimiento</Text>
+                <Text style={[styles.modalSubtitle, isMobile && styles.modalSubtitleMobile, { fontFamily }]}>Reportes activos (pendiente, en proceso, etc.).</Text>
               </View>
-              <View style={styles.modalHeaderButtons}>
+              <View style={[styles.modalHeaderButtons, isMobile && styles.modalHeaderButtonsMobile]}>
+                <TouchableOpacity
+                  onPress={() => setShowFiltros((prev) => !prev)}
+                  style={styles.filterToggleButton}
+                >
+                  <Ionicons name="options-outline" size={16} color="#06b6d4" />
+                  <Text style={[styles.refreshButtonText, { fontFamily, color: '#06b6d4' }]}>
+                    {showFiltros ? 'Ocultar filtros' : 'Mostrar filtros'}
+                  </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => cargarReportes(usuario?.email)}
                   style={styles.refreshButton}
@@ -610,26 +687,132 @@ export default function ClientePanel() {
             ) : null}
 
             {!loadingReportes && !errorReportes && activos.length > 0 ? (
-              <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
-                <View style={styles.reportsContainer}>
-                  {['pendiente', 'en proceso', 'programado', 'asignado', 'pausado']
-                    .filter((e) => activosPorEstado[e])
-                    .map((estado) => (
-                      <View key={estado}>
-                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
-                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
-                      </View>
-                    ))}
-                  {Object.keys(activosPorEstado)
-                    .filter((e) => !['pendiente', 'en proceso', 'programado', 'asignado', 'pausado'].includes(e))
-                    .map((estado) => (
-                      <View key={estado}>
-                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
-                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
-                      </View>
-                    ))}
+              <>
+                {showFiltros && (
+                <View style={styles.filtroPanel}>
+                  <View style={styles.filtroPanelHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="options-outline" size={16} color="#06b6d4" />
+                      <Text style={[styles.filtroTitulo, { fontFamily }]}>Filtros</Text>
+                    </View>
+                    {(filtroEstado.length > 0 || filtroPrioridad.length > 0) && (
+                      <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                        <Ionicons name="close-circle" size={16} color="#f87171" />
+                        <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Estado</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
+                        { value: 'en proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
+                        { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
+                      ].map((estado) => {
+                        const isActive = filtroEstado.includes(estado.value);
+                        return (
+                          <TouchableOpacity
+                            key={estado.value}
+                            onPress={() => toggleFiltroEstado(estado.value)}
+                            style={[
+                              styles.filtroChip,
+                              isActive && { ...styles.filtroChipActive, borderColor: estado.color }
+                            ]}
+                          >
+                            <Ionicons 
+                              name={estado.icon as any} 
+                              size={14} 
+                              color={isActive ? estado.color : '#94a3b8'} 
+                            />
+                            <Text style={[
+                              styles.filtroChipText,
+                              { fontFamily },
+                              isActive && { ...styles.filtroChipTextActive, color: estado.color }
+                            ]}>
+                              {estado.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Prioridad</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                        { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                        { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                      ].map((prioridad) => {
+                        const isActive = filtroPrioridad.includes(prioridad.value);
+                        return (
+                          <TouchableOpacity
+                            key={prioridad.value}
+                            onPress={() => toggleFiltroPrioridad(prioridad.value)}
+                            style={[
+                              styles.filtroChip,
+                              isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
+                            ]}
+                          >
+                            <Ionicons 
+                              name={prioridad.icon as any} 
+                              size={14} 
+                              color={isActive ? prioridad.color : '#94a3b8'} 
+                            />
+                            <Text style={[
+                              styles.filtroChipText,
+                              { fontFamily },
+                              isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
+                            ]}>
+                              {prioridad.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.filtroResumen}>
+                    <Ionicons name="information-circle-outline" size={14} color="#94a3b8" />
+                    <Text style={[styles.filtroResumenText, { fontFamily }]}>
+                      Mostrando {activosFiltrados.length} de {activos.length} reportes
+                    </Text>
+                  </View>
                 </View>
-              </ScrollView>
+                )}
+
+                <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+                  <View style={styles.reportsContainer}>
+                    {Object.keys(activosPorEstado).length === 0 ? (
+                      <View style={styles.reportCard}>
+                        <Text style={[styles.emptyText, { fontFamily }]}>No hay reportes para este filtro.</Text>
+                      </View>
+                    ) : (
+                      <>
+                        {['pendiente', 'en proceso', 'en espera']
+                          .filter((e) => activosPorEstado[e])
+                          .map((estado) => (
+                            <View key={estado}>
+                              <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                              {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                            </View>
+                          ))}
+                        {Object.keys(activosPorEstado)
+                          .filter((e) => !['pendiente', 'en proceso', 'en espera'].includes(e))
+                          .map((estado) => (
+                            <View key={estado}>
+                              <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                              {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                            </View>
+                          ))}
+                      </>
+                    )}
+                  </View>
+                </ScrollView>
+              </>
             ) : null}
           </View>
         </View>
@@ -974,14 +1157,109 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: 24,
-    marginBottom: 4,
+    color: '#06b6d4',
+    fontWeight: '700',
+    fontSize: 14,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   sectionSubtitle: {
     color: '#94a3b8',
     fontSize: 14,
+  },
+  filterToggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#0b1626',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  filtroPanel: {
+    backgroundColor: '#0b1626',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  filtroPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  filtroTitulo: {
+    color: '#06b6d4',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filtroSection: {
+    gap: 6,
+    marginBottom: 10,
+  },
+  filtroLabel: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filtroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filtroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#132137',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#1f2b3d',
+  },
+  filtroChipActive: {
+    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderWidth: 2,
+  },
+  filtroChipText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filtroChipTextActive: {
+    fontWeight: '700',
+  },
+  limpiarFiltrosButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#ef44441a',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ef44444d',
+  },
+  limpiarFiltrosTextSmall: {
+    color: '#f87171',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filtroResumen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  filtroResumenText: {
+    color: '#94a3b8',
+    fontSize: 12,
   },
   optionsGrid: {
     marginBottom: 24,
@@ -1067,6 +1345,11 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 12,
   },
+  modalHeaderMobile: {
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   modalHeaderText: {
     flex: 1,
   },
@@ -1075,13 +1358,26 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 20,
   },
+  modalTitleMobile: {
+    fontSize: 18,
+    lineHeight: 22,
+  },
   modalSubtitle: {
     color: '#94a3b8',
     fontSize: 14,
   },
+  modalSubtitleMobile: {
+    fontSize: 13,
+  },
   modalHeaderButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  modalHeaderButtonsMobile: {
+    width: '100%',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
     gap: 8,
   },
   refreshButton: {
@@ -1091,6 +1387,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 8,
+  },
+  refreshButtonDisabled: {
+    opacity: 0.7,
   },
   refreshButtonText: {
     color: '#67e8f9',

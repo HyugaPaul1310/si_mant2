@@ -21,6 +21,7 @@ export default function Login() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const isSmallScreen = width < 400;
+  const defaultFontFamily = '"Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,20 +84,20 @@ export default function Login() {
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 20,
+              paddingHorizontal: isSmallScreen ? 12 : 20,
+              paddingVertical: isSmallScreen ? 16 : 20,
             }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {/* Logo */}
-            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <View style={{ alignItems: 'center', marginBottom: isSmallScreen ? 24 : 32 }}>
               <Image
                 source={require('../assets/images/logosimant.png')}
                 resizeMode="contain"
                 style={{
-                  width: isSmallScreen ? 96 : 120,
-                  height: isSmallScreen ? 96 : 120,
+                  width: isSmallScreen ? 80 : 120,
+                  height: isSmallScreen ? 80 : 120,
                 }}
               />
             </View>
@@ -106,22 +107,23 @@ export default function Login() {
               style={{
                 alignSelf: 'center',
                 width: '100%',
-                maxWidth: 400,
-                borderRadius: 16,
+                maxWidth: isSmallScreen ? 340 : 400,
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: 'rgba(34, 211, 238, 0.4)',
                 backgroundColor: 'rgba(30, 41, 59, 0.85)',
-                padding: isSmallScreen ? 20 : 28,
+                padding: isSmallScreen ? 16 : 24,
               }}
             >
               {/* Email */}
-              <View style={{ marginBottom: 20 }}>
+              <View style={{ marginBottom: 16 }}>
                 <Text
                   style={{
                     color: '#22d3ee',
-                    fontSize: 14,
+                    fontSize: isSmallScreen ? 13 : 14,
                     fontWeight: '600',
                     marginBottom: 8,
+                    fontFamily: 'System',
                   }}
                 >
                   Email
@@ -140,22 +142,23 @@ export default function Login() {
                     borderWidth: 1,
                     borderColor: 'rgba(34, 211, 238, 0.4)',
                     borderRadius: 8,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    fontSize: 16,
-                    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+                    paddingHorizontal: 14,
+                    paddingVertical: isSmallScreen ? 10 : 12,
+                    fontSize: isSmallScreen ? 15 : 16,
+                    fontFamily: 'System',
                   }}
                 />
               </View>
 
               {/* Password */}
-              <View style={{ marginBottom: 24 }}>
+              <View style={{ marginBottom: 20 }}>
                 <Text
                   style={{
                     color: '#22d3ee',
-                    fontSize: 14,
+                    fontSize: isSmallScreen ? 13 : 14,
                     fontWeight: '600',
                     marginBottom: 8,
+                    fontFamily: 'System',
                   }}
                 >
                   Contraseña
@@ -167,7 +170,7 @@ export default function Login() {
                     alignItems: 'center',
                     backgroundColor: '#334155',
                     borderRadius: 8,
-                    paddingHorizontal: 16,
+                    paddingHorizontal: 14,
                     borderWidth: passwordFocused ? 2 : 1,
                     borderColor: passwordFocused
                       ? '#22d3ee'
@@ -186,9 +189,9 @@ export default function Login() {
                     style={{
                       flex: 1,
                       color: '#ffffff',
-                      paddingVertical: 12,
-                      fontSize: 16,
-                      fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+                      paddingVertical: isSmallScreen ? 10 : 12,
+                      fontSize: isSmallScreen ? 15 : 16,
+                      fontFamily: 'System',
                     }}
                   />
                   <TouchableOpacity
@@ -213,7 +216,7 @@ export default function Login() {
                     borderWidth: 1,
                     borderColor: '#f87171',
                     borderRadius: 8,
-                    padding: 12,
+                    padding: isSmallScreen ? 10 : 12,
                     marginBottom: 16,
                   }}
                 >
@@ -221,8 +224,9 @@ export default function Login() {
                     style={{
                       color: '#fca5a5',
                       textAlign: 'center',
-                      fontSize: 13,
+                      fontSize: isSmallScreen ? 12 : 13,
                       fontWeight: '600',
+                      fontFamily: 'System',
                     }}
                   >
                     {errorMessage}
@@ -245,7 +249,7 @@ export default function Login() {
                   onPress={handleLogin}
                   disabled={loading}
                   style={{
-                    paddingVertical: 16,
+                    paddingVertical: isSmallScreen ? 14 : 16,
                     paddingHorizontal: 20,
                   }}
                 >
@@ -254,7 +258,8 @@ export default function Login() {
                       color: '#ffffff',
                       fontWeight: '700',
                       textAlign: 'center',
-                      fontSize: 16,
+                      fontSize: isSmallScreen ? 15 : 16,
+                      fontFamily: 'System',
                     }}
                   >
                     {loading ? 'Iniciando...' : 'Iniciar Sesión'}

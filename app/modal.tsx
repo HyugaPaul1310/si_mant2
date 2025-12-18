@@ -45,15 +45,12 @@ export default function GenerarReporteScreen() {
         if (user) {
           const userData = JSON.parse(user);
           setUsuario(userData);
-          console.log('Usuario cargado:', userData);
-          
+
           // Cargar sucursales de la empresa del usuario
           if (userData.email) {
             const resultado = await obtenerSucursalesPorUsuario(userData.email);
-            console.log('Resultado sucursales:', resultado);
             if (resultado.success && resultado.data) {
               setSucursales(resultado.data);
-              console.log('Sucursales cargadas:', resultado.data);
             } else {
               console.error('Error al cargar sucursales:', resultado.error);
             }
@@ -214,6 +211,7 @@ export default function GenerarReporteScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!showSucursalPicker && !showPriorityPicker}
         style={styles.scrollView}
       >
         <View style={isMobile ? styles.contentMobile : styles.content}>
@@ -272,8 +270,8 @@ export default function GenerarReporteScreen() {
               </TouchableOpacity>
 
               {showSucursalPicker && (
-                <View style={[styles.priorityPicker, { maxHeight: 250 }]}>
-                  <ScrollView showsVerticalScrollIndicator={true}>
+                <View style={[styles.priorityPicker, { maxHeight: isMobile ? 280 : 350, zIndex: 10 }]}>
+                  <ScrollView scrollEnabled={true} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
                     {sucursales.length === 0 ? (
                       <View style={styles.priorityOption}>
                         <Text style={[styles.priorityOptionText, { fontFamily, color: '#94a3b8' }]}>
