@@ -82,6 +82,8 @@ function AdminPanelContent() {
   const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [filtroCorreo, setFiltroCorreo] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activo' | 'inactivo'>('todos');
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<any>(null);
   const [editNombre, setEditNombre] = useState('');
@@ -1835,6 +1837,74 @@ function AdminPanelContent() {
                 </TouchableOpacity>
               </View>
 
+              {/* Filtros */}
+              <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+                {/* Búsqueda por correo */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#334155' }}>
+                  <Ionicons name="search-outline" size={18} color="#64748b" />
+                  <TextInput
+                    style={[{ flex: 1, color: '#f1f5f9', paddingVertical: 12, paddingHorizontal: 10, fontSize: 14 }, { fontFamily }]}
+                    placeholder="Buscar por correo..."
+                    placeholderTextColor="#64748b"
+                    value={filtroCorreo}
+                    onChangeText={setFiltroCorreo}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  {filtroCorreo.length > 0 && (
+                    <TouchableOpacity onPress={() => setFiltroCorreo('')} activeOpacity={0.7}>
+                      <Ionicons name="close-circle" size={18} color="#64748b" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Filtro por estado */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => setFiltroEstado('todos')}
+                    style={[
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      filtroEstado === 'todos' 
+                        ? { backgroundColor: '#1e40af', borderColor: '#2563eb' }
+                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'todos' ? '#93c5fd' : '#94a3b8' }, { fontFamily }]}>
+                      Todos
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setFiltroEstado('activo')}
+                    style={[
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      filtroEstado === 'activo' 
+                        ? { backgroundColor: '#065f46', borderColor: '#059669' }
+                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'activo' ? '#6ee7b7' : '#94a3b8' }, { fontFamily }]}>
+                      Activos
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setFiltroEstado('inactivo')}
+                    style={[
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      filtroEstado === 'inactivo' 
+                        ? { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }
+                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'inactivo' ? '#fca5a5' : '#94a3b8' }, { fontFamily }]}>
+                      Inactivos
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
               {loadingUsuarios ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                   <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando usuarios...</Text>
@@ -1848,7 +1918,18 @@ function AdminPanelContent() {
                 </View>
               ) : (
                 <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
-                  {usuarios.map((user) => {
+                  {usuarios
+                    .filter((user) => {
+                      // Filtro por correo
+                      const matchCorreo = filtroCorreo === '' || 
+                        user.email?.toLowerCase().includes(filtroCorreo.toLowerCase());
+                      
+                      // Filtro por estado
+                      const matchEstado = filtroEstado === 'todos' || user.estado === filtroEstado;
+                      
+                      return matchCorreo && matchEstado;
+                    })
+                    .map((user) => {
                     const rolColor = 
                       user.rol === 'admin' ? '#dc2626' : 
                       user.rol === 'empleado' ? '#2563eb' : 
@@ -1907,24 +1988,13 @@ function AdminPanelContent() {
                                 {new Date(user.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </Text>
                             </View>
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                              <TouchableOpacity
-                                onPress={() => handleEditarUsuario(user)}
-                                style={styles.userActionButtonPro}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="create-outline" size={20} color="#60a5fa" />
-                              </TouchableOpacity>
-                              {estadoActivo && (
-                                <TouchableOpacity
-                                  onPress={() => handleEliminarUsuario(user.id)}
-                                  style={[styles.userActionButtonPro, { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }]}
-                                  activeOpacity={0.7}
-                                >
-                                  <Ionicons name="trash-outline" size={20} color="#f87171" />
-                                </TouchableOpacity>
-                              )}
-                            </View>
+                            <TouchableOpacity
+                              onPress={() => handleEditarUsuario(user)}
+                              style={styles.userActionButtonPro}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="create-outline" size={20} color="#60a5fa" />
+                            </TouchableOpacity>
                           </View>
                         </View>
                       </View>
