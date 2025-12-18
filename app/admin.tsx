@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { actualizarEstadoReporte, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,9 +30,7 @@ function AdminPanelContent() {
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   const [usuario, setUsuario] = useState<Admin | null>(null);
-  const [notifications] = useState(0);
-  const [pending] = useState(0);
-  const [accepted] = useState(2);
+  // Contadores dinámicos basados en los reportes
   const [showLogout, setShowLogout] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newUserCompany, setNewUserCompany] = useState('');
@@ -48,6 +47,9 @@ function AdminPanelContent() {
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState<Empresa | null>(null);
+  const [showEmpresaPicker, setShowEmpresaPicker] = useState(false);
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
@@ -93,7 +95,15 @@ function AdminPanelContent() {
       }
     };
     obtenerUsuario();
+    cargarEmpresas();
   }, [router]);
+
+  const cargarEmpresas = async () => {
+    const res = await obtenerEmpresas();
+    if (res.success && res.data) {
+      setEmpresas(res.data);
+    }
+  };
 
   useEffect(() => {
     const cargar = async () => {
@@ -106,6 +116,17 @@ function AdminPanelContent() {
     };
     cargar();
   }, []);
+
+  const hoy = useMemo(() => new Date(), []);
+  const notifications = useMemo(() => reportes.length, [reportes]);
+  const pending = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado').length,
+    [reportes]
+  );
+  const accepted = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado').length,
+    [reportes]
+  );
 
   const initials = useMemo(() => {
     const nombre = usuario?.nombre?.trim();
@@ -149,7 +170,7 @@ function AdminPanelContent() {
 
   const stats = [
     {
-      label: 'Notificaciones',
+      label: 'Reportes pedidos',
       value: notifications,
       iconBg: '#3b82f6',
       iconName: 'notifications-outline',
@@ -163,7 +184,7 @@ function AdminPanelContent() {
       accent: '#fbbf24',
     },
     {
-      label: 'Aceptados',
+      label: 'Terminados',
       value: accepted,
       iconBg: '#10b981',
       iconName: 'checkmark-circle-outline',
@@ -233,6 +254,13 @@ function AdminPanelContent() {
     active
       ? { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.4)', text: '#bbf7d0' }
       : { bg: '#334155', border: '#475569', text: '#e2e8f0' };
+
+  const estadoDisplay = (estado?: string) => {
+    const key = (estado || '').toLowerCase();
+    if (key === 'en_proceso') return 'en proceso';
+    if (key === 'en_espera') return 'en espera';
+    return estado || '';
+  };
 
   const openEmailModalIfOption = (title: string) => {
     if (title === 'Historial de Reportes') {
@@ -405,13 +433,40 @@ function AdminPanelContent() {
               >
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { fontFamily }]}>Empresa</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserCompany}
-                    onChangeText={setNewUserCompany}
-                    placeholder="Empresa"
-                    placeholderTextColor="#64748b"
-                  />
+                  <TouchableOpacity
+                    onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
+                    style={styles.select}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.selectText, { fontFamily, color: empresaSeleccionada ? '#fff' : '#94a3b8' }]}>
+                      {empresaSeleccionada?.nombre || 'Selecciona empresa'}
+                    </Text>
+                  </TouchableOpacity>
+                  {showEmpresaPicker && (
+                    <View style={styles.selectList}>
+                      <ScrollView nestedScrollEnabled>
+                        {empresas.length === 0 ? (
+                          <View style={styles.selectItem}>
+                            <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
+                          </View>
+                        ) : (
+                          empresas.map((emp) => (
+                            <TouchableOpacity
+                              key={emp.id}
+                              onPress={() => {
+                                setEmpresaSeleccionada(emp);
+                                setNewUserCompany(emp.nombre);
+                                setShowEmpresaPicker(false);
+                              }}
+                              style={styles.selectItem}
+                            >
+                              <Text style={[styles.selectItemText, { fontFamily }]}>{emp.nombre}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { fontFamily }]}>Nombre</Text>
@@ -552,6 +607,8 @@ function AdminPanelContent() {
                     setShowStatePicker(false);
                     setShowNewPassword(false);
                     setCreateError(null);
+                    setEmpresaSeleccionada(null);
+                    setShowEmpresaPicker(false);
                   }}
                 >
                   <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
@@ -613,6 +670,7 @@ function AdminPanelContent() {
                             return parts.length ? parts.join(', ') : undefined;
                           })(),
                           empresa: company || undefined,
+                            empresa_id: empresaSeleccionada?.id || undefined,
                         });
                         if (!res.success) {
                           setCreateError(res.error || 'No se pudo crear la cuenta');
@@ -721,7 +779,7 @@ function AdminPanelContent() {
                                 <Ionicons name="eye-outline" size={16} color="#06b6d4" />
                               </TouchableOpacity>
                               <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-                                <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{rep.estado}</Text>
+                                <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(rep.estado)}</Text>
                               </View>
                             </View>
                           </View>
@@ -841,7 +899,7 @@ function AdminPanelContent() {
                         </Text>
 
                         <View style={styles.estadoSoloBadge}>
-                          <Text style={[styles.estadoSoloText, { fontFamily }]}>{rep.estado}</Text>
+                          <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(rep.estado)}</Text>
                         </View>
                       </View>
                     ))}
@@ -977,7 +1035,7 @@ function AdminPanelContent() {
                               { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
                             ]}
                           >
-                            {selectedReporteDetail.estado}
+                            {estadoDisplay(selectedReporteDetail.estado)}
                           </Text>
                         </View>
                       </View>

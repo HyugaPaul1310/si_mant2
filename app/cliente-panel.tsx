@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Cliente = {
@@ -22,12 +22,11 @@ export default function ClientePanel() {
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   const [usuario, setUsuario] = useState<Cliente | null>(null);
-  const [reportesMes] = useState(12);
-  const [enProceso] = useState(3);
-  const [resueltos] = useState(9);
+  // Contadores dinámicos se calculan a partir de "reportes"
   const [showLogout, setShowLogout] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showSeguimientoModal, setShowSeguimientoModal] = useState(false);
   const [showReporteDetail, setShowReporteDetail] = useState(false);
   const [selectedReporte, setSelectedReporte] = useState<any | null>(null);
   const [reportes, setReportes] = useState<any[]>([]);
@@ -114,7 +113,40 @@ export default function ClientePanel() {
     refrescarPerfil();
   }, [usuario?.email, usuario?.empresa, usuario?.apellido]);
 
-  const finalizados = useMemo(() => reportes.filter((r) => r.estado === 'terminado'), [reportes]);
+  const finalizados = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
+    [reportes]
+  );
+  const ahora = useMemo(() => new Date(), []);
+  const reportesDelMes = useMemo(
+    () =>
+      reportes.filter((r) => {
+        if (!r.created_at) return false;
+        const d = new Date(r.created_at);
+        return d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
+      }).length,
+    [reportes, ahora]
+  );
+  const enProcesoCount = useMemo(
+    () => reportes.filter((r) => ((r.estado || '').toLowerCase().replace('_', ' ')) === 'en proceso').length,
+    [reportes]
+  );
+  const resueltosCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado').length,
+    [reportes]
+  );
+  const activos = useMemo(() => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado'), [reportes]);
+  const activosPorEstado = useMemo(() => {
+    const grupos: Record<string, any[]> = {};
+    activos.forEach((r) => {
+      let key = (r.estado || 'pendiente').toLowerCase();
+      if (key === 'en_proceso') key = 'en proceso';
+      if (key === 'en_espera') key = 'en espera';
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(r);
+    });
+    return grupos;
+  }, [activos]);
 
   const renderReporteCard = (rep: any, isSample = false) => {
     const estadoBg = '#10b98133';
@@ -142,7 +174,11 @@ export default function ClientePanel() {
           <View style={styles.reportCardActions}>
             <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder }]}>
               <Text style={[styles.badgeText, { fontFamily, color: estadoText }]}>
-                {isSample ? 'Completado' : rep.estado || 'terminado'}
+                {isSample
+                  ? 'Completado'
+                  : ((rep.estado || '').toLowerCase() === 'en_proceso'
+                      ? 'en proceso'
+                      : (rep.estado || 'terminado'))}
               </Text>
             </View>
             {!isSample && (
@@ -231,7 +267,7 @@ export default function ClientePanel() {
   const stats = [
     {
       label: 'Reportes del mes',
-      value: reportesMes,
+      value: reportesDelMes,
       iconBg: 'bg-cyan-500',
       iconName: 'document-text-outline',
       cardBg: 'bg-slate-800/40',
@@ -239,7 +275,7 @@ export default function ClientePanel() {
     },
     {
       label: 'En proceso',
-      value: enProceso,
+      value: enProcesoCount,
       iconBg: 'bg-amber-500',
       iconName: 'time-outline',
       cardBg: 'bg-slate-800/40',
@@ -247,13 +283,26 @@ export default function ClientePanel() {
     },
     {
       label: 'Resueltos',
-      value: resueltos,
+      value: resueltosCount,
       iconBg: 'bg-emerald-500',
       iconName: 'checkmark-done-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-emerald-400',
     },
   ];
+
+  const abrirWhatsAppSoporte = async () => {
+    try {
+      const phone = '5216634387533';
+      const urlApp = `whatsapp://send?phone=${phone}`;
+      const urlWeb = `https://wa.me/${phone}`;
+      const supported = await Linking.canOpenURL(urlApp);
+      const target = supported ? urlApp : urlWeb;
+      await Linking.openURL(target);
+    } catch (e) {
+      Alert.alert('Soporte', 'No se pudo abrir WhatsApp.');
+    }
+  };
 
   const mainOptions = [
     {
@@ -279,14 +328,17 @@ export default function ClientePanel() {
       description: 'Revisa el estado de tus casos',
       gradient: 'from-emerald-600 to-teal-500',
       iconName: 'pulse-outline',
-      onPress: () => Alert.alert('Seguimiento', 'Navegación a seguimiento'),
+      onPress: async () => {
+        setShowSeguimientoModal(true);
+        await cargarReportes(usuario?.email);
+      },
     },
     {
-      title: 'Contactar soporte',
+      title: 'Contactar soporte directo',
       description: 'Chat o correo con el equipo',
       gradient: 'from-slate-700 to-slate-600',
       iconName: 'headset-outline',
-      onPress: () => Alert.alert('Soporte', 'Navegación a contacto'),
+      onPress: abrirWhatsAppSoporte,
     },
   ];
 
@@ -460,6 +512,76 @@ export default function ClientePanel() {
               <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
                 <View style={styles.reportsContainer}>
                   {finalizados.map((rep) => renderReporteCard(rep))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {showSeguimientoModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Seguimiento</Text>
+                <Text style={[styles.modalSubtitle, { fontFamily }]}>Reportes activos (pendiente, en proceso, etc.).</Text>
+              </View>
+              <View style={styles.modalHeaderButtons}>
+                <TouchableOpacity
+                  onPress={() => cargarReportes(usuario?.email)}
+                  style={styles.refreshButton}
+                >
+                  <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowSeguimientoModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingReportes && (
+              <View style={styles.reportCard}>
+                <Text style={[styles.loadingText, { fontFamily }]}>Cargando reportes...</Text>
+              </View>
+            )}
+
+            {!loadingReportes && errorReportes ? (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{errorReportes}</Text>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && activos.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.reportCard}>
+                  <Text style={[styles.emptyText, { fontFamily }]}>No tienes reportes en seguimiento.</Text>
+                </View>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && activos.length > 0 ? (
+              <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+                <View style={styles.reportsContainer}>
+                  {['pendiente', 'en proceso', 'programado', 'asignado', 'pausado']
+                    .filter((e) => activosPorEstado[e])
+                    .map((estado) => (
+                      <View key={estado}>
+                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                      </View>
+                    ))}
+                  {Object.keys(activosPorEstado)
+                    .filter((e) => !['pendiente', 'en proceso', 'programado', 'asignado', 'pausado'].includes(e))
+                    .map((estado) => (
+                      <View key={estado}>
+                        <Text style={[styles.sectionTitle, { fontFamily, marginBottom: 8 }]}>{estado.toUpperCase()}</Text>
+                        {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
+                      </View>
+                    ))}
                 </View>
               </ScrollView>
             ) : null}
