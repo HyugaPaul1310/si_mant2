@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { actualizarRolUsuario, actualizarUsuario, eliminarUsuario, eliminarUsuarioPermanente, obtenerTodosLosUsuarios } from '@/lib/auth';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
 import { crearTarea, obtenerEmpleados } from '@/lib/tareas';
@@ -76,6 +77,27 @@ function AdminPanelContent() {
   const [showStats, setShowStats] = useState(true);
   const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
+  
+  // Estados para gestión de usuarios
+  const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [usuarioEditando, setUsuarioEditando] = useState<any>(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editApellido, setEditApellido] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
+  const [editCiudad, setEditCiudad] = useState('');
+  const [editEmpresa, setEditEmpresa] = useState('');
+  const [editRol, setEditRol] = useState<'cliente' | 'empleado' | 'admin'>('cliente');
+  const [editEstado, setEditEstado] = useState<'activo' | 'inactivo'>('activo');
+  const [showRolPicker, setShowRolPicker] = useState(false);
+  const [showEstadoPicker, setShowEstadoPicker] = useState(false);
+  const [showEmpresaPickerEdit, setShowEmpresaPickerEdit] = useState(false);
+  const [actualizandoUsuario, setActualizandoUsuario] = useState(false);
+  const [errorUsuario, setErrorUsuario] = useState<string | null>(null);
+  const [exitoUsuario, setExitoUsuario] = useState(false);
 
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -369,11 +391,101 @@ function AdminPanelContent() {
     return estado || '';
   };
 
+  const cargarUsuarios = async () => {
+    setLoadingUsuarios(true);
+    const resultado = await obtenerTodosLosUsuarios();
+    if (resultado.success && resultado.data) {
+      setUsuarios(resultado.data);
+    }
+    setLoadingUsuarios(false);
+  };
+
+  const handleEditarUsuario = (user: any) => {
+    setUsuarioEditando(user);
+    setEditNombre(user.nombre || '');
+    setEditApellido(user.apellido || '');
+    setEditEmail(user.email || '');
+    setEditTelefono(user.telefono || '');
+    setEditCiudad(user.ciudad || '');
+    setEditEmpresa(user.empresa || '');
+    setEditRol(user.rol || 'cliente');
+    setEditEstado(user.estado || 'activo');
+    setErrorUsuario(null);
+    setExitoUsuario(false);
+    setShowEditUserModal(true);
+  };
+
+  const handleActualizarUsuario = async () => {
+    if (!usuarioEditando) return;
+    
+    setActualizandoUsuario(true);
+    setErrorUsuario(null);
+    setExitoUsuario(false);
+
+    // Actualizar datos del usuario
+    const resultadoDatos = await actualizarUsuario(usuarioEditando.id, {
+      nombre: editNombre,
+      apellido: editApellido,
+      email: editEmail,
+      telefono: editTelefono,
+      ciudad: editCiudad,
+      empresa: editEmpresa,
+    });
+
+    if (!resultadoDatos.success) {
+      setErrorUsuario(resultadoDatos.error || 'Error al actualizar datos');
+      setActualizandoUsuario(false);
+      return;
+    }
+
+    // Actualizar rol si cambió
+    if (editRol !== usuarioEditando.rol) {
+      const resultadoRol = await actualizarRolUsuario(usuarioEditando.id, editRol);
+      if (!resultadoRol.success) {
+        setErrorUsuario(resultadoRol.error || 'Error al actualizar rol');
+        setActualizandoUsuario(false);
+        return;
+      }
+    }
+
+    // Actualizar estado si cambió
+    if (editEstado !== usuarioEditando.estado) {
+      if (editEstado === 'inactivo') {
+        const resultadoEstado = await eliminarUsuario(usuarioEditando.id);
+        if (!resultadoEstado.success) {
+          setErrorUsuario(resultadoEstado.error || 'Error al actualizar estado');
+          setActualizandoUsuario(false);
+          return;
+        }
+      }
+    }
+
+    setActualizandoUsuario(false);
+    setExitoUsuario(true);
+    setTimeout(() => {
+      setShowEditUserModal(false);
+      setExitoUsuario(false);
+      cargarUsuarios(); // Recargar lista
+    }, 1500);
+  };
+
+  const handleEliminarUsuario = async (userId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este usuario? Esta acción no se puede deshacer y también eliminará su cuenta de correo.')) return;
+    
+    const resultado = await eliminarUsuarioPermanente(userId);
+    if (resultado.success) {
+      cargarUsuarios(); // Recargar lista
+    }
+  };
+
   const openEmailModalIfOption = (title: string) => {
     if (title === 'Historial de Reportes') {
       setShowHistorialModal(true);
     } else if (title === 'Reportes Terminados') {
       setShowTerminadosModal(true);
+    } else if (title === 'Gestion de Usuarios') {
+      cargarUsuarios();
+      setShowGestionUsuariosModal(true);
     } else if (title === 'Gestion de Empresas') {
       router.push('/gestion-empresas');
     } else if (title === 'Generar Tareas') {
@@ -630,147 +742,182 @@ function AdminPanelContent() {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Empresa</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
-                    style={styles.select}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.selectText, { fontFamily, color: empresaSeleccionada ? '#fff' : '#94a3b8' }]}>
-                      {empresaSeleccionada?.nombre || 'Selecciona empresa'}
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Empresa</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TouchableOpacity
+                      style={styles.selectInputPro}
+                      onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
+                      disabled={creatingUser}
+                    >
+                      <Text style={[styles.selectInputText, { fontFamily, color: empresaSeleccionada ? '#e5e7eb' : '#64748b' }]}>
+                        {empresaSeleccionada?.nombre || 'Selecciona empresa'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={18} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
                   {showEmpresaPicker && (
-                    <View style={styles.selectList}>
-                      <ScrollView nestedScrollEnabled>
-                        {empresas.length === 0 ? (
-                          <View style={styles.selectItem}>
-                            <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
-                          </View>
-                        ) : (
-                          empresas.map((emp) => (
-                            <TouchableOpacity
-                              key={emp.id}
-                              onPress={() => {
-                                setEmpresaSeleccionada(emp);
-                                setNewUserCompany(emp.nombre);
-                                setShowEmpresaPicker(false);
-                              }}
-                              style={styles.selectItem}
-                            >
-                              <Text style={[styles.selectItemText, { fontFamily }]}>{emp.nombre}</Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Nombre</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserName}
-                    onChangeText={setNewUserName}
-                    placeholder="Nombre completo"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Apellido</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserLastName}
-                    onChangeText={setNewUserLastName}
-                    placeholder="Apellido"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Correo electrónico</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserEmail}
-                    onChangeText={setNewUserEmail}
-                    placeholder="usuario@correo.com"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="off"
-                    textContentType="none"
-                    importantForAutofill="no"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Teléfono</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserPhone}
-                    onChangeText={handlePhoneChange}
-                    placeholder="555-555-5555"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserBirth}
-                    onChangeText={handleBirthChange}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Ciudad (opcional)</Text>
-                  <TextInput
-                    style={[styles.input, { fontFamily }]}
-                    value={newUserCity}
-                    onChangeText={setNewUserCity}
-                    placeholder="Ciudad"
-                    placeholderTextColor="#64748b"
-                  />
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Estado (Opcional)</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowStatePicker(!showStatePicker)}
-                    style={styles.select}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.selectText, { fontFamily, color: newUserState ? '#fff' : '#94a3b8' }]}>
-                      {newUserState || 'Selecciona tu estado'}
-                    </Text>
-                  </TouchableOpacity>
-                  {showStatePicker && (
-                    <View style={styles.selectList}>
-                      <ScrollView nestedScrollEnabled>
-                        {[
-                          'Aguascalientes','Baja California','Baja California Sur','Campeche','Chiapas','Chihuahua','Coahuila','Colima','Ciudad de México','Durango','Guanajuato','Guerrero','Hidalgo','Jalisco','México','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca','Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa','Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
-                        ].map((est) => (
+                    <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                      {empresas.length === 0 ? (
+                        <View style={styles.selectItem}>
+                          <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
+                        </View>
+                      ) : (
+                        empresas.map((emp) => (
                           <TouchableOpacity
-                            key={est}
+                            key={emp.id}
+                            style={[
+                              styles.selectItem,
+                              empresaSeleccionada?.id === emp.id && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                            ]}
                             onPress={() => {
-                              setNewUserState(est);
-                              setShowStatePicker(false);
+                              setEmpresaSeleccionada(emp);
+                              setNewUserCompany(emp.nombre);
+                              setShowEmpresaPicker(false);
                             }}
-                            style={styles.selectItem}
                           >
-                            <Text style={[styles.selectItemText, { fontFamily }]}>{est}</Text>
+                            <Text style={[styles.selectItemText, empresaSeleccionada?.id === emp.id && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
                           </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
+                        ))
+                      )}
+                    </ScrollView>
                   )}
                 </View>
                 <View style={styles.formGroup}>
-                  <Text style={[styles.label, { fontFamily }]}>Contraseña</Text>
-                  <View style={styles.passwordWrapper}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserName}
+                      onChangeText={setNewUserName}
+                      placeholder="Nombre completo"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Apellido</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserLastName}
+                      onChangeText={setNewUserLastName}
+                      placeholder="Apellido"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Correo electrónico</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserEmail}
+                      onChangeText={setNewUserEmail}
+                      placeholder="usuario@correo.com"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      textContentType="none"
+                      importantForAutofill="no"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Teléfono</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="call-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserPhone}
+                      onChangeText={handlePhoneChange}
+                      placeholder="1234567890"
+                      keyboardType="phone-pad"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserBirth}
+                      onChangeText={handleBirthChange}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Ciudad (opcional)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="location-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily }]}
+                      value={newUserCity}
+                      onChangeText={setNewUserCity}
+                      placeholder="Ciudad"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Estado (Opcional)</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="map-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                    <TouchableOpacity
+                      style={styles.selectInputPro}
+                      onPress={() => setShowStatePicker(!showStatePicker)}
+                      disabled={creatingUser}
+                    >
+                      <Text style={[styles.selectInputText, { fontFamily, color: newUserState ? '#e5e7eb' : '#64748b' }]}>
+                        {newUserState || 'Selecciona estado'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={18} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+                  {showStatePicker && (
+                    <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                      {['Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 'México', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'].map((estado) => (
+                        <TouchableOpacity
+                          key={estado}
+                          style={[
+                            styles.selectItem,
+                            newUserState === estado && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          ]}
+                          onPress={() => {
+                            setNewUserState(estado);
+                            setShowStatePicker(false);
+                          }}
+                        >
+                          <Text style={[styles.selectItemText, newUserState === estado && styles.selectItemTextHighlight, { fontFamily }]}>
+                            {estado}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Contraseña</Text>
+                  <View style={styles.inputWrapper}>
+                    <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
                     <TextInput
                       key={`pwd-${passwordFieldKey}`}
-                      style={[styles.passwordInput, { fontFamily }]}
+                      style={[styles.formInputPro, { fontFamily }]}
                       value={newUserPassword}
                       onChangeText={setNewUserPassword}
                       placeholder="••••••••"
@@ -779,10 +926,11 @@ function AdminPanelContent() {
                       autoComplete="off"
                       textContentType="none"
                       importantForAutofill="no"
-                      placeholderTextColor="#64748b"
+                      placeholderTextColor="#6b7280"
+                      editable={!creatingUser}
                     />
-                    <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} style={styles.eyeButton}>
-                      <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={20} color="#a78bfa" />
+                    <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} disabled={creatingUser}>
+                      <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={18} color="#64748b" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1667,6 +1815,459 @@ function AdminPanelContent() {
             </View>
           </View>
         )}
+
+        {/* Modal de Gestión de Usuarios */}
+        {showGestionUsuariosModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.largeModal, isMobile && { maxWidth: '95%', padding: 16 }]}>
+              <View style={styles.largeModalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
+                    <Ionicons name="people-outline" size={24} color="#06b6d4" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.largeModalTitle, { fontFamily }]}>Gestión de Usuarios</Text>
+                    <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Administrar roles y permisos</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setShowGestionUsuariosModal(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={24} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingUsuarios ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando usuarios...</Text>
+                </View>
+              ) : usuarios.length === 0 ? (
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Ionicons name="people-outline" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
+                  <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
+                    No hay usuarios registrados
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+                  {usuarios.map((user) => {
+                    const rolColor = 
+                      user.rol === 'admin' ? '#dc2626' : 
+                      user.rol === 'empleado' ? '#2563eb' : 
+                      '#10b981';
+                    
+                    const rolLabel = 
+                      user.rol === 'admin' ? 'Administrador' : 
+                      user.rol === 'empleado' ? 'Empleado' : 
+                      'Cliente';
+                    
+                    const estadoActivo = user.estado === 'activo';
+
+                    return (
+                      <View key={user.id} style={styles.userCard}>
+                        <View style={[styles.userAccentLeft, { backgroundColor: rolColor }]} />
+                        <View style={{ flex: 1, padding: 18 }}>
+                          {/* Header con nombre y badge de rol */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                            <View style={{ flex: 1, marginRight: 12 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                                <Text style={[styles.userNamePro, { fontFamily }]}>
+                                  {user.nombre} {user.apellido}
+                                </Text>
+                                <View style={[styles.rolBadgePro, { backgroundColor: `${rolColor}25`, borderColor: `${rolColor}50` }]}>
+                                  <Text style={[styles.rolBadgeTextPro, { color: rolColor, fontFamily }]}>
+                                    {rolLabel}
+                                  </Text>
+                                </View>
+                              </View>
+                              <View style={styles.userInfoSection}>
+                                <View style={styles.userInfoRow}>
+                                  <Ionicons name="mail-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
+                                  <Text style={[styles.userInfoText, { fontFamily }]}>{user.email}</Text>
+                                </View>
+                                {user.empresa && (
+                                  <View style={styles.userInfoRow}>
+                                    <Ionicons name="business-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
+                                    <Text style={[styles.userInfoTextEmpresa, { fontFamily }]}>{user.empresa}</Text>
+                                  </View>
+                                )}
+                                {user.telefono && (
+                                  <View style={styles.userInfoRow}>
+                                    <Ionicons name="call-outline" size={14} color="#64748b" style={{ marginRight: 6 }} />
+                                    <Text style={[styles.userInfoText, { fontFamily }]}>{user.telefono}</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </View>
+                          </View>
+                          
+                          {/* Footer con fecha y acciones */}
+                          <View style={styles.userCardFooter}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Ionicons name="calendar-outline" size={12} color="#64748b" />
+                              <Text style={[styles.userDatePro, { fontFamily }]}>
+                                {new Date(user.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 10 }}>
+                              <TouchableOpacity
+                                onPress={() => handleEditarUsuario(user)}
+                                style={styles.userActionButtonPro}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="create-outline" size={20} color="#60a5fa" />
+                              </TouchableOpacity>
+                              {estadoActivo && (
+                                <TouchableOpacity
+                                  onPress={() => handleEliminarUsuario(user.id)}
+                                  style={[styles.userActionButtonPro, { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }]}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons name="trash-outline" size={20} color="#f87171" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Modal de Editar Usuario */}
+        {showEditUserModal && usuarioEditando && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={[styles.modalHeaderRow, isMobile && styles.modalHeaderRowMobile]}>
+                <View style={[styles.modalIconWrapper, isMobile && styles.modalIconWrapperMobile, { backgroundColor: 'rgba(30, 64, 175, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                  <Ionicons name="create-outline" size={isMobile ? 20 : 22} color="#3b82f6" />
+                </View>
+                <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily, flex: 1 }]} numberOfLines={1}>Editar Usuario</Text>
+              </View>
+
+              <ScrollView style={[{ maxHeight: 520 }, isMobile && { maxHeight: 480 }]} showsVerticalScrollIndicator={false}>
+                <View style={[{ gap: 16 }, isMobile && { gap: 12 }]}>
+                  {errorUsuario && (
+                    <View style={styles.alertError}>
+                      <Ionicons name="alert-circle" size={18} color="#fca5a5" />
+                      <Text style={[styles.alertErrorText, isMobile && { fontSize: 12 }, { fontFamily }]}>{errorUsuario}</Text>
+                    </View>
+                  )}
+
+                  {exitoUsuario && (
+                    <View style={styles.alertSuccess}>
+                      <Ionicons name="checkmark-circle" size={18} color="#6ee7b7" />
+                      <Text style={[styles.alertSuccessText, { fontFamily }]}>Usuario actualizado exitosamente</Text>
+                    </View>
+                  )}
+
+                  {/* Información del Usuario */}
+                  <View style={[styles.infoPanel, isMobile && styles.infoPanelMobile]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="information-circle" size={isMobile ? 14 : 16} color="#38bdf8" />
+                      <Text style={[styles.infoPanelTitle, isMobile && styles.infoPanelTitleMobile, { fontFamily }]}>INFORMACIÓN DE LA CUENTA</Text>
+                    </View>
+                    <Text style={[styles.infoPanelText, isMobile && styles.infoPanelTextMobile, { fontFamily }]}>
+                      Cambiar el rol modificará los permisos y accesos del usuario en el sistema.
+                    </Text>
+                  </View>
+
+                  {/* Datos Personales */}
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Nombre*</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                        value={editNombre}
+                        onChangeText={setEditNombre}
+                        placeholder="Nombre"
+                        placeholderTextColor="#6b7280"
+                        editable={!actualizandoUsuario}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Apellido</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                        value={editApellido}
+                        onChangeText={setEditApellido}
+                        placeholder="Apellido"
+                        placeholderTextColor="#6b7280"
+                        editable={!actualizandoUsuario}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Contacto */}
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Email*</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons name="mail-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                        value={editEmail}
+                        onChangeText={setEditEmail}
+                        placeholder="correo@ejemplo.com"
+                        placeholderTextColor="#6b7280"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        editable={!actualizandoUsuario}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Teléfono</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons name="call-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                        value={editTelefono}
+                        onChangeText={setEditTelefono}
+                        placeholder="1234567890"
+                        placeholderTextColor="#6b7280"
+                        keyboardType="phone-pad"
+                        editable={!actualizandoUsuario}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Empresa y Ciudad */}
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Empresa</Text>
+                    {empresas.length > 0 ? (
+                      <>
+                        <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                          <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                          <TouchableOpacity
+                            style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                            onPress={() => setShowEmpresaPickerEdit(!showEmpresaPickerEdit)}
+                            disabled={actualizandoUsuario}
+                          >
+                            <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                              {editEmpresa || 'Seleccionar empresa'}
+                            </Text>
+                            <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                          </TouchableOpacity>
+                        </View>
+                        {showEmpresaPickerEdit && (
+                          <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 140 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                            <TouchableOpacity
+                              style={[
+                                styles.selectItem, 
+                                isMobile && styles.selectItemMobile,
+                                editEmpresa === '' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                              ]}
+                              onPress={() => {
+                                setEditEmpresa('');
+                                setShowEmpresaPickerEdit(false);
+                              }}
+                            >
+                              <Text style={[styles.selectItemText, editEmpresa === '' && styles.selectItemTextHighlight, { fontFamily }]}>Sin empresa</Text>
+                            </TouchableOpacity>
+                            {empresas.map((emp) => (
+                              <TouchableOpacity
+                                key={emp.id}
+                                style={[
+                                  styles.selectItem, 
+                                  isMobile && styles.selectItemMobile,
+                                  editEmpresa === emp.nombre && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                                ]}
+                                onPress={() => {
+                                  setEditEmpresa(emp.nombre);
+                                  setShowEmpresaPickerEdit(false);
+                                }}
+                              >
+                                <Text style={[styles.selectItemText, editEmpresa === emp.nombre && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        )}
+                      </>
+                    ) : (
+                      <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                        <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                        <TextInput
+                          style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                          value={editEmpresa}
+                          onChangeText={setEditEmpresa}
+                          placeholder="Nombre de la empresa"
+                          placeholderTextColor="#6b7280"
+                          editable={!actualizandoUsuario}
+                        />
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Ciudad</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons name="location-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                        value={editCiudad}
+                        onChangeText={setEditCiudad}
+                        placeholder="Ciudad"
+                        placeholderTextColor="#6b7280"
+                        editable={!actualizandoUsuario}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Rol y Permisos */}
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Rol del Usuario*</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons 
+                        name={editRol === 'admin' ? 'shield-checkmark' : editRol === 'empleado' ? 'briefcase-outline' : 'person-circle-outline'} 
+                        size={isMobile ? 16 : 18} 
+                        color={editRol === 'admin' ? '#dc2626' : editRol === 'empleado' ? '#2563eb' : '#10b981'} 
+                        style={styles.inputIcon}
+                      />
+                      <TouchableOpacity
+                        style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                        onPress={() => setShowRolPicker(!showRolPicker)}
+                        disabled={actualizandoUsuario}
+                      >
+                        <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                          {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                    {showRolPicker && (
+                      <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 120 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                        {['cliente', 'empleado', 'admin'].map((rol) => (
+                          <TouchableOpacity
+                            key={rol}
+                            style={[
+                              styles.selectItem, 
+                              isMobile && styles.selectItemMobile,
+                              editRol === rol && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                            ]}
+                            onPress={() => {
+                              setEditRol(rol as 'cliente' | 'empleado' | 'admin');
+                              setShowRolPicker(false);
+                            }}
+                          >
+                            <Text style={[styles.selectItemText, editRol === rol && styles.selectItemTextHighlight, { fontFamily }]}>
+                              {rol === 'admin' ? 'Administrador' : rol === 'empleado' ? 'Empleado' : 'Cliente'}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
+                  </View>
+
+                  {/* Estado de la Cuenta */}
+                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Estado de la Cuenta*</Text>
+                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                      <Ionicons 
+                        name={editEstado === 'activo' ? 'checkmark-circle' : 'close-circle'} 
+                        size={isMobile ? 16 : 18} 
+                        color={editEstado === 'activo' ? '#10b981' : '#ef4444'} 
+                        style={styles.inputIcon}
+                      />
+                      <TouchableOpacity
+                        style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                        onPress={() => setShowEstadoPicker(!showEstadoPicker)}
+                        disabled={actualizandoUsuario}
+                      >
+                        <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                          {editEstado === 'activo' ? 'Activo' : 'Inactivo'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                    {showEstadoPicker && (
+                      <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 100 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                        <TouchableOpacity
+                          style={[
+                            styles.selectItem, 
+                            isMobile && styles.selectItemMobile,
+                            editEstado === 'activo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          ]}
+                          onPress={() => {
+                            setEditEstado('activo');
+                            setShowEstadoPicker(false);
+                          }}
+                        >
+                          <Text style={[styles.selectItemText, editEstado === 'activo' && styles.selectItemTextHighlight, { fontFamily }]}>Activo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.selectItem, 
+                            isMobile && styles.selectItemMobile, 
+                            { borderBottomWidth: 0 },
+                            editEstado === 'inactivo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          ]}
+                          onPress={() => {
+                            setEditEstado('inactivo');
+                            setShowEstadoPicker(false);
+                          }}
+                        >
+                          <Text style={[styles.selectItemText, editEstado === 'inactivo' && styles.selectItemTextHighlight, { fontFamily }]}>Inactivo</Text>
+                        </TouchableOpacity>
+                      </ScrollView>
+                    )}
+                  </View>
+
+                  {/* Información adicional */}
+                  {usuarioEditando.created_at && (
+                    <View style={styles.infoFooter}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="calendar-outline" size={14} color="#64748b" />
+                        <Text style={[styles.infoFooterText, { fontFamily }]}>
+                          Registrado: {new Date(usuarioEditando.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
+
+              <View style={[styles.modalActions, isMobile ? { marginTop: 14, gap: 10 } : { marginTop: 18, gap: 12 }]}>
+                <TouchableOpacity
+                  style={[styles.cancelButtonPro, isMobile && styles.cancelButtonProMobile]}
+                  onPress={() => {
+                    setShowEditUserModal(false);
+                    setShowRolPicker(false);
+                    setShowEstadoPicker(false);
+                    setShowEmpresaPickerEdit(false);
+                  }}
+                  disabled={actualizandoUsuario}
+                >
+                  <Text style={[styles.cancelButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#2563eb', '#3b82f6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.saveButtonPro, isMobile && styles.saveButtonProMobile]}
+                >
+                  <TouchableOpacity
+                    onPress={handleActualizarUsuario}
+                    disabled={actualizandoUsuario}
+                    activeOpacity={0.85}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text style={[styles.saveButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>
+                      {actualizandoUsuario ? 'Actualizando...' : 'Guardar Cambios'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
+            </View>
+          </View>
+        )}
     </SafeAreaView>
   );
 }
@@ -1900,6 +2501,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   modalHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  modalHeaderRowMobile: { gap: 10, marginBottom: 10 },
   modalIconWrapper: {
     width: 40,
     height: 40,
@@ -1908,7 +2510,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  modalIconWrapperMobile: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+  },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700', flexShrink: 1 },
+  modalTitleMobile: { fontSize: 16, fontWeight: '600' },
   modalBodyText: { color: '#cbd5e1', fontSize: 14, marginBottom: 18 },
   modalActions: { flexDirection: 'row', gap: 14, marginTop: 6 },
   modalActionsMobile: { gap: 10, paddingTop: 4 },
@@ -1971,13 +2579,40 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     maxHeight: 260,
   },
-  selectItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+  selectDropdown: {
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#1e3a8a',
+    borderRadius: 12,
+    marginTop: 8,
+    maxHeight: 200,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
-  selectItemText: { color: '#fff', fontSize: 14 },
+  selectItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(30, 58, 138, 0.3)',
+    backgroundColor: '#0f172a',
+  },
+  selectItemMobile: {
+    paddingVertical: 8,
+  },
+  selectItemText: { 
+    color: '#e5e7eb', 
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+  selectItemTextHighlight: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
   passwordWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2124,10 +2759,292 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 20,
+  },
+  userCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden',
+    flexDirection: 'row',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  userAccentLeft: {
+    width: 5,
+  },
+  userName: {
+    color: '#f1f5f9',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  userNamePro: {
+    color: '#f8fafc',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  userEmail: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  userCompany: {
+    color: '#64748b',
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  userInfoSection: {
+    gap: 8,
+  },
+  userInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userInfoText: {
+    color: '#94a3b8',
+    fontSize: 13,
+    flex: 1,
+  },
+  userInfoTextEmpresa: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  userCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  userDate: {
+    color: '#64748b',
+    fontSize: 11,
+  },
+  userDatePro: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  rolBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  rolBadgePro: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  rolBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  rolBadgeTextPro: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  userActionButton: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 8,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 12,
     backgroundColor: '#06b6d4',
     borderRadius: 10,
     marginTop: 8,
+  },
+  userActionButtonPro: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 10,
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#1e40af',
+  },
+  alertError: {
+    backgroundColor: '#7f1d1d',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  alertErrorText: {
+    color: '#fca5a5',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+  },
+  alertSuccess: {
+    backgroundColor: '#065f46',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#10b981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  alertSuccessText: {
+    color: '#6ee7b7',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  infoPanel: {
+    backgroundColor: 'rgba(12, 74, 110, 0.4)',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(3, 105, 161, 0.4)',
+    gap: 8,
+  },
+  infoPanelTitle: {
+    color: '#bae6fd',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  infoPanelText: {
+    color: '#7dd3fc',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  inputIcon: {
+    marginRight: 2,
+  },
+  formInputPro: {
+    flex: 1,
+    paddingVertical: 13,
+    color: '#f0f9ff',
+    fontSize: 15,
+  },
+  selectInputPro: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+  },
+  selectInputText: {
+    color: '#f0f9ff',
+    fontSize: 15,
+    flex: 1,
+  },
+  infoFooter: {
+    backgroundColor: '#1e293b',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginTop: 8,
+  },
+  infoFooterText: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  cancelButtonPro: {
+    flex: 1,
+    backgroundColor: '#334155',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  cancelButtonTextPro: {
+    color: '#e2e8f0',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  saveButtonPro: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    paddingVertical: 14,
+  },
+  saveButtonTextPro: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  inputWrapperMobile: {
+    marginBottom: 2,
+  },
+  formInputProMobile: {
+    paddingVertical: 11,
+    fontSize: 14,
+  },
+  selectInputProMobile: {
+    paddingVertical: 11,
+  },
+  selectInputTextMobile: {
+    fontSize: 14,
+  },
+  infoPanelMobile: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  infoPanelTitleMobile: {
+    fontSize: 10,
+  },
+  infoPanelTextMobile: {
+    fontSize: 11,
+  },
+  alertErrorMobile: {
+    padding: 10,
+  },
+  alertErrorTextMobile: {
+    fontSize: 12,
+  },
+  alertSuccessTextMobile: {
+    fontSize: 12,
+  },
+  formGroupMobile: {
+    marginBottom: 10,
+  },
+  formLabelMobile: {
+    fontSize: 12,
+  },
+  cancelButtonProMobile: {
+    paddingVertical: 12,
+  },
+  saveButtonProMobile: {
+    paddingVertical: 12,
   },
   limpiarFiltrosTextLarge: {
     color: '#fff',

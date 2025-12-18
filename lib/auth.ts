@@ -136,3 +136,124 @@ export async function verificarPermisos(rol: string) {
     return null
   }
 }
+
+// Obtener todos los usuarios
+export async function obtenerTodosLosUsuarios() {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, apellido, email, rol, estado, empresa, telefono, created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error al obtener usuarios:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data }
+  } catch (error: any) {
+    console.error('Exception en obtenerTodosLosUsuarios:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
+
+// Actualizar rol del usuario
+export async function actualizarRolUsuario(userId: string, nuevoRol: 'cliente' | 'empleado' | 'admin') {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .update({ rol: nuevoRol })
+      .eq('id', userId)
+      .select()
+
+    if (error) {
+      console.error('Error al actualizar rol:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data[0] }
+  } catch (error: any) {
+    console.error('Exception en actualizarRolUsuario:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
+
+// Actualizar usuario completo
+export async function actualizarUsuario(userId: string, datos: Partial<RegistroData>) {
+  try {
+    const updateData: any = {}
+    
+    if (datos.nombre) updateData.nombre = datos.nombre
+    if (datos.apellido) updateData.apellido = datos.apellido
+    if (datos.email) updateData.email = datos.email.toLowerCase().trim()
+    if (datos.telefono) updateData.telefono = datos.telefono
+    if (datos.ciudad) updateData.ciudad = datos.ciudad
+    if (datos.empresa) updateData.empresa = datos.empresa
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .update(updateData)
+      .eq('id', userId)
+      .select()
+
+    if (error) {
+      console.error('Error al actualizar usuario:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data[0] }
+  } catch (error: any) {
+    console.error('Exception en actualizarUsuario:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
+
+// Eliminar usuario (cambiar estado a inactivo)
+export async function eliminarUsuario(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .update({ estado: 'inactivo' })
+      .eq('id', userId)
+      .select()
+
+    if (error) {
+      console.error('Error al eliminar usuario:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, data: data[0] }
+  } catch (error: any) {
+    console.error('Exception en eliminarUsuario:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
+
+// Eliminar usuario permanentemente (solo admin)
+export async function eliminarUsuarioPermanente(userId: string) {
+  try {
+    // Primero eliminar de auth
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+    
+    if (authError) {
+      console.error('Error al eliminar usuario de auth:', authError)
+      return { success: false, error: authError.message }
+    }
+
+    // Luego eliminar de la tabla usuarios
+    const { error: dbError } = await supabase
+      .from('usuarios')
+      .delete()
+      .eq('id', userId)
+
+    if (dbError) {
+      console.error('Error al eliminar usuario de la base de datos:', dbError)
+      return { success: false, error: dbError.message }
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Exception en eliminarUsuarioPermanente:', error)
+    return { success: false, error: error.message || 'Error desconocido' }
+  }
+}
