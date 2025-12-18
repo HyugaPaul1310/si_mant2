@@ -58,6 +58,9 @@ function AdminPanelContent() {
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
+  const [showStats, setShowStats] = useState(true);
+  const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
+  const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
 
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -118,12 +121,28 @@ function AdminPanelContent() {
   }, []);
 
   const hoy = useMemo(() => new Date(), []);
-  const notifications = useMemo(() => reportes.length, [reportes]);
-  const pending = useMemo(
+  // Reportes pedidos = reportes en historial (no terminados)
+  const reportesPedidos = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado').length,
     [reportes]
   );
-  const accepted = useMemo(
+  // Pendientes específicamente
+  const reportesPendiente = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'pendiente').length,
+    [reportes]
+  );
+  // En proceso
+  const reportesEnProceso = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en_proceso').length,
+    [reportes]
+  );
+  // En espera
+  const reportesEnEspera = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en espera').length,
+    [reportes]
+  );
+  // Terminados (contador)
+  const reportesTerminadosCount = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado').length,
     [reportes]
   );
@@ -151,9 +170,52 @@ function AdminPanelContent() {
   );
 
   const reportesTerminados = useMemo(
-    () => reportes.filter((r) => r.estado === 'terminado'),
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
     [reportes]
   );
+
+  const reportesFiltrados = useMemo(() => {
+    let filtrados = reportesPendientes;
+    
+    // Filtrar por estado
+    if (filtrosEstado.length > 0) {
+      filtrados = filtrados.filter((r) => {
+        const estado = (r.estado || '').toLowerCase();
+        return filtrosEstado.some(f => {
+          if (f === 'en_proceso') return estado === 'en_proceso';
+          if (f === 'en espera') return estado === 'en espera';
+          return estado === f;
+        });
+      });
+    }
+    
+    // Filtrar por prioridad
+    if (filtrosPrioridad.length > 0) {
+      filtrados = filtrados.filter((r) => {
+        const prioridad = (r.prioridad || 'media').toLowerCase();
+        return filtrosPrioridad.includes(prioridad);
+      });
+    }
+    
+    return filtrados;
+  }, [reportesPendientes, filtrosEstado, filtrosPrioridad]);
+
+  const toggleFiltroEstado = (estado: string) => {
+    setFiltrosEstado(prev => 
+      prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
+    );
+  };
+
+  const toggleFiltroPrioridad = (prioridad: string) => {
+    setFiltrosPrioridad(prev => 
+      prev.includes(prioridad) ? prev.filter(p => p !== prioridad) : [...prev, prioridad]
+    );
+  };
+
+  const limpiarFiltros = () => {
+    setFiltrosEstado([]);
+    setFiltrosPrioridad([]);
+  };
 
   const handleCambiarEstado = async (id: string, nuevoEstado: EstadoReporte) => {
     setUpdatingId(id);
@@ -171,21 +233,35 @@ function AdminPanelContent() {
   const stats = [
     {
       label: 'Reportes pedidos',
-      value: notifications,
+      value: reportesPedidos,
       iconBg: '#3b82f6',
       iconName: 'notifications-outline',
       accent: '#60a5fa',
     },
     {
       label: 'Pendientes',
-      value: pending,
+      value: reportesPendiente,
       iconBg: '#f59e0b',
       iconName: 'time-outline',
       accent: '#fbbf24',
     },
     {
+      label: 'En proceso',
+      value: reportesEnProceso,
+      iconBg: '#3b82f6',
+      iconName: 'hourglass-outline',
+      accent: '#93c5fd',
+    },
+    {
+      label: 'En espera',
+      value: reportesEnEspera,
+      iconBg: '#eab308',
+      iconName: 'pause-circle-outline',
+      accent: '#facc15',
+    },
+    {
       label: 'Terminados',
-      value: accepted,
+      value: reportesTerminadosCount,
       iconBg: '#10b981',
       iconName: 'checkmark-circle-outline',
       accent: '#34d399',
@@ -325,27 +401,34 @@ function AdminPanelContent() {
                 </View>
               </View>
 
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
-                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
+                  <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
+                  <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-              {stats.map((stat, index) => (
-                <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
-                  <View style={styles.statHeader}>
-                    <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
-                      <Ionicons name={stat.iconName as any} size={24} color="white" />
+            {showStats && (
+              <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+                {stats.map((stat, index) => (
+                  <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
+                    <View style={styles.statHeader}>
+                      <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
+                        <Ionicons name={stat.iconName as any} size={24} color="white" />
+                      </View>
+                      <View style={styles.statChip}>
+                        <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
+                      </View>
                     </View>
-                    <View style={styles.statChip}>
-                      <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
-                    </View>
+                    <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                    <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
                   </View>
-                  <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
-                  <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            )}
 
             <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
               <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
@@ -731,6 +814,114 @@ function AdminPanelContent() {
                 </View>
               </View>
 
+              {/* Filtros */}
+              <View style={styles.filtrosContainer}>
+                <View style={styles.filtrosHeader}>
+                  <View style={styles.filtrosHeaderLeft}>
+                    <Ionicons name="filter-outline" size={18} color="#22d3ee" />
+                    <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
+                    {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
+                      <View style={styles.filtrosActiveBadge}>
+                        <Text style={[styles.filtrosActiveBadgeText, { fontFamily }]}>
+                          {filtrosEstado.length + filtrosPrioridad.length}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                      <Ionicons name="close-circle" size={16} color="#f87171" />
+                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.filtroSection}>
+                  <Text style={[styles.filtroLabel, { fontFamily }]}>
+                    <Ionicons name="flag-outline" size={14} color="#94a3b8" /> Estado
+                  </Text>
+                  <View style={styles.filtroChips}>
+                    {[
+                      { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
+                      { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
+                      { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
+                    ].map((estado) => {
+                      const isActive = filtrosEstado.includes(estado.value);
+                      return (
+                        <TouchableOpacity
+                          key={estado.value}
+                          onPress={() => toggleFiltroEstado(estado.value)}
+                          style={[
+                            styles.filtroChip,
+                            isActive && { ...styles.filtroChipActive, borderColor: estado.color }
+                          ]}
+                        >
+                          <Ionicons 
+                            name={estado.icon as any} 
+                            size={14} 
+                            color={isActive ? estado.color : '#94a3b8'} 
+                          />
+                          <Text style={[
+                            styles.filtroChipText,
+                            { fontFamily },
+                            isActive && { ...styles.filtroChipTextActive, color: estado.color }
+                          ]}>
+                            {estado.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                <View style={styles.filtroSection}>
+                  <Text style={[styles.filtroLabel, { fontFamily }]}>
+                    <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
+                  </Text>
+                  <View style={styles.filtroChips}>
+                    {[
+                      { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                      { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                      { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                    ].map((prioridad) => {
+                      const isActive = filtrosPrioridad.includes(prioridad.value);
+                      return (
+                        <TouchableOpacity
+                          key={prioridad.value}
+                          onPress={() => toggleFiltroPrioridad(prioridad.value)}
+                          style={[
+                            styles.filtroChip,
+                            isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
+                          ]}
+                        >
+                          <Ionicons 
+                            name={prioridad.icon as any} 
+                            size={14} 
+                            color={isActive ? prioridad.color : '#94a3b8'} 
+                          />
+                          <Text style={[
+                            styles.filtroChipText,
+                            { fontFamily },
+                            isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
+                          ]}>
+                            {prioridad.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {!loadingReportes && (
+                  <View style={styles.filtrosResultados}>
+                    <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                    <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                      Mostrando {reportesFiltrados.length} de {reportesPendientes.length} reportes
+                    </Text>
+                  </View>
+                )}
+              </View>
+
               {loadingReportes && (
                 <View style={styles.infoBox}>
                   <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
@@ -743,16 +934,30 @@ function AdminPanelContent() {
                 </View>
               ) : null}
 
-              {!loadingReportes && !errorReportes && reportesPendientes.length === 0 ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes pendientes.</Text>
+              {!loadingReportes && !errorReportes && reportesFiltrados.length === 0 ? (
+                <View style={styles.noResultadosContainer}>
+                  <Ionicons name="search-outline" size={48} color="#475569" />
+                  <Text style={[styles.noResultadosTitle, { fontFamily }]}>
+                    {reportesPendientes.length === 0 ? 'No hay reportes' : 'No se encontraron resultados'}
+                  </Text>
+                  <Text style={[styles.noResultadosText, { fontFamily }]}>
+                    {reportesPendientes.length === 0 
+                      ? 'No hay reportes pendientes en este momento.'
+                      : 'Intenta ajustar los filtros para ver más resultados.'}
+                  </Text>
+                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && reportesPendientes.length > 0 && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonLarge}>
+                      <Ionicons name="refresh-outline" size={18} color="#fff" />
+                      <Text style={[styles.limpiarFiltrosTextLarge, { fontFamily }]}>Limpiar filtros</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : null}
 
-              {!loadingReportes && !errorReportes && reportesPendientes.length > 0 ? (
+              {!loadingReportes && !errorReportes && reportesFiltrados.length > 0 ? (
                 <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
                   <View style={styles.listSpacing}>
-                    {reportesPendientes.map((rep) => {
+                    {reportesFiltrados.map((rep) => {
                       const badge = estadoBadgeStyle(rep.estado);
                       return (
                         <View key={rep.id} style={styles.reportCard}>
@@ -1145,6 +1350,19 @@ const styles = StyleSheet.create({
   welcomeTitleMobile: { fontSize: 20 },
   welcomeName: { color: '#22d3ee', fontWeight: '800' },
   welcomeSubtitle: { color: '#94a3b8', fontSize: 13, marginTop: 4 },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   logoutButton: {
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -1408,6 +1626,146 @@ const styles = StyleSheet.create({
   largeModalTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   largeModalSubtitle: { color: '#94a3b8', fontSize: 13 },
   largeModalActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  filtrosContainer: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  filtrosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  filtrosHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filtrosTitle: {
+    color: '#22d3ee',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filtrosActiveBadge: {
+    backgroundColor: '#06b6d4',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filtrosActiveBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  filtroSection: {
+    gap: 8,
+  },
+  filtroLabel: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  filtroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filtroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#334155',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#475569',
+  },
+  filtroChipActive: {
+    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    borderWidth: 2,
+  },
+  filtroChipText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filtroChipTextActive: {
+    fontWeight: '700',
+  },
+  filtrosResultados: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+  },
+  filtrosResultadosText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  limpiarFiltrosButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  limpiarFiltrosTextSmall: {
+    color: '#f87171',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  limpiarFiltrosButtonLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#06b6d4',
+    borderRadius: 10,
+    marginTop: 8,
+  },
+  limpiarFiltrosTextLarge: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  noResultadosContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    gap: 12,
+  },
+  noResultadosTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  noResultadosText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textAlign: 'center',
+    maxWidth: 300,
+  },
   refreshButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,

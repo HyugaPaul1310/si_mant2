@@ -32,6 +32,7 @@ export default function ClientePanel() {
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
+  const [showStats, setShowStats] = useState(true);
   
 
   useEffect(() => {
@@ -127,10 +128,22 @@ export default function ClientePanel() {
       }).length,
     [reportes, ahora]
   );
+  // Pendientes específicamente
+  const pendientesCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'pendiente').length,
+    [reportes]
+  );
+  // En proceso
   const enProcesoCount = useMemo(
     () => reportes.filter((r) => ((r.estado || '').toLowerCase().replace('_', ' ')) === 'en proceso').length,
     [reportes]
   );
+  // En espera
+  const enEsperaCount = useMemo(
+    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en espera').length,
+    [reportes]
+  );
+  // Terminados
   const resueltosCount = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado').length,
     [reportes]
@@ -266,7 +279,7 @@ export default function ClientePanel() {
 
   const stats = [
     {
-      label: 'Reportes del mes',
+      label: 'Reportes Generados',
       value: reportesDelMes,
       iconBg: 'bg-cyan-500',
       iconName: 'document-text-outline',
@@ -274,12 +287,28 @@ export default function ClientePanel() {
       accent: 'text-cyan-400',
     },
     {
-      label: 'En proceso',
-      value: enProcesoCount,
+      label: 'Pendientes',
+      value: pendientesCount,
       iconBg: 'bg-amber-500',
       iconName: 'time-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-amber-400',
+    },
+    {
+      label: 'En proceso',
+      value: enProcesoCount,
+      iconBg: 'bg-blue-500',
+      iconName: 'hourglass-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-blue-400',
+    },
+    {
+      label: 'En espera',
+      value: enEsperaCount,
+      iconBg: 'bg-yellow-500',
+      iconName: 'pause-circle-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-yellow-400',
     },
     {
       label: 'Resueltos',
@@ -379,35 +408,52 @@ export default function ClientePanel() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={styles.logoutButton}
-            >
-              <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={isMobile ? styles.statsRowMobile : styles.statsRow}>
-            {stats.map((stat, index) => (
+            <View style={styles.headerActions}>
               <TouchableOpacity
-                key={index}
-                activeOpacity={0.9}
-                style={isMobile ? styles.statCardMobile : styles.statCard}
+                onPress={() => setShowStats(!showStats)}
+                style={styles.toggleButton}
               >
-                <View style={styles.statCardHeader}>
-                  <View style={[styles.statIcon, { backgroundColor: stat.iconBg.replace('bg-', '').includes('cyan') ? '#06b6d4' : stat.iconBg.replace('bg-', '').includes('amber') ? '#f59e0b' : '#10b981' }]}>
-                    <Ionicons name={stat.iconName as any} size={24} color="white" />
-                  </View>
-                  <View style={styles.statBadge}>
-                    <Text style={[styles.statBadgeText, { fontFamily }]}>Hoy</Text>
-                  </View>
-                </View>
-
-                <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { fontFamily }]}>{stat.label}</Text>
+                <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
               </TouchableOpacity>
-            ))}
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.logoutButton}
+              >
+                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
           </View>
+
+          {showStats && (
+            <View style={isMobile ? styles.statsRowMobile : styles.statsRow}>
+              {stats.map((stat, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.9}
+                  style={isMobile ? styles.statCardMobile : styles.statCard}
+                >
+                  <View style={styles.statCardHeader}>
+                    <View style={[styles.statIcon, { 
+                      backgroundColor: stat.iconBg.includes('cyan') ? '#06b6d4' 
+                        : stat.iconBg.includes('amber') ? '#f59e0b'
+                        : stat.iconBg.includes('blue') ? '#3b82f6'
+                        : stat.iconBg.includes('yellow') ? '#eab308'
+                        : stat.iconBg.includes('emerald') ? '#10b981'
+                        : '#06b6d4'
+                    }]}>
+                      <Ionicons name={stat.iconName as any} size={24} color="white" />
+                    </View>
+                    <View style={styles.statBadge}>
+                      <Text style={[styles.statBadgeText, { fontFamily }]}>Hoy</Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                  <Text style={[styles.statLabel, { fontFamily }]}>{stat.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { fontFamily }]}>Acciones principales</Text>
@@ -842,6 +888,19 @@ const styles = StyleSheet.create({
     color: '#64748b',
     fontSize: 12,
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#1e293bcc',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   logoutButton: {
     paddingHorizontal: 12,
