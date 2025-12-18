@@ -172,8 +172,13 @@ export async function obtenerReportesAsignados(empleadoEmail: string) {
 }
 
 // Actualizar estado de reporte por empleado asignado
-export async function actualizarEstadoReporteAsignado(reporteId: string, nuevoEstado: string) {
-  const ESTADOS_PERMITIDOS = ['en_proceso', 'en espera', 'terminado'];
+export async function actualizarEstadoReporteAsignado(
+  reporteId: string, 
+  nuevoEstado: string,
+  descripcionTrabajo?: string,
+  precioCotizacion?: number
+) {
+  const ESTADOS_PERMITIDOS = ['en_proceso', 'en espera', 'terminado', 'cotizado'];
   const key = nuevoEstado.trim().toLowerCase();
   const mapa: Record<string, string> = {
     'en proceso': 'en_proceso',
@@ -182,6 +187,7 @@ export async function actualizarEstadoReporteAsignado(reporteId: string, nuevoEs
     'en_espera': 'en espera',
     terminado: 'terminado',
     finalizado: 'terminado',
+    cotizado: 'cotizado',
   };
 
   const normalized = mapa[key] || key;
@@ -191,9 +197,17 @@ export async function actualizarEstadoReporteAsignado(reporteId: string, nuevoEs
   }
 
   try {
+    const updateData: any = { estado: normalized };
+    
+    // Si es cotizado, agregar descripción y precio
+    if (normalized === 'cotizado' && descripcionTrabajo && precioCotizacion) {
+      updateData.descripcion_trabajo = descripcionTrabajo;
+      updateData.precio_cotizacion = precioCotizacion;
+    }
+
     const { data, error } = await supabase
       .from('reportes')
-      .update({ estado: normalized })
+      .update(updateData)
       .eq('id', reporteId)
       .select();
 

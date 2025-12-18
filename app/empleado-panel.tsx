@@ -12,6 +12,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View
@@ -53,6 +54,10 @@ function EmpleadoPanelContent() {
   const [showHistorialReportesModal, setShowHistorialReportesModal] = useState(false);
   const [listaReportesTerminados, setListaReportesTerminados] = useState<any[]>([]);
   const [loadingHistorialReportes, setLoadingHistorialReportes] = useState(false);
+  const [showCotizarModal, setShowCotizarModal] = useState(false);
+  const [descripcionTrabajo, setDescripcionTrabajo] = useState('');
+  const [precioCotizacion, setPrecioCotizacion] = useState('');
+  const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -153,11 +158,11 @@ function EmpleadoPanelContent() {
     try {
       const { success, data } = await obtenerReportesAsignados(usuario.email);
       if (success) {
-        // Solo mostrar reportes en_proceso, no los terminados
+        // Solo mostrar reportes en_proceso, no los terminados o cotizados
         const reportesActivos = data?.filter((r: any) => r.estado === 'en_proceso') || [];
         setListaReportes(reportesActivos);
         const pendientes = reportesActivos.length;
-        const terminados = data?.filter((r: any) => r.estado === 'terminado').length || 0;
+        const terminados = data?.filter((r: any) => r.estado === 'terminado' || r.estado === 'cotizado').length || 0;
         setReportes(pendientes);
         setReportesTerminados(terminados);
       }
@@ -174,7 +179,7 @@ function EmpleadoPanelContent() {
     try {
       const { success, data } = await obtenerReportesAsignados(usuario.email);
       if (success) {
-        const terminados = data?.filter((r: any) => r.estado === 'terminado') || [];
+        const terminados = data?.filter((r: any) => r.estado === 'terminado' || r.estado === 'cotizado') || [];
         setListaReportesTerminados(terminados);
       }
     } catch (error) {
@@ -208,6 +213,60 @@ function EmpleadoPanelContent() {
       console.error('Error al actualizar reporte:', error);
     } finally {
       setActualizandoReporte(false);
+    }
+  };
+
+  const guardarCotizacion = async () => {
+    if (!reporteSeleccionado?.id) return;
+    
+    if (!descripcionTrabajo.trim()) {
+      alert('Por favor ingresa una descripción del trabajo realizado');
+      return;
+    }
+    
+    if (!precioCotizacion.trim()) {
+      alert('Por favor ingresa el precio de la cotización');
+      return;
+    }
+
+    const precioNumerico = parseFloat(precioCotizacion);
+    if (isNaN(precioNumerico) || precioNumerico <= 0) {
+      alert('Por favor ingresa un precio válido');
+      return;
+    }
+
+    setGuardandoCotizacion(true);
+    try {
+      // Llamar a la función que actualizará el reporte con la cotización
+      const { success } = await actualizarEstadoReporteAsignado(
+        reporteSeleccionado.id,
+        'cotizado',
+        descripcionTrabajo.trim(),
+        precioNumerico
+      );
+      
+      if (success) {
+        // Actualizar la lista de reportes
+        const reportesActualizados = listaReportes.filter((r: any) => r.id !== reporteSeleccionado.id);
+        setListaReportes(reportesActualizados);
+        
+        const pendientes = reportesActualizados.filter((r: any) => r.estado === 'en_proceso').length;
+        setReportes(pendientes);
+        setReportesTerminados(reportesTerminados + 1);
+        
+        // Limpiar estados
+        setShowCotizarModal(false);
+        setReporteSeleccionado(null);
+        setDescripcionTrabajo('');
+        setPrecioCotizacion('');
+        
+        alert('Cotización guardada exitosamente');
+      }
+    } catch (error) {
+      console.error('Error al guardar cotización:', error);
+      alert('Error al guardar la cotización');
+    } finally {
+      setGuardandoCotizacion(false);
     }
   };
 
@@ -873,13 +932,15 @@ function EmpleadoPanelContent() {
                   style={styles.detailActionButton}
                 >
                   <TouchableOpacity
-                    onPress={() => actualizarEstadoReporte('terminado')}
-                    disabled={actualizandoReporte}
+                    onPress={() => {
+                      setShowReporteDetalle(false);
+                      setShowCotizarModal(true);
+                    }}
                     activeOpacity={0.85}
                     style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      {actualizandoReporte ? 'Actualizando...' : 'Marcar Terminado'}
+                      Cotizar
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
@@ -965,6 +1026,118 @@ function EmpleadoPanelContent() {
                 ))}
               </ScrollView>
             )}
+          </View>
+        </View>
+      )}
+
+      {showCotizarModal && reporteSeleccionado && (
+        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Cotizar Reporte</Text>
+                <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Ingresa los detalles de la cotización</Text>
+              </View>
+              <TouchableOpacity onPress={() => { 
+                setShowCotizarModal(false); 
+                setDescripcionTrabajo('');
+                setPrecioCotizacion('');
+              }} activeOpacity={0.7}>
+                <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+              <View style={[styles.detailContent, isMobile && styles.detailContentMobile]}>
+                {/* Información del reporte */}
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Equipo / Servicio</Text>
+                  <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>{reporteSeleccionado.equipo_descripcion}</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Solicitante</Text>
+                  <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>{reporteSeleccionado.usuario_nombre}</Text>
+                    {reporteSeleccionado.usuario_email && (
+                      <Text style={[styles.detailSubValue, { fontFamily }]}>{reporteSeleccionado.usuario_email}</Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Comentario / Problema</Text>
+                  <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>{reporteSeleccionado.comentario || 'Sin comentarios'}</Text>
+                  </View>
+                </View>
+
+                {/* Campos de cotización */}
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 24 }]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>
+                    Descripción del trabajo realizado *
+                  </Text>
+                  <TextInput
+                    style={[styles.textInputArea, { fontFamily }]}
+                    value={descripcionTrabajo}
+                    onChangeText={setDescripcionTrabajo}
+                    placeholder="Describe el trabajo que realizaste en este reporte..."
+                    placeholderTextColor="#64748b"
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>
+                    Precio del arreglo *
+                  </Text>
+                  <TextInput
+                    style={[styles.textInputPrice, { fontFamily }]}
+                    value={precioCotizacion}
+                    onChangeText={setPrecioCotizacion}
+                    placeholder="0.00"
+                    placeholderTextColor="#64748b"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
+              <TouchableOpacity
+                style={styles.detailCloseButton}
+                onPress={() => { 
+                  setShowCotizarModal(false); 
+                  setDescripcionTrabajo('');
+                  setPrecioCotizacion('');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <LinearGradient
+                colors={['#d97706', '#f59e0b']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.detailActionButton}
+              >
+                <TouchableOpacity
+                  onPress={guardarCotizacion}
+                  disabled={guardandoCotizacion}
+                  activeOpacity={0.85}
+                  style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                >
+                  <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                    {guardandoCotizacion ? 'Guardando...' : 'Cotizar'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
           </View>
         </View>
       )}
@@ -1754,6 +1927,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
+  },
+  textInputArea: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#f1f5f9',
+    fontSize: 15,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  textInputPrice: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#f1f5f9',
+    fontSize: 15,
+    fontWeight: '600',
   },
 });
 

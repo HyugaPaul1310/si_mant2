@@ -199,6 +199,8 @@ export default function ClientePanel() {
         return { bg: '#8b5cf633', text: '#d8b4fe', border: '#8b5cf666' };
       } else if (estado === 'pausado') {
         return { bg: '#64748b33', text: '#cbd5e1', border: '#64748b66' };
+      } else if (estado === 'cotizado') {
+        return { bg: '#f59e0b33', text: '#fbbf24', border: '#f59e0b66' };
       } else {
         return { bg: '#10b98133', text: '#6ee7b7', border: '#10b98166' };
       }
@@ -279,7 +281,7 @@ export default function ClientePanel() {
   const ensureDemoFinalizado = useCallback(
     async (lista: any[]) => {
       if (!usuario?.email) return;
-      const tieneFinalizados = lista.some((r) => r.estado === 'terminado');
+      const tieneFinalizados = lista.some((r) => r.estado === 'terminado' || r.estado === 'cotizado');
       const yaExisteDemo = lista.some((r) => r.equipo_descripcion === 'Caso demo finalizado');
       if (tieneFinalizados || yaExisteDemo) return;
 
@@ -916,17 +918,69 @@ export default function ClientePanel() {
                   <Text style={[styles.detailFieldSubtext, { fontFamily }]}>{selectedReporte.usuario_email}</Text>
                 </View>
               )}
+
+              {selectedReporte.estado === 'cotizado' && (
+                <>
+                  <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
+                    <View style={styles.separatorLine} />
+                    <Text style={[styles.separatorText, { fontFamily }]}>Información de Cotización</Text>
+                    <View style={styles.separatorLine} />
+                  </View>
+
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily, color: '#f59e0b' }]}>Trabajo Realizado</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>
+                      {selectedReporte.descripcion_trabajo || 'No especificado'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily, color: '#f59e0b' }]}>Precio de la Cotización</Text>
+                    <Text style={[styles.detailValue, { fontFamily, fontSize: 24, fontWeight: '700', color: '#10b981' }]}>
+                      ${selectedReporte.precio_cotizacion ? parseFloat(selectedReporte.precio_cotizacion).toFixed(2) : '0.00'}
+                    </Text>
+                  </View>
+                </>
+              )}
             </ScrollView>
 
-            <TouchableOpacity
-              onPress={() => {
-                setShowReporteDetail(false);
-                setSelectedReporte(null);
-              }}
-              style={styles.detailCloseButton}
-            >
-              <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
-            </TouchableOpacity>
+            <View style={styles.detailFooter}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowReporteDetail(false);
+                  setSelectedReporte(null);
+                }}
+                style={styles.detailCloseButton}
+              >
+                <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
+
+              {selectedReporte.estado === 'cotizado' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert(
+                      'Confirmar Cotización',
+                      `¿Deseas confirmar esta cotización por $${parseFloat(selectedReporte.precio_cotizacion).toFixed(2)}?`,
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        {
+                          text: 'Confirmar',
+                          onPress: () => {
+                            // Aquí irá la lógica para confirmar la cotización
+                            Alert.alert('Cotización confirmada', 'El trabajo será procesado');
+                            setShowReporteDetail(false);
+                            setSelectedReporte(null);
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                  style={styles.detailConfirmButton}
+                >
+                  <Text style={[styles.detailConfirmButtonText, { fontFamily }]}>Confirmar Cotización</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       )}
@@ -1589,8 +1643,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  detailFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 16,
+  },
   detailCloseButton: {
-    marginTop: 16,
+    flex: 1,
     backgroundColor: '#475569',
     borderRadius: 12,
     paddingVertical: 12,
@@ -1601,6 +1660,37 @@ const styles = StyleSheet.create({
   detailCloseButtonText: {
     color: 'white',
     fontWeight: '600',
+  },
+  detailConfirmButton: {
+    flex: 1,
+    backgroundColor: '#10b981',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#34d399',
+  },
+  detailConfirmButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  detailSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  separatorText: {
+    color: '#f59e0b',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   successOverlay: {
     position: 'absolute',
