@@ -188,7 +188,7 @@ export async function actualizarEstadoReporteAsignado(
   descripcionTrabajo?: string,
   precioCotizacion?: number
 ) {
-  const ESTADOS_PERMITIDOS = ['en_proceso', 'en espera', 'terminado', 'cotizado'];
+  const ESTADOS_PERMITIDOS = ['en_proceso', 'en espera', 'terminado', 'cotizado', 'finalizado_por_tecnico', 'cerrado_por_cliente'];
   const key = nuevoEstado.trim().toLowerCase();
   const mapa: Record<string, string> = {
     'en proceso': 'en_proceso',
@@ -196,8 +196,10 @@ export async function actualizarEstadoReporteAsignado(
     'en espera': 'en espera',
     'en_espera': 'en espera',
     terminado: 'terminado',
-    finalizado: 'terminado',
+    finalizado: 'finalizado_por_tecnico', // Ahora apunta a finalizado_por_tecnico
+    'finalizado_por_tecnico': 'finalizado_por_tecnico',
     cotizado: 'cotizado',
+    'cerrado_por_cliente': 'cerrado_por_cliente',
   };
 
   const normalized = mapa[key] || key;
@@ -215,6 +217,17 @@ export async function actualizarEstadoReporteAsignado(
       updateData.precio_cotizacion = precioCotizacion;
     }
 
+    // Si es finalizado por técnico, guardar timestamp
+    if (normalized === 'finalizado_por_tecnico') {
+      updateData.finalizado_por_tecnico_at = new Date().toISOString();
+      updateData.trabajo_completado = true;
+    }
+
+    // Si es cerrado por cliente, guardar timestamp
+    if (normalized === 'cerrado_por_cliente') {
+      updateData.cerrado_por_cliente_at = new Date().toISOString();
+    }
+
     const { data, error } = await supabase
       .from('reportes')
       .update(updateData)
@@ -228,6 +241,118 @@ export async function actualizarEstadoReporteAsignado(
     return { success: false, error: error.message };
   }
 }
+
+// ============================================================================
+// NUEVAS FUNCIONES PARA CIERRE EN DOS ETAPAS (12/27/2025)
+// ============================================================================
+
+/**
+ * Marcar reporte como "finalizado por técnico"
+ * - El técnico completó el trabajo
+ * - El sistema espera confirmación del cliente
+ * - La encuesta aún NO se lanza
+ */
+export async function actualizarEstadoFinalizadoPorTecnico(reporteId: string) {
+  try {
+    console.log(`[REPORTES] Marcando reporte ${reporteId} como "finalizado_por_tecnico"`);
+    
+    const { data, error } = await supabase
+      .from('reportes')
+      .update({
+        estado: 'finalizado_por_tecnico',
+        finalizado_por_tecnico_at: new Date().toISOString(),
+        trabajo_completado: true,
+      })
+      .eq('id', reporteId)
+      .select();
+
+    if (error) throw error;
+    
+    console.log(`[REPORTES] ✓ Reporte finalizado por técnico:`, data?.[0]);
+    return { success: true, data: data?.[0] };
+  } catch (error: any) {
+    console.error('Error al marcar como finalizado por técnico:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Marcar reporte como "cerrado por cliente"
+ * - El cliente aceptó la finalización
+ * - El cliente respondió la encuesta
+ * - El reporte ahora está OFICIALMENTE TERMINADO
+ */
+export async function actualizarEstadoCerradoPorCliente(reporteId: string) {
+  try {
+    console.log(`[REPORTES] Marcando reporte ${reporteId} como "cerrado_por_cliente"`);
+    
+    const { data, error } = await supabase
+      .from('reportes')
+      .update({
+        estado: 'cerrado_por_cliente',
+        cerrado_por_cliente_at: new Date().toISOString(),
+      })
+      .eq('id', reporteId)
+      .select();
+
+    if (error) throw error;
+    
+    console.log(`[REPORTES] ✓ Reporte cerrado por cliente:`, data?.[0]);
+    return { success: true, data: data?.[0] };
+  } catch (error: any) {
+    console.error('Error al marcar como cerrado por cliente:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Obtener reportes que están "finalizado_por_tecnico" (esperando confirmación del cliente)
+ */
+export async function obtenerReportesFinalizadosPorTecnico(clienteEmail: string) {
+  try {
+    console.log(`[REPORTES] Obteniendo reportes finalizados por técnico para ${clienteEmail}`);
+    
+    const { data, error } = await supabase
+      .from('reportes')
+      .select('*')
+      .eq('usuario_email', clienteEmail)
+      .eq('estado', 'finalizado_por_tecnico')
+      .order('finalizado_por_tecnico_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log(`[REPORTES] ✓ Reportes finalizados encontrados: ${data?.length || 0}`);
+    return { success: true, data: data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener reportes finalizados:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Obtener reportes cerrados por cliente (terminados definitivamente)
+ */
+export async function obtenerReportesCerradosPorCliente(clienteEmail: string) {
+  try {
+    console.log(`[REPORTES] Obteniendo reportes cerrados por cliente para ${clienteEmail}`);
+    
+    const { data, error } = await supabase
+      .from('reportes')
+      .select('*')
+      .eq('usuario_email', clienteEmail)
+      .eq('estado', 'cerrado_por_cliente')
+      .order('cerrado_por_cliente_at', { ascending: false });
+
+    if (error) throw error;
+    
+    console.log(`[REPORTES] ✓ Reportes cerrados encontrados: ${data?.length || 0}`);
+    return { success: true, data: data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener reportes cerrados:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * Guardar archivo subido a Cloudflare en la base de datos
  */

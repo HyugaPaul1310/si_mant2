@@ -58,9 +58,14 @@ function AdminPanelContent() {
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [showHistorialModal, setShowHistorialModal] = useState(false);
-  const [showTerminadosModal, setShowTerminadosModal] = useState(false);
+  
+  // PASO 6: Estados para reportes finalizados y cerrados
+  const [reportesFinalizados, setReportesFinalizados] = useState<any[]>([]);
+  const [reportesCerrados, setReportesCerrados] = useState<any[]>([]);
+  const [loadingFinalizados, setLoadingFinalizados] = useState(false);
+  const [loadingCerrados, setLoadingCerrados] = useState(false);
+  const [showFinalizadosModal, setShowFinalizadosModal] = useState(false);
+  const [showCerradosModal, setShowCerradosModal] = useState(false);
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
@@ -84,6 +89,11 @@ function AdminPanelContent() {
   const [showStats, setShowStats] = useState(true);
   const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  
+  // Estados para historial y terminados
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [showTerminadosModal, setShowTerminadosModal] = useState(false);
   
   // Estados para gestión de usuarios
   const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
@@ -164,6 +174,52 @@ function AdminPanelContent() {
       setLoadingReportes(false);
     };
     cargar();
+  }, []);
+
+  // PASO 6: Cargar reportes finalizados por técnico
+  useEffect(() => {
+    const cargarFinalizados = async () => {
+      setLoadingFinalizados(true);
+      try {
+        // Filtrar reportes con estado "finalizado_por_tecnico"
+        const { success, data } = await obtenerTodosLosReportes();
+        if (success && data) {
+          const finalizados = data.filter((r: any) => r.estado === 'finalizado_por_tecnico');
+          setReportesFinalizados(finalizados);
+        } else {
+          setReportesFinalizados([]);
+        }
+      } catch (error) {
+        console.error('Error cargando reportes finalizados:', error);
+        setReportesFinalizados([]);
+      } finally {
+        setLoadingFinalizados(false);
+      }
+    };
+    cargarFinalizados();
+  }, []);
+
+  // PASO 6: Cargar reportes cerrados por cliente
+  useEffect(() => {
+    const cargarCerrados = async () => {
+      setLoadingCerrados(true);
+      try {
+        // Filtrar reportes con estado "cerrado_por_cliente"
+        const { success, data } = await obtenerTodosLosReportes();
+        if (success && data) {
+          const cerrados = data.filter((r: any) => r.estado === 'cerrado_por_cliente');
+          setReportesCerrados(cerrados);
+        } else {
+          setReportesCerrados([]);
+        }
+      } catch (error) {
+        console.error('Error cargando reportes cerrados:', error);
+        setReportesCerrados([]);
+      } finally {
+        setLoadingCerrados(false);
+      }
+    };
+    cargarCerrados();
   }, []);
 
   useEffect(() => {
@@ -665,6 +721,46 @@ function AdminPanelContent() {
                 ))}
               </View>
             )}
+
+            {/* PASO 6: Estadísticas de dos etapas de cierre */}
+            <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+              <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Cierre de Reportes en Dos Etapas</Text>
+              <Text style={[styles.sectionSubtitle, { fontFamily }]}>Seguimiento de reportes finalizados y cerrados</Text>
+            </View>
+
+            <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+              <TouchableOpacity 
+                style={[styles.statCard, isMobile && styles.statCardMobile]}
+                onPress={() => setShowFinalizadosModal(true)}
+              >
+                <View style={styles.statHeader}>
+                  <View style={[styles.statIcon, { backgroundColor: '#f59e0b' }]}>
+                    <Ionicons name="checkmark-outline" size={24} color="white" />
+                  </View>
+                  <View style={styles.statChip}>
+                    <Text style={[styles.statChipText, { fontFamily }]}>Pendientes</Text>
+                  </View>
+                </View>
+                <Text style={[styles.statValue, { fontFamily }]}>{reportesFinalizados.length}</Text>
+                <Text style={[styles.statLabel, { fontFamily, color: '#f59e0b' }]}>Finalizados por técnico</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.statCard, isMobile && styles.statCardMobile]}
+                onPress={() => setShowCerradosModal(true)}
+              >
+                <View style={styles.statHeader}>
+                  <View style={[styles.statIcon, { backgroundColor: '#10b981' }]}>
+                    <Ionicons name="checkmark-done-outline" size={24} color="white" />
+                  </View>
+                  <View style={styles.statChip}>
+                    <Text style={[styles.statChipText, { fontFamily }]}>Completados</Text>
+                  </View>
+                </View>
+                <Text style={[styles.statValue, { fontFamily }]}>{reportesCerrados.length}</Text>
+                <Text style={[styles.statLabel, { fontFamily, color: '#10b981' }]}>Cerrados por cliente</Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
               <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
@@ -1545,6 +1641,168 @@ function AdminPanelContent() {
 
                         <View style={styles.estadoSoloBadge}>
                           <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(rep.estado)}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {/* PASO 6: Modal de Reportes Finalizados por Técnico */}
+        {showFinalizadosModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.detailModal}>
+              <View style={styles.detailHeader}>
+                <View style={styles.detailHeaderText}>
+                  <Text style={[styles.detailTitle, { fontFamily }]}>Reportes Finalizados por Técnico</Text>
+                  <Text style={[styles.detailSubtitle, { fontFamily }]}>Esperando confirmación del cliente</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowFinalizadosModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingFinalizados ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes finalizados...</Text>
+                </View>
+              ) : null}
+
+              {!loadingFinalizados && reportesFinalizados.length === 0 ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes finalizados por técnico.</Text>
+                </View>
+              ) : null}
+
+              {!loadingFinalizados && reportesFinalizados.length > 0 ? (
+                <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {reportesFinalizados.map((rep) => (
+                      <View key={rep.id} style={styles.reportCard}>
+                        <View style={styles.reportHeader}>
+                          <View style={styles.reportHeaderText}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.equipo_descripcion || 'Equipo / servicio'}
+                            </Text>
+                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                            </Text>
+                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={async () => {
+                              setSelectedReporteDetail(rep);
+                              setShowReporteDetailModal(true);
+                              setCargandoArchivos(true);
+                              const resultado = await obtenerArchivosReporte(rep.id);
+                              if (resultado.success) {
+                                setArchivosReporte(resultado.data || []);
+                              }
+                              setCargandoArchivos(false);
+                            }}
+                            style={styles.eyeCard}
+                          >
+                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                          {rep.comentario || 'Sin comentarios'}
+                        </Text>
+
+                        <View style={{ backgroundColor: '#fef3c7', borderRadius: 8, padding: 10, marginTop: 10 }}>
+                          <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '600' }}>
+                            ⏳ Esperando confirmación del cliente
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {/* PASO 6: Modal de Reportes Cerrados por Cliente */}
+        {showCerradosModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.detailModal}>
+              <View style={styles.detailHeader}>
+                <View style={styles.detailHeaderText}>
+                  <Text style={[styles.detailTitle, { fontFamily }]}>Reportes Cerrados por Cliente</Text>
+                  <Text style={[styles.detailSubtitle, { fontFamily }]}>Ciclo de vida completado</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowCerradosModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingCerrados ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes cerrados...</Text>
+                </View>
+              ) : null}
+
+              {!loadingCerrados && reportesCerrados.length === 0 ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes cerrados por cliente.</Text>
+                </View>
+              ) : null}
+
+              {!loadingCerrados && reportesCerrados.length > 0 ? (
+                <ScrollView style={styles.listScroll} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {reportesCerrados.map((rep) => (
+                      <View key={rep.id} style={styles.reportCard}>
+                        <View style={styles.reportHeader}>
+                          <View style={styles.reportHeaderText}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.equipo_descripcion || 'Equipo / servicio'}
+                            </Text>
+                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                            </Text>
+                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={async () => {
+                              setSelectedReporteDetail(rep);
+                              setShowReporteDetailModal(true);
+                              setCargandoArchivos(true);
+                              const resultado = await obtenerArchivosReporte(rep.id);
+                              if (resultado.success) {
+                                setArchivosReporte(resultado.data || []);
+                              }
+                              setCargandoArchivos(false);
+                            }}
+                            style={styles.eyeCard}
+                          >
+                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                          {rep.comentario || 'Sin comentarios'}
+                        </Text>
+
+                        <View style={{ backgroundColor: '#d1fae5', borderRadius: 8, padding: 10, marginTop: 10 }}>
+                          <Text style={{ color: '#065f46', fontSize: 12, fontWeight: '600' }}>
+                            ✓ Cerrado definitivamente por cliente
+                          </Text>
                         </View>
                       </View>
                     ))}

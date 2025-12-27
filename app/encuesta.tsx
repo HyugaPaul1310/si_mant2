@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarFase2Reporte, guardarEncuestaSatisfaccion } from '@/lib/reportes';
+import { actualizarEstadoCerradoPorCliente, actualizarFase2Reporte, guardarEncuestaSatisfaccion } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -83,14 +83,24 @@ export default function EncuestaPage() {
 
   const handleGuardarEncuesta = async () => {
     if (!todasLasRespuestasLlenas) {
-      Alert.alert('Validación', 'Por favor responde todas las preguntas de la encuesta');
+      Alert.alert('Validación requerida', 'Por favor responde todas las preguntas. Esta encuesta es obligatoria para cerrar el reporte.');
       return;
     }
 
     setGuardando(true);
     try {
       const reporteId = params.reporteId as string;
-      const fase2Data = JSON.parse(params.fase2Data as string);
+      let fase2Data = {};
+      
+      // Parsear fase2Data solo si existe
+      if (params.fase2Data) {
+        try {
+          fase2Data = JSON.parse(params.fase2Data as string);
+        } catch (e) {
+          console.warn('No se pudo parsear fase2Data, continuando con objeto vacío');
+          fase2Data = {};
+        }
+      }
       
       // Obtener datos del cliente y empleado desde los params
       const clienteEmail = params.clienteEmail as string || '';
@@ -146,24 +156,24 @@ export default function EncuestaPage() {
       
       console.log('✅ Encuesta guardada correctamente');
 
-      // Cambiar estado a terminado
-      console.log('Cambiando estado a terminado...');
-      const resultadoEstado = await actualizarEstadoReporteAsignado(reporteId, 'terminado');
+      // PASO 5: Cambiar estado a "cerrado_por_cliente" (cierre definitivo)
+      console.log('Cambiando estado a cerrado_por_cliente...');
+      const resultadoEstado = await actualizarEstadoCerradoPorCliente(reporteId);
       
       if (!resultadoEstado.success) {
-        throw new Error(resultadoEstado.error || 'No se pudo cambiar estado');
+        throw new Error(resultadoEstado.error || 'No se pudo marcar el reporte como cerrado');
       }
       
-      console.log('Estado cambiado a terminado');
+      console.log('✅ Reporte cerrado por cliente - CIERRE DEFINITIVO');
       console.log('Encuesta finalizada correctamente');
 
       setGuardando(false);
       
-      // Navegar directamente sin alert
-      console.log('Navegando a empleado-panel en 1 segundo...');
+      // Navegar al panel del cliente con modales cerrados
+      console.log('Navegando a cliente-panel en 1 segundo...');
       setTimeout(() => {
-        console.log('Ejecutando navegación...');
-        router.push('/empleado-panel?closeModals=true');
+        console.log('Ejecutando navegación a panel del cliente...');
+        router.push('/cliente-panel?closeModals=true');
       }, 1000);
       
     } catch (error: any) {
@@ -195,6 +205,23 @@ export default function EncuestaPage() {
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={[styles.content, isMobile && styles.contentMobile]}>
+          {/* PASO 5: Mensaje introductorio */}
+          <View style={{ 
+            backgroundColor: '#06b6d415', 
+            borderRadius: 12, 
+            padding: 16, 
+            marginBottom: 24, 
+            borderLeftWidth: 4, 
+            borderLeftColor: '#06b6d4' 
+          }}>
+            <Text style={[styles.headerSubtitle, { fontFamily, color: '#22d3ee', marginBottom: 8 }]}>
+              ✓ Trabajo completado
+            </Text>
+            <Text style={[styles.preguntaTexto, { fontFamily, color: '#cbd5e1' }]}>
+              Tu reporte ha sido finalizado. Por favor responde esta encuesta para cerrar oficialmente el servicio y ayudarnos a mejorar.
+            </Text>
+          </View>
+
           {PREGUNTAS.map((pregunta, idx) => (
             <View key={pregunta.id} style={styles.preguntaContainer}>
               <View style={styles.preguntaHeader}>

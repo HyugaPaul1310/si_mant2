@@ -1135,13 +1135,13 @@ function EmpleadoPanelContent() {
                   style={styles.detailActionButton}
                 >
                   <TouchableOpacity
-                    onPress={() => {
+                    onPress={async () => {
                       if (!revision.trim() || !recomendaciones.trim() || !reparacion.trim()) {
                         alert('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación');
                         return;
                       }
 
-                      // Pasar datos a la encuesta
+                      // PASO 3: Guardar Fase 2 primero
                       const fase2Data = {
                         revision,
                         recomendaciones,
@@ -1150,24 +1150,37 @@ function EmpleadoPanelContent() {
                         materiales_refacciones: materialesRefacciones,
                       };
 
-                      router.push({
-                        pathname: '/encuesta',
-                        params: {
-                          reporteId: reporteSeleccionado.id,
-                          fase2Data: JSON.stringify(fase2Data),
-                          clienteEmail: reporteSeleccionado.usuario_email || '',
-                          clienteNombre: reporteSeleccionado.usuario_nombre || '',
-                          empresa: reporteSeleccionado.empresa || '',
-                          empleadoEmail: usuario?.email || '',
-                          empleadoNombre: usuario?.nombre || '',
-                        },
-                      });
+                      // Actualizar el reporte con datos de Fase 2
+                      const updateResult = await actualizarEstadoReporteAsignado(
+                        reporteSeleccionado.id,
+                        'finalizado_por_tecnico',
+                        revision // descripcion_trabajo
+                      );
+
+                      if (!updateResult.success) {
+                        alert('Error al finalizar el reporte: ' + updateResult.error);
+                        return;
+                      }
+
+                      // Éxito: mostrar mensaje y recargar
+                      alert(
+                        'Trabajo finalizado\n\n' +
+                        'El cliente debe revisar y confirmar la finalización ' +
+                        'antes de responder la encuesta.'
+                      );
+                      
+                      // Limpiar y cerrar modal
+                      setShowReporteDetalle(false);
+                      setReporteSeleccionado(null);
+                      
+                      // Recargar lista de reportes
+                      cargarReportes();
                     }}
                     activeOpacity={0.85}
                     style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      Continuar a Encuesta
+                      Finalizar Trabajo
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
