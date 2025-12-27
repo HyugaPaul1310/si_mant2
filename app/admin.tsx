@@ -1,22 +1,25 @@
 // @ts-nocheck
 import { actualizarRolUsuario, actualizarUsuario, eliminarUsuario, eliminarUsuarioPermanente, obtenerTodosLosUsuarios } from '@/lib/auth';
+import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
-import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
+import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerArchivosReporte, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
 import { crearTarea, obtenerEmpleados } from '@/lib/tareas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,6 +63,10 @@ function AdminPanelContent() {
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
+  const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
+  const [cargandoArchivos, setCargandoArchivos] = useState(false);
+  const [showArchivoModal, setShowArchivoModal] = useState(false);
+  const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
   const [showTareasModal, setShowTareasModal] = useState(false);
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [selectedEmpleado, setSelectedEmpleado] = useState<string>('');
@@ -572,7 +579,7 @@ function AdminPanelContent() {
         // Actualizar la lista de reportes
         const reportesActualizados = reportes.map((r: any) =>
           r.id === reporteAAsignar.id 
-            ? { ...r, empleado_asignado_email: selectedEmpleadoReporte, empleado_asignado_nombre: empleadoData?.nombre, estado: 'en_proceso' }
+            ? { ...r, empleado_asignado_email: selectedEmpleadoReporte, empleado_asignado_nombre: empleadoData?.nombre, estado: 'pendiente' }
             : r
         );
         setReportes(reportesActualizados);
@@ -1358,9 +1365,20 @@ function AdminPanelContent() {
                             </View>
                             <View style={styles.reportActions}>
                               <TouchableOpacity
-                                onPress={() => {
+                                onPress={async () => {
                                   setSelectedReporteDetail(rep);
                                   setShowReporteDetailModal(true);
+                                  setCargandoArchivos(true);
+                                  console.log(`[ADMIN] Cargando archivos para reporte: ${rep.id}`);
+                                  const resultado = await obtenerArchivosReporte(rep.id);
+                                  console.log(`[ADMIN] Resultado obtenerArchivosReporte:`, resultado);
+                                  if (resultado.success) {
+                                    console.log(`[ADMIN] Archivos encontrados: ${resultado.data?.length || 0}`);
+                                    setArchivosReporte(resultado.data || []);
+                                  } else {
+                                    console.log(`[ADMIN] Error al obtener archivos: ${resultado.error}`);
+                                  }
+                                  setCargandoArchivos(false);
                                 }}
                                 style={styles.eyeCard}
                               >
@@ -1500,9 +1518,20 @@ function AdminPanelContent() {
                             </Text>
                           </View>
                           <TouchableOpacity
-                            onPress={() => {
+                            onPress={async () => {
                               setSelectedReporteDetail(rep);
                               setShowReporteDetailModal(true);
+                              setCargandoArchivos(true);
+                              console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
+                              const resultado = await obtenerArchivosReporte(rep.id);
+                              console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
+                              if (resultado.success) {
+                                console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
+                                setArchivosReporte(resultado.data || []);
+                              } else {
+                                console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
+                              }
+                              setCargandoArchivos(false);
                             }}
                             style={styles.eyeCard}
                           >
@@ -1538,6 +1567,7 @@ function AdminPanelContent() {
                   onPress={() => {
                     setShowReporteDetailModal(false);
                     setSelectedReporteDetail(null);
+                    setArchivosReporte([]);
                   }}
                   style={styles.closeButton}
                 >
@@ -1674,6 +1704,60 @@ function AdminPanelContent() {
                       </View>
                     </View>
                   ) : null}
+
+                  {/* Fotos y Videos */}
+                  {cargandoArchivos ? (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Cargando archivos...</Text>
+                    </View>
+                  ) : null}
+
+                  {!cargandoArchivos && archivosReporte.length > 0 && (
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                      <View style={styles.archivosContainer}>
+                        {archivosReporte.map((archivo, idx) => {
+                          console.log(`[ADMIN] Rendering archivo ${idx}:`, {
+                            tipo: archivo.tipo_archivo,
+                            url: archivo.cloudflare_url
+                          });
+                          const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                          return (
+                          <TouchableOpacity 
+                            key={idx} 
+                            style={styles.archivoItem}
+                            onPress={() => {
+                              setArchivoVisualizando({
+                                url: proxyUrl,
+                                tipo: archivo.tipo_archivo,
+                                nombre: archivo.nombre_original || 'Archivo'
+                              });
+                              setShowArchivoModal(true);
+                            }}
+                          >
+                            {archivo.tipo_archivo === 'foto' ? (
+                              <>
+                                <Image
+                                  source={{ uri: proxyUrl }}
+                                  style={styles.archivoThumb}
+                                  onError={() => console.log('Error loading image:', proxyUrl)}
+                                />
+                                <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
+                              </>
+                            ) : (
+                              <>
+                                <View style={styles.videoThumb}>
+                                  <Ionicons name="play-circle" size={40} color="#06b6d4" />
+                                </View>
+                                <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        );
+                        })}
+                      </View>
+                    </View>
+                  )}
                 </View>
               </ScrollView>
 
@@ -1683,12 +1767,52 @@ function AdminPanelContent() {
                   onPress={() => {
                     setShowReporteDetailModal(false);
                     setSelectedReporteDetail(null);
+                    setArchivosReporte([]);
                   }}
                   activeOpacity={0.9}
                 >
                   <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Modal para visualizar archivo en grande */}
+        {showArchivoModal && archivoVisualizando && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.archivoModalContent}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowArchivoModal(false);
+                  setArchivoVisualizando(null);
+                }}
+                style={styles.archivoModalClose}
+              >
+                <Ionicons name="close" size={28} color="#fff" />
+              </TouchableOpacity>
+
+              {archivoVisualizando.tipo === 'foto' ? (
+                <Image
+                  source={{ uri: archivoVisualizando.url }}
+                  style={styles.archivoModalImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Video
+                  source={{ uri: archivoVisualizando.url }}
+                  rate={1.0}
+                  volume={1.0}
+                  isMuted={false}
+                  resizeMode="contain"
+                  useNativeControls
+                  style={styles.archivoModalVideo}
+                />
+              )}
+
+              <Text style={[styles.archivoModalName, { fontFamily }]}>
+                {archivoVisualizando.nombre}
+              </Text>
             </View>
           </View>
         )}
@@ -3340,5 +3464,119 @@ const styles = StyleSheet.create({
   dropdownItemText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  archivosContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
+  },
+  archivoItem: {
+    width: '48%',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  archivoThumb: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#0f172a',
+  },
+  videoThumb: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#06b6d4',
+  },
+  archivoLabel: {
+    fontSize: 12,
+    color: '#cbd5e1',
+    textAlign: 'center',
+  },
+  // Estilos para modal de visualización de archivo
+  archivoModalContent: {
+    width: '90%',
+    maxWidth: 800,
+    backgroundColor: '#0f172a',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  archivoModalClose: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivoModalImage: {
+    width: '100%',
+    height: 400,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  archivoModalVideo: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: '#06b6d4',
+  },
+  videoPlayButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(6, 182, 212, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  archivoModalVideoText: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    textAlign: 'center',
+  },
+  archivoModalName: {
+    fontSize: 14,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic',
+  },
+  detailContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 20,
+  },
+  detailSection: {
+    gap: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 });

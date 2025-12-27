@@ -1,5 +1,5 @@
 import { obtenerSucursalesPorUsuario, type Sucursal } from '@/lib/empresas';
-import { crearReporte } from '@/lib/reportes';
+import { crearReporte, subirArchivosReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
@@ -162,6 +162,7 @@ export default function GenerarReporteScreen() {
     setLoading(true);
 
     try {
+      // Paso 1: Crear el reporte
       const resultado = await crearReporte({
         usuario_email: usuario.email,
         usuario_nombre: usuario.nombre,
@@ -175,14 +176,28 @@ export default function GenerarReporteScreen() {
         comentario: comentario.trim(),
         prioridad,
         direccion_sucursal: sucursalSeleccionada.direccion,
-        imagenes_reporte: imagenes.length > 0 ? imagenes : undefined,
-        video_url: video || undefined,
       });
 
       if (!resultado.success) {
         setErrorMessage(resultado.error || 'Error al crear el reporte');
         setLoading(false);
         return;
+      }
+
+      const reporteId = resultado.data?.id;
+      
+      // Paso 2: Subir archivos a Cloudflare (si existen)
+      if ((imagenes.length > 0 || video) && reporteId) {
+        const uploadResult = await subirArchivosReporte(
+          reporteId,
+          imagenes.length > 0 ? imagenes : undefined,
+          video || undefined
+        );
+
+        if (!uploadResult.success) {
+          console.warn('Advertencia al subir archivos:', uploadResult.error);
+          // No cancelamos el flujo, el reporte se creó exitosamente
+        }
       }
 
       // Reporte creado exitosamente: marca bandera, muestra banner y redirige

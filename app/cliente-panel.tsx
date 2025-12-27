@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { obtenerReportesPorUsuario } from '@/lib/reportes';
+import { actualizarEstadoCotizacion, actualizarEstadoReporte, obtenerCotizacionesCliente, obtenerReportesPorUsuario } from '@/lib/reportes';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -36,6 +36,13 @@ export default function ClientePanel() {
   const [filtroEstado, setFiltroEstado] = useState<string[]>([]);
   const [filtroPrioridad, setFiltroPrioridad] = useState<string[]>([]);
   const [showFiltros, setShowFiltros] = useState(false);
+  
+  // Estados para cotizaciones
+  const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
+  const [cotizaciones, setCotizaciones] = useState<any[]>([]);
+  const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
+  const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState<any | null>(null);
+  const [showCotizacionDetalleModal, setShowCotizacionDetalleModal] = useState(false);
   
 
   useEffect(() => {
@@ -85,13 +92,43 @@ export default function ClientePanel() {
     []
   );
 
-  // Cargar reportes al enfocar el panel
+  const cargarCotizaciones = useCallback(
+    async (email?: string) => {
+      if (!email) {
+        console.log('[CLIENTE-PANEL] No hay email para cargar cotizaciones');
+        return;
+      }
+      console.log('[CLIENTE-PANEL] Cargando cotizaciones para email:', email);
+      setLoadingCotizaciones(true);
+      try {
+        console.log('[CLIENTE-PANEL] Llamando a obtenerCotizacionesCliente con email:', email);
+        const resultado = await obtenerCotizacionesCliente(undefined, email);
+        console.log('[CLIENTE-PANEL] Resultado completo:', resultado);
+        if (resultado.success && resultado.data) {
+          console.log('[CLIENTE-PANEL] Datos cargados:', resultado.data.length);
+          setCotizaciones(resultado.data);
+        } else {
+          console.error('[CLIENTE-PANEL] Error en respuesta:', resultado.error);
+          setCotizaciones([]);
+        }
+      } catch (error) {
+        console.error('[CLIENTE-PANEL] Exception:', error);
+        setCotizaciones([]);
+      } finally {
+        setLoadingCotizaciones(false);
+      }
+    },
+    []
+  );
+
+  // Cargar reportes y cotizaciones al enfocar el panel
   useFocusEffect(
     useCallback(() => {
       if (usuario?.email) {
         cargarReportes(usuario.email);
+        cargarCotizaciones(usuario.email);
       }
-    }, [usuario?.email, cargarReportes])
+    }, [usuario?.email, cargarReportes, cargarCotizaciones])
   );
 
   // Refrescar empresa/apellido si no están en AsyncStorage
@@ -299,10 +336,6 @@ export default function ClientePanel() {
             prioridad: 'media',
             estado: 'terminado',
             direccion_sucursal: null,
-            ubicacion_maps: null,
-            foto_fachada_url: null,
-            imagenes_reporte: null,
-            video_url: null,
           },
         ])
         .select();
@@ -418,9 +451,19 @@ export default function ClientePanel() {
       },
     },
     {
+      title: 'Cotizaciones',
+      description: 'Ver cotizaciones de tus reportes',
+      gradient: 'from-emerald-600 to-teal-500',
+      iconName: 'pricetag-outline',
+      onPress: async () => {
+        await cargarCotizaciones(usuario?.email);
+        setShowCotizacionesModal(true);
+      },
+    },
+    {
       title: 'Seguimiento',
       description: 'Revisa el estado de tus casos',
-      gradient: 'from-emerald-600 to-teal-500',
+      gradient: 'from-cyan-700 to-cyan-600',
       iconName: 'pulse-outline',
       onPress: async () => {
         setShowSeguimientoModal(true);
@@ -554,12 +597,12 @@ export default function ClientePanel() {
 
       {showReportModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column' }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderText}>
                 <Text style={[styles.modalTitle, { fontFamily }]}>Mis reportes</Text>
                 <Text style={[styles.modalSubtitle, { fontFamily }]}>
-                  Popup de reportes finalizados (se mantienen visibles aunque estén completados).
+                  Reportes finalizados
                 </Text>
               </View>
               <View style={styles.modalHeaderButtons}>
@@ -625,7 +668,7 @@ export default function ClientePanel() {
             ) : null}
 
             {!loadingReportes && !errorReportes && finalizados.length > 0 ? (
-              <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 <View style={styles.reportsContainer}>
                   {finalizados.map((rep) => renderReporteCard(rep))}
                 </View>
@@ -637,7 +680,7 @@ export default function ClientePanel() {
 
       {showSeguimientoModal && (
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column' }]}>
             <View style={[styles.modalHeader, isMobile && styles.modalHeaderMobile]}>
               <View style={styles.modalHeaderText}>
                 <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Seguimiento</Text>
@@ -786,7 +829,7 @@ export default function ClientePanel() {
                 </View>
                 )}
 
-                <ScrollView style={styles.reportsList} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                   <View style={styles.reportsContainer}>
                     {Object.keys(activosPorEstado).length === 0 ? (
                       <View style={styles.reportCard}>
@@ -1004,6 +1047,195 @@ export default function ClientePanel() {
             >
               <Text style={[styles.successButtonText, { fontFamily }]}>Entendido</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Modal Cotizaciones */}
+      {showCotizacionesModal && (
+        <View style={styles.overlay}>
+          <View style={[styles.largeModal, { flex: 1, flexDirection: 'column' }]}>
+            <View style={styles.largeModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, { fontFamily }]}>Cotizaciones</Text>
+                <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Cotizaciones de tus reportes</Text>
+                <Text style={[styles.reportMeta, { fontFamily }]}>DEBUG: {cotizaciones.length} items, loading: {loadingCotizaciones}</Text>
+              </View>
+              <TouchableOpacity onPress={() => {
+                setShowCotizacionesModal(false);
+                setCotizaciones([]);
+              }} style={styles.closeButton}>
+                <Ionicons name="close" size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingCotizaciones && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando cotizaciones...</Text>
+              </View>
+            )}
+
+            {!loadingCotizaciones && cotizaciones.length === 0 && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No tienes cotizaciones pendientes.</Text>
+              </View>
+            )}
+
+            {!loadingCotizaciones && cotizaciones.length > 0 && (
+              <View style={{ flex: 1, width: '100%' }}>
+                <Text style={[styles.infoText, { fontFamily, color: '#10b981', paddingHorizontal: 16, marginBottom: 8 }]}>
+                  ✓ Mostrando {cotizaciones.length} cotizaciones
+                </Text>
+                <ScrollView 
+                  style={{ flex: 1 }}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}
+                >
+                  {cotizaciones.map((cot: any) => {
+                    console.log('[RENDER] Renderizando cotización:', cot.id, cot.estado);
+                    return (
+                      <TouchableOpacity
+                        key={cot.id}
+                        style={styles.reportCard}
+                        onPress={() => {
+                          console.log('[UI] Presionando cotización:', cot.id);
+                          setCotizacionSeleccionada(cot);
+                          setShowCotizacionDetalleModal(true);
+                        }}
+                      >
+                        <View style={styles.reportHeader}>
+                          <View style={styles.reportHeaderText}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                              ${parseFloat(cot.precio_cotizacion).toFixed(2)}
+                            </Text>
+                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                              {cot.empleado_nombre || 'Empleado'} • {cot.reportes?.equipo_descripcion || 'Equipo'}
+                            </Text>
+                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                              {new Date(cot.created_at).toLocaleDateString('es-ES')}
+                            </Text>
+                          </View>
+                          <View style={[
+                            styles.estadoBadge,
+                            cot.estado === 'pendiente' && { backgroundColor: '#fbbf24', borderColor: '#f59e0b' },
+                            cot.estado === 'aceptada' && { backgroundColor: '#86efac', borderColor: '#16a34a' },
+                            cot.estado === 'rechazada' && { backgroundColor: '#fca5a5', borderColor: '#dc2626' },
+                          ]}>
+                            <Text style={[styles.estadoText, { fontFamily }]}>
+                              {cot.estado === 'pendiente' ? 'Pendiente' : cot.estado === 'aceptada' ? 'Aceptada' : 'Rechazada'}
+                            </Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Modal Detalle Cotización */}
+      {showCotizacionDetalleModal && cotizacionSeleccionada && (
+        <View style={styles.overlay}>
+          <View style={[styles.largeModal, { flex: 1, flexDirection: 'column' }]}>
+            <View style={styles.largeModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, { fontFamily }]}>Detalle de Cotización</Text>
+                <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Revisión de cotización</Text>
+              </View>
+              <TouchableOpacity onPress={() => {
+                setShowCotizacionDetalleModal(false);
+                setCotizacionSeleccionada(null);
+              }} style={styles.closeButton}>
+                <Ionicons name="close" size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={[styles.listScroll, { flex: 1 }]} showsVerticalScrollIndicator={false}>
+              <View style={styles.detailContent}>
+                {/* Información del reporte */}
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailSectionTitle, { fontFamily }]}>Información del Reporte</Text>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Equipo/Servicio</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.reportes?.equipo_descripcion || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Comentario</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.reportes?.comentario || 'N/A'}</Text>
+                  </View>
+                </View>
+
+                {/* Información de la cotización */}
+                <View style={styles.detailSection}>
+                  <Text style={[styles.detailSectionTitle, { fontFamily }]}>Información de la Cotización</Text>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Empleado</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.empleado_nombre || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Análisis General</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.analisis_general || 'N/A'}</Text>
+                  </View>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Precio Cotizado</Text>
+                    <Text style={[styles.detailValue, { fontFamily, fontSize: 18, fontWeight: 'bold', color: '#f59e0b' }]}>
+                      ${parseFloat(cotizacionSeleccionada.precio_cotizacion).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailLabel, { fontFamily }]}>Estado</Text>
+                    <Text style={[
+                      styles.detailValue,
+                      { fontFamily, fontWeight: 'bold' },
+                      cotizacionSeleccionada.estado === 'pendiente' && { color: '#fbbf24' },
+                      cotizacionSeleccionada.estado === 'aceptada' && { color: '#86efac' },
+                      cotizacionSeleccionada.estado === 'rechazada' && { color: '#fca5a5' },
+                    ]}>
+                      {cotizacionSeleccionada.estado === 'pendiente' ? 'Pendiente' : cotizacionSeleccionada.estado === 'aceptada' ? 'Aceptada' : 'Rechazada'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Acciones */}
+                {cotizacionSeleccionada.estado === 'pendiente' && (
+                  <View style={styles.detailActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: '#10b981' }]}
+                      onPress={async () => {
+                        const resultado = await actualizarEstadoCotizacion(cotizacionSeleccionada.id, 'aceptada');
+                        if (resultado.success) {
+                          // También cambiar el estado del reporte a "en_proceso"
+                          await actualizarEstadoReporte(cotizacionSeleccionada.reporte_id, 'en_proceso');
+                          Alert.alert('Éxito', 'Cotización aceptada. El reporte está listo para trabajar.');
+                          cargarCotizaciones(usuario?.email);
+                          setShowCotizacionDetalleModal(false);
+                        }
+                      }}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="white" />
+                      <Text style={[styles.actionButtonText, { fontFamily }]}>Aceptar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
+                      onPress={async () => {
+                        const resultado = await actualizarEstadoCotizacion(cotizacionSeleccionada.id, 'rechazada');
+                        if (resultado.success) {
+                          Alert.alert('Rechazada', 'Cotización rechazada');
+                          cargarCotizaciones(usuario?.email);
+                          setShowCotizacionDetalleModal(false);
+                        }
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={20} color="white" />
+                      <Text style={[styles.actionButtonText, { fontFamily }]}>Rechazar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
           </View>
         </View>
       )}
@@ -1822,5 +2054,171 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  largeModal: {
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#334155',
+    maxHeight: '85%',
+    maxWidth: '95%',
+    width: '100%',
+    overflow: 'hidden',
+  },
+  largeModalHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  largeModalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  largeModalSubtitle: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  closeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  listScroll: {
+    flex: 1,
+  },
+  listSpacing: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  reportCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  reportHeaderText: {
+    flex: 1,
+  },
+  reportTitle: {
+    color: '#f1f5f9',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  reportSubtitle: {
+    color: '#94a3b8',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  reportMeta: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  estadoBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  estadoText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  infoBox: {
+    backgroundColor: 'rgba(51, 65, 85, 0.4)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  detailContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 20,
+  },
+  detailSection: {
+    gap: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  detailSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#06b6d4',
+    marginBottom: 12,
+  },
+  detailField: {
+    gap: 6,
+  },
+  detailLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#e2e8f0',
+  },
+  detailActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'white',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000000b3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    zIndex: 10,
   },
 });
