@@ -1016,85 +1016,85 @@ function EmpleadoPanelContent() {
                     </View>
                   </View>
                 )}
+
+                {/* Campos Fase 2 (cuando está en_proceso) */}
+                {reporteSeleccionado.estado === 'en_proceso' && (
+                  <>
+                    <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
+                    
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Revisión</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Describe la revisión realizada..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={3}
+                        value={revision}
+                        onChangeText={setRevision}
+                        editable={!guardandoFase2}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Recomendaciones para el cliente..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={3}
+                        value={recomendaciones}
+                        onChangeText={setRecomendaciones}
+                        editable={!guardandoFase2}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Detalla lo que fue reparado..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={3}
+                        value={reparacion}
+                        onChangeText={setReparacion}
+                        editable={!guardandoFase2}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Recomendaciones adicionales (opcional)..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={2}
+                        value={recomendacionesAdicionales}
+                        onChangeText={setRecomendacionesAdicionales}
+                        editable={!guardandoFase2}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Materiales o refacciones utilizadas..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={2}
+                        value={materialesRefacciones}
+                        onChangeText={setMaterialesRefacciones}
+                        editable={!guardandoFase2}
+                      />
+                    </View>
+                  </>
+                )}
               </View>
             </ScrollView>
-
-            {/* Campos Fase 2 (cuando está en_proceso) */}
-            {reporteSeleccionado.estado === 'en_proceso' && (
-              <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
-                <View style={[styles.detailContent, isMobile && styles.detailContentMobile]}>
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Revisión</Text>
-                    <TextInput
-                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                      placeholder="Describe la revisión realizada..."
-                      placeholderTextColor="#cbd5e1"
-                      multiline
-                      numberOfLines={3}
-                      value={revision}
-                      onChangeText={setRevision}
-                      editable={!guardandoFase2}
-                    />
-                  </View>
-
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
-                    <TextInput
-                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                      placeholder="Recomendaciones para el cliente..."
-                      placeholderTextColor="#cbd5e1"
-                      multiline
-                      numberOfLines={3}
-                      value={recomendaciones}
-                      onChangeText={setRecomendaciones}
-                      editable={!guardandoFase2}
-                    />
-                  </View>
-
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación</Text>
-                    <TextInput
-                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                      placeholder="Detalla lo que fue reparado..."
-                      placeholderTextColor="#cbd5e1"
-                      multiline
-                      numberOfLines={3}
-                      value={reparacion}
-                      onChangeText={setReparacion}
-                      editable={!guardandoFase2}
-                    />
-                  </View>
-
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
-                    <TextInput
-                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                      placeholder="Recomendaciones adicionales (opcional)..."
-                      placeholderTextColor="#cbd5e1"
-                      multiline
-                      numberOfLines={2}
-                      value={recomendacionesAdicionales}
-                      onChangeText={setRecomendacionesAdicionales}
-                      editable={!guardandoFase2}
-                    />
-                  </View>
-
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
-                    <TextInput
-                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                      placeholder="Materiales o refacciones utilizadas..."
-                      placeholderTextColor="#cbd5e1"
-                      multiline
-                      numberOfLines={2}
-                      value={materialesRefacciones}
-                      onChangeText={setMaterialesRefacciones}
-                      editable={!guardandoFase2}
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-            )}
 
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
