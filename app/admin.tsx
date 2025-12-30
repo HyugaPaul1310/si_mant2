@@ -3,7 +3,7 @@ import { actualizarRolUsuario, actualizarUsuario, eliminarUsuario, eliminarUsuar
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerArchivosReporte, obtenerTodasLasEncuestas, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
-import { crearTarea, obtenerEmpleados } from '@/lib/tareas';
+import { crearTarea, obtenerEmpleados, obtenerTodasLasTareas } from '@/lib/tareas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video } from 'expo-av';
@@ -106,6 +106,12 @@ function AdminPanelContent() {
   const [showEncuestasModal, setShowEncuestasModal] = useState(false);
   const [selectedEncuesta, setSelectedEncuesta] = useState<any | null>(null);
   const [showEncuestaDetailModal, setShowEncuestaDetailModal] = useState(false);
+  
+  // Estados para tareas historial
+  const [tareas, setTareas] = useState<any[]>([]);
+  const [loadingTareas, setLoadingTareas] = useState(false);
+  const [errorTareas, setErrorTareas] = useState('');
+  const [showTareasHistorialModal, setShowTareasHistorialModal] = useState(false);
   
   // Estados para gestión de usuarios
   const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
@@ -261,6 +267,18 @@ function AdminPanelContent() {
       }
     };
     cargarEmpleados();
+  }, []);
+
+  useEffect(() => {
+    const cargarTareasData = async () => {
+      setLoadingTareas(true);
+      setErrorTareas('');
+      const { success, data, error } = await obtenerTodasLasTareas();
+      if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
+      else setTareas(data || []);
+      setLoadingTareas(false);
+    };
+    cargarTareasData();
   }, []);
 
   const hoy = useMemo(() => new Date(), []);
@@ -1081,6 +1099,28 @@ function AdminPanelContent() {
                   <View style={{ flex: 1 }}>
                     <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Generar Nueva Tarea</Text>
                     <Text style={[{ color: '#fed7aa', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Crear y asignar tarea a empleado</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => {
+                    setShowTareasHistorialModal(true);
+                  }}
+                  style={{
+                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                    borderWidth: 1,
+                    borderColor: '#06b6d4',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12
+                  }}
+                >
+                  <Ionicons name="list-outline" size={24} color="#06b6d4" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Tareas</Text>
+                    <Text style={[{ color: '#a5f3fc', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver todas las tareas creadas</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -3288,6 +3328,112 @@ function AdminPanelContent() {
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Modal Historial de Tareas */}
+        {showTareasHistorialModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
+                    <Ionicons name="list-outline" size={24} color="#06b6d4" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Tareas</Text>
+                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todas las tareas creadas</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={24} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingTareas ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando tareas...</Text>
+                </View>
+              ) : errorTareas ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="alert-circle" size={40} color="#ef4444" />
+                  <Text style={[{ color: '#fca5a5', fontSize: 16, marginTop: 12 }, { fontFamily }]}>{errorTareas}</Text>
+                </View>
+              ) : tareas.length === 0 ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="document-outline" size={40} color="#64748b" />
+                  <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>No hay tareas creadas</Text>
+                </View>
+              ) : (
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
+                    {tareas.map((tarea, index) => {
+                      const estadoColor = tarea.estado === 'completada' ? '#10b981' : 
+                                         tarea.estado === 'en_proceso' ? '#f59e0b' : 
+                                         tarea.estado === 'rechazada' ? '#ef4444' : '#06b6d4';
+                      const estadoLabel = tarea.estado === 'completada' ? 'Completada' :
+                                         tarea.estado === 'en_proceso' ? 'En Proceso' :
+                                         tarea.estado === 'rechazada' ? 'Rechazada' : 'Pendiente';
+
+                      return (
+                        <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 8 }, { fontFamily }]}>
+                                {tarea.descripcion}
+                              </Text>
+                            </View>
+                            <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
+                              <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
+                                {estadoLabel}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ gap: 10, marginTop: 12 }}>
+                            {tarea.admin_nombre && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="person-circle-outline" size={16} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                  <Text style={{ fontWeight: '600' }}>Creada por:</Text> {tarea.admin_nombre}
+                                </Text>
+                              </View>
+                            )}
+
+                            {tarea.empleado_nombre && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="person-outline" size={16} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                  <Text style={{ fontWeight: '600' }}>Asignada a:</Text> {tarea.empleado_nombre}
+                                </Text>
+                              </View>
+                            )}
+
+                            {tarea.created_at && (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                  {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              <View style={[styles.modalActions, { marginTop: 16, gap: 10 }]}>
+                <TouchableOpacity
+                  style={[styles.modalSecondary, { flex: 1 }]}
+                  onPress={() => setShowTareasHistorialModal(false)}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
