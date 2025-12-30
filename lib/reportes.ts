@@ -886,3 +886,21 @@ export async function obtenerEncuestasEmpleado(empleadoEmail: string) {
     return { success: false, data: [], error: error.message };
   }
 }
+
+/**
+ * Obtener todas las encuestas
+ */
+export async function obtenerTodasLasEncuestas() {
+  try {
+    const { data, error } = await supabase
+      .from('encuestas_satisfaccion')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener todas las encuestas:', error);
+    return { success: false, data: [], error: error.message };
+  }
+}
