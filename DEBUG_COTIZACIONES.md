@@ -14,17 +14,17 @@
 //
 // 2. PROBLEMAS POSIBLES Y CÓMO DIAGNOSTICARLOS:
 //
-//    ❌ SI VES: "Total de cotizaciones en BD: 0"
+//    SI VES: "Total de cotizaciones en BD: 0"
 //       → El problema es que NO HAY cotizaciones en Supabase
 //       → Solución: Revisa la tabla 'cotizaciones' en Supabase
 //       → ¿Las cotizaciones se están guardando? Verifica empleado-panel.tsx línea 263
 //
-//    ❌ SI VES: "Total de cotizaciones en BD: 5" pero "Cotizaciones después de filtro por usuario: 0"
+//    SI VES: "Total de cotizaciones en BD: 5" pero "Cotizaciones después de filtro por usuario: 0"
 //       → El problema es que el email NO COINCIDE
 //       → Solución: Compara el email en el log con el de la BD
 //       → Puede haber espacios en blanco o mayúsculas diferentes
 //
-//    ❌ SI VES: "Cotizaciones después de filtro por usuario: 2" pero no aparecen en pantalla
+//    SI VES: "Cotizaciones después de filtro por usuario: 2" pero no aparecen en pantalla
 //       → El problema es en el renderizado del componente
 //       → Revisa: cliente-panel.tsx línea 1074 en adelante
 //       → Verifica que cotizaciones.length > 0

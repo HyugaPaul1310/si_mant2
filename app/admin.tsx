@@ -2,6 +2,7 @@
 import { actualizarRolUsuario, actualizarUsuario, eliminarUsuario, eliminarUsuarioPermanente, obtenerTodosLosUsuarios } from '@/lib/auth';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
+import { asignarHerramientaAEmpleadoManual, crearHerramienta, marcarHerramientaComoDevuelta, marcarHerramientaComoPerdida, obtenerInventarioEmpleado, obtenerResumenInventario } from '@/lib/inventario';
 import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerArchivosReporte, obtenerTodasLasEncuestas, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
 import { crearTarea, obtenerEmpleados, obtenerTodasLasTareas } from '@/lib/tareas';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +37,7 @@ function AdminPanelContent() {
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
   
   // SISTEMA DE TABS - Nueva estructura
-  const [activeTab, setActiveTab] = useState<'inicio' | 'reportes' | 'encuestas' | 'tareas' | 'usuarios'>('inicio');
+  const [activeTab, setActiveTab] = useState<'inicio' | 'reportes' | 'encuestas' | 'tareas' | 'inventario' | 'usuarios'>('inicio');
   
   const [usuario, setUsuario] = useState<Admin | null>(null);
   // Contadores dinámicos basados en los reportes
@@ -93,6 +94,7 @@ function AdminPanelContent() {
   const [showStats, setShowStats] = useState(true);
   const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
   // Estados para historial y terminados
@@ -112,6 +114,26 @@ function AdminPanelContent() {
   const [loadingTareas, setLoadingTareas] = useState(false);
   const [errorTareas, setErrorTareas] = useState('');
   const [showTareasHistorialModal, setShowTareasHistorialModal] = useState(false);
+  
+  // Estados para inventario
+  const [empleadosInventario, setEmpleadosInventario] = useState<any[]>([]);
+  const [loadingEmpleadosInventario, setLoadingEmpleadosInventario] = useState(false);
+  const [showInventarioModal, setShowInventarioModal] = useState(false);
+  const [empleadoSelectedInventario, setEmpleadoSelectedInventario] = useState<any | null>(null);
+  const [inventarioEmpleado, setInventarioEmpleado] = useState<any[]>([]);
+  const [loadingInventarioEmpleado, setLoadingInventarioEmpleado] = useState(false);
+  const [showAsignarHerramientaModal, setShowAsignarHerramientaModal] = useState(false);
+  const [herramientaNombreInput, setHerramientaNombreInput] = useState('');
+  const [cantidadHerramienta, setCantidadHerramienta] = useState('1');
+  const [observacionesHerramienta, setObservacionesHerramienta] = useState('');
+  const [asignandoHerramienta, setAsignandoHerramienta] = useState(false);
+  const [errorAsignacion, setErrorAsignacion] = useState<string | null>(null);
+  const [showCrearHerramientaModal, setShowCrearHerramientaModal] = useState(false);
+  const [nuevaHerramientaNombre, setNuevaHerramientaNombre] = useState('');
+  const [nuevaHerramientaDescripcion, setNuevaHerramientaDescripcion] = useState('');
+  const [nuevaHerramientaCategoria, setNuevaHerramientaCategoria] = useState('');
+  const [crearHerramientaLoading, setCrearHerramientaLoading] = useState(false);
+  const [crearHerramientaError, setCrearHerramientaError] = useState<string | null>(null);
   
   // Estados para gestión de usuarios
   const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
@@ -279,6 +301,20 @@ function AdminPanelContent() {
       setLoadingTareas(false);
     };
     cargarTareasData();
+  }, []);
+
+  useEffect(() => {
+    const cargarInventario = async () => {
+      setLoadingEmpleadosInventario(true);
+      const { success, data, error } = await obtenerResumenInventario();
+      if (!success) {
+        console.error('Error cargando inventario:', error);
+      } else {
+        setEmpleadosInventario(data || []);
+      }
+      setLoadingEmpleadosInventario(false);
+    };
+    cargarInventario();
   }, []);
 
   const hoy = useMemo(() => new Date(), []);
@@ -453,12 +489,6 @@ function AdminPanelContent() {
       description: 'Administrar empresas y sucursales',
       gradient: ['#7c3aed', '#8b5cf6'] as const,
       iconName: 'business-outline',
-    },
-    {
-      title: 'Gestion de inventario',
-      description: 'Administrar productos',
-      gradient: ['#dc2626', '#ef4444'] as const,
-      iconName: 'cube-outline',
     },
     {
       title: 'Generar Tareas',
@@ -753,6 +783,7 @@ function AdminPanelContent() {
                 { id: 'reportes', label: 'Reportes', icon: 'document-text-outline' },
                 { id: 'encuestas', label: 'Encuestas', icon: 'clipboard-outline' },
                 { id: 'tareas', label: 'Tareas', icon: 'checkmark-circle-outline' },
+                { id: 'inventario', label: 'Inventario', icon: 'cube-outline' },
                 { id: 'usuarios', label: 'Usuarios', icon: 'people-outline' }
               ].map((tab) => (
                 <TouchableOpacity
@@ -1126,7 +1157,87 @@ function AdminPanelContent() {
               </View>
             )}
 
-            {/* TAB 5: USUARIOS */}
+            {/* TAB 5: INVENTARIO */}
+            {activeTab === 'inventario' && (
+              <View style={styles.tabContent}>
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={[styles.listSpacing, { paddingTop: 0 }]}>
+                    <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { marginBottom: 24 }]}>
+                      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Inventario</Text>
+                      <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
+                    </View>
+
+                    {loadingEmpleadosInventario ? (
+                      <View style={styles.infoBox}>
+                        <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
+                      </View>
+                    ) : empleadosInventario.length === 0 ? (
+                      <View style={styles.noResultadosContainer}>
+                        <Ionicons name="cube-outline" size={64} color="#334155" />
+                        <Text style={[styles.noResultadosTitle, { fontFamily, marginTop: 16 }]}>No hay inventario asignado</Text>
+                        <Text style={[styles.noResultadosText, { fontFamily }]}>Aún no hay herramientas asignadas a empleados</Text>
+                      </View>
+                    ) : (
+                      <View>
+                        <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '600', marginBottom: 12 }, { fontFamily }]}>
+                          {empleadosInventario.length} {empleadosInventario.length === 1 ? 'empleado' : 'empleados'} con herramientas
+                        </Text>
+                        {empleadosInventario.map((empleado: any, index: number) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={{
+                              backgroundColor: '#1e293b',
+                              borderColor: '#334155',
+                              borderWidth: 1,
+                              borderRadius: 12,
+                              padding: 16,
+                              marginBottom: 12,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                            onPress={async () => {
+                              setEmpleadoSelectedInventario(empleado);
+                              setLoadingInventarioEmpleado(true);
+                              const { success, data } = await obtenerInventarioEmpleado(empleado.email);
+                              if (success) {
+                                setInventarioEmpleado(data || []);
+                              }
+                              setLoadingInventarioEmpleado(false);
+                              setShowInventarioModal(true);
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={[{ color: '#f0f9ff', fontWeight: '600', fontSize: 16 }, { fontFamily }]} numberOfLines={1}>
+                                {empleado.nombre}
+                              </Text>
+                              <Text style={[{ color: '#94a3b8', fontSize: 13, marginTop: 4 }, { fontFamily }]}>
+                                {empleado.email}
+                              </Text>
+                            </View>
+                            <View
+                              style={{
+                                backgroundColor: '#06b6d4',
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginLeft: 12,
+                              }}
+                            >
+                              <Ionicons name="eye-outline" size={20} color="white" />
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+
+            {/* TAB 6: USUARIOS */}
             {activeTab === 'usuarios' && (
               <View style={styles.tabContent}>
                 <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
@@ -1689,7 +1800,11 @@ function AdminPanelContent() {
 
               {/* Filtros */}
               <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
-                <View style={styles.filtrosHeader}>
+                <TouchableOpacity 
+                  style={styles.filtrosHeader}
+                  onPress={() => setMostrarFiltros(!mostrarFiltros)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.filtrosHeaderLeft}>
                     <Ionicons name="filter-outline" size={18} color="#22d3ee" />
                     <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
@@ -1701,97 +1816,108 @@ function AdminPanelContent() {
                       </View>
                     )}
                   </View>
-                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
-                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
-                      <Ionicons name="close-circle" size={16} color="#f87171" />
-                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                <View style={styles.filtroSection}>
-                  <Text style={[styles.filtroLabel, { fontFamily }]}>
-                    <Ionicons name="flag-outline" size={14} color="#94a3b8" /> Estado
-                  </Text>
-                  <View style={styles.filtroChips}>
-                    {[
-                      { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
-                      { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
-                      { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
-                    ].map((estado) => {
-                      const isActive = filtrosEstado.includes(estado.value);
-                      return (
-                        <TouchableOpacity
-                          key={estado.value}
-                          onPress={() => toggleFiltroEstado(estado.value)}
-                          style={[
-                            styles.filtroChip,
-                            isActive && { ...styles.filtroChipActive, borderColor: estado.color }
-                          ]}
-                        >
-                          <Ionicons 
-                            name={estado.icon as any} 
-                            size={14} 
-                            color={isActive ? estado.color : '#94a3b8'} 
-                          />
-                          <Text style={[
-                            styles.filtroChipText,
-                            { fontFamily },
-                            isActive && { ...styles.filtroChipTextActive, color: estado.color }
-                          ]}>
-                            {estado.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
+                      <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                        <Ionicons name="close-circle" size={16} color="#f87171" />
+                        <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                      </TouchableOpacity>
+                    )}
+                    <Ionicons 
+                      name={mostrarFiltros ? "chevron-up" : "chevron-down"} 
+                      size={24} 
+                      color="#22d3ee" 
+                    />
                   </View>
-                </View>
+                </TouchableOpacity>
 
-                <View style={styles.filtroSection}>
-                  <Text style={[styles.filtroLabel, { fontFamily }]}>
-                    <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
-                  </Text>
-                  <View style={styles.filtroChips}>
-                    {[
-                      { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
-                      { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
-                      { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
-                    ].map((prioridad) => {
-                      const isActive = filtrosPrioridad.includes(prioridad.value);
-                      return (
-                        <TouchableOpacity
-                          key={prioridad.value}
-                          onPress={() => toggleFiltroPrioridad(prioridad.value)}
-                          style={[
-                            styles.filtroChip,
-                            isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
-                          ]}
-                        >
-                          <Ionicons 
-                            name={prioridad.icon as any} 
-                            size={14} 
-                            color={isActive ? prioridad.color : '#94a3b8'} 
-                          />
-                          <Text style={[
-                            styles.filtroChipText,
-                            { fontFamily },
-                            isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
-                          ]}>
-                            {prioridad.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
+                {mostrarFiltros && (
+                  <>
+                    <View style={styles.filtroSection}>
+                      <Text style={[styles.filtroLabel, { fontFamily }]}>
+                        <Ionicons name="flag-outline" size={14} color="#94a3b8" /> Estado
+                      </Text>
+                      <View style={styles.filtroChips}>
+                        {[
+                          { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
+                          { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
+                          { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
+                        ].map((estado) => {
+                          const isActive = filtrosEstado.includes(estado.value);
+                          return (
+                            <TouchableOpacity
+                              key={estado.value}
+                              onPress={() => toggleFiltroEstado(estado.value)}
+                              style={[
+                                styles.filtroChip,
+                                isActive && { ...styles.filtroChipActive, borderColor: estado.color }
+                              ]}
+                            >
+                              <Ionicons 
+                                name={estado.icon as any} 
+                                size={14} 
+                                color={isActive ? estado.color : '#94a3b8'} 
+                              />
+                              <Text style={[
+                                styles.filtroChipText,
+                                { fontFamily },
+                                isActive && { ...styles.filtroChipTextActive, color: estado.color }
+                              ]}>
+                                {estado.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
 
-                {!loadingReportes && (
-                  <View style={styles.filtrosResultados}>
-                    <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
-                    <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
-                      Mostrando {reportesFiltrados.length} de {reportesPendientes.length} reportes
-                    </Text>
-                  </View>
+                    <View style={styles.filtroSection}>
+                      <Text style={[styles.filtroLabel, { fontFamily }]}>
+                        <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
+                      </Text>
+                      <View style={styles.filtroChips}>
+                        {[
+                          { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                          { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                          { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                        ].map((prioridad) => {
+                          const isActive = filtrosPrioridad.includes(prioridad.value);
+                          return (
+                            <TouchableOpacity
+                              key={prioridad.value}
+                              onPress={() => toggleFiltroPrioridad(prioridad.value)}
+                              style={[
+                                styles.filtroChip,
+                                isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
+                              ]}
+                            >
+                              <Ionicons 
+                                name={prioridad.icon as any} 
+                                size={14} 
+                                color={isActive ? prioridad.color : '#94a3b8'} 
+                              />
+                              <Text style={[
+                                styles.filtroChipText,
+                                { fontFamily },
+                                isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
+                              ]}>
+                                {prioridad.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+
+                    {!loadingReportes && (
+                      <View style={styles.filtrosResultados}>
+                        <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                        <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                          Mostrando {reportesFiltrados.length} de {reportesPendientes.length} reportes
+                        </Text>
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
 
@@ -3435,6 +3561,377 @@ function AdminPanelContent() {
                   <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* Modal Inventario del Empleado */}
+        {showInventarioModal && empleadoSelectedInventario && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <View style={{ backgroundColor: '#8b5cf6', borderRadius: 12, padding: 10 }}>
+                    <Ionicons name="cube-outline" size={24} color="#c4b5fd" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Inventario</Text>
+                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>{empleadoSelectedInventario.nombre}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setShowInventarioModal(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={24} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingInventarioEmpleado ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando inventario...</Text>
+                </View>
+              ) : inventarioEmpleado.length === 0 ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="cube-outline" size={40} color="#64748b" />
+                  <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>Sin herramientas asignadas</Text>
+                </View>
+              ) : (
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
+                    {inventarioEmpleado.map((herramienta: any, index: number) => {
+                      const estadoColor = herramienta.estado === 'devuelta' ? '#10b981' : herramienta.estado === 'perdida' ? '#ef4444' : '#06b6d4';
+                      const estadoLabel = herramienta.estado === 'devuelta' ? 'Devuelta' : herramienta.estado === 'perdida' ? 'Perdida' : 'Asignada';
+
+                      return (
+                        <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
+                                {herramienta.herramienta_nombre}
+                              </Text>
+                              <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                Cantidad: <Text style={{ fontWeight: '600' }}>{herramienta.cantidad}</Text>
+                              </Text>
+                            </View>
+                            <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
+                              <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
+                                {estadoLabel}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={{ gap: 10, marginTop: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
+                              <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                Asignado: {new Date(herramienta.fecha_asignacion).toLocaleDateString('es-ES')}
+                              </Text>
+                            </View>
+
+                            {herramienta.observaciones && (
+                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                                <Ionicons name="document-text-outline" size={16} color="#94a3b8" style={{ marginTop: 2 }} />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13, flex: 1 }, { fontFamily }]}>
+                                  {herramienta.observaciones}
+                                </Text>
+                              </View>
+                            )}
+
+                            {herramienta.estado === 'asignada' && (
+                              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                                <TouchableOpacity
+                                  style={{ flex: 1, backgroundColor: '#10b98133', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#10b98166' }}
+                                  onPress={async () => {
+                                    const { success } = await marcarHerramientaComoDevuelta(herramienta.id);
+                                    if (success) {
+                                      const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                                      if (s2) setInventarioEmpleado(data || []);
+                                    }
+                                  }}
+                                >
+                                  <Text style={[{ color: '#6ee7b7', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Devuelta</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={{ flex: 1, backgroundColor: '#ef444433', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ef444466' }}
+                                  onPress={async () => {
+                                    const { success } = await marcarHerramientaComoPerdida(herramienta.id);
+                                    if (success) {
+                                      const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                                      if (s2) setInventarioEmpleado(data || []);
+                                    }
+                                  }}
+                                >
+                                  <Text style={[{ color: '#fca5a5', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Perdida</Text>
+                                </TouchableOpacity>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              <View style={[styles.modalActions, { marginTop: 16, gap: 10, paddingHorizontal: 20, paddingVertical: 16 }]}>
+                <TouchableOpacity
+                  style={[styles.modalSecondary, { flex: 1 }]}
+                  onPress={() => setShowInventarioModal(false)}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalPrimary, { flex: 1, backgroundColor: '#8b5cf6', borderColor: '#a855f7' }]}
+                  onPress={() => {
+                    setHerramientaNombreInput('');
+                    setShowAsignarHerramientaModal(true);
+                  }}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>+ Asignar Herramienta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Modal Asignar Herramienta */}
+        {showAsignarHerramientaModal && empleadoSelectedInventario && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
+                  <Ionicons name="add-circle-outline" size={22} color="#c4b5fd" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Herramienta</Text>
+              </View>
+
+              {errorAsignacion && (
+                <View style={styles.errorBox}>
+                  <Text style={[styles.errorText, { fontFamily }]}>{errorAsignacion}</Text>
+                </View>
+              )}
+
+              <View style={styles.modalForm}>
+                {/* Empleado - Read Only */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Empleado</Text>
+                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                    <Text style={[styles.formInputText, { color: '#f0f9ff' }]}>{empleadoSelectedInventario.nombre}</Text>
+                  </View>
+                </View>
+
+                {/* Herramienta */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Herramienta*</Text>
+                  <TextInput
+                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                    placeholder="Nombre de la herramienta"
+                    placeholderTextColor="#6b7280"
+                    value={herramientaNombreInput}
+                    onChangeText={setHerramientaNombreInput}
+                    editable={!asignandoHerramienta}
+                  />
+                </View>
+
+                {/* Cantidad */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Cantidad*</Text>
+                  <TextInput
+                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                    placeholder="Cantidad"
+                    placeholderTextColor="#6b7280"
+                    keyboardType="numeric"
+                    value={cantidadHerramienta}
+                    onChangeText={setCantidadHerramienta}
+                    editable={!asignandoHerramienta}
+                  />
+                </View>
+
+                {/* Observaciones */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Observaciones</Text>
+                  <TextInput
+                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
+                    placeholder="Observaciones adicionales..."
+                    placeholderTextColor="#6b7280"
+                    multiline
+                    numberOfLines={3}
+                    value={observacionesHerramienta}
+                    onChangeText={setObservacionesHerramienta}
+                    editable={!asignandoHerramienta}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.modalSecondary} 
+                  onPress={() => {
+                    setShowAsignarHerramientaModal(false);
+                    setHerramientaNombreInput('');
+                    setCantidadHerramienta('1');
+                    setObservacionesHerramienta('');
+                    setErrorAsignacion(null);
+                  }}
+                  disabled={asignandoHerramienta}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#7c3aed', '#8b5cf6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity 
+                    onPress={async () => {
+                      if (!herramientaNombreInput.trim() || !cantidadHerramienta) {
+                        setErrorAsignacion('Escribe el nombre de la herramienta y la cantidad');
+                        return;
+                      }
+
+                      setAsignandoHerramienta(true);
+                      const { success, error } = await asignarHerramientaAEmpleadoManual(
+                        herramientaNombreInput.trim(),
+                        empleadoSelectedInventario.email,
+                        empleadoSelectedInventario.nombre,
+                        parseInt(cantidadHerramienta) || 1,
+                        usuario?.email || '',
+                        usuario?.nombre || '',
+                        observacionesHerramienta || undefined
+                      );
+
+                      if (success) {
+                        const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                        if (s2) setInventarioEmpleado(data || []);
+                        setShowAsignarHerramientaModal(false);
+                        setHerramientaNombreInput('');
+                        setCantidadHerramienta('1');
+                        setObservacionesHerramienta('');
+                        setErrorAsignacion(null);
+                      } else {
+                        setErrorAsignacion(error || 'Error al asignar herramienta');
+                      }
+                      setAsignandoHerramienta(false);
+                    }}
+                    disabled={asignandoHerramienta}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {asignandoHerramienta ? 'Asignando...' : 'Asignar'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Modal para crear nueva herramienta */}
+        {showCrearHerramientaModal && (
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, isMobile && styles.modalContainerMobile]}>
+              <LinearGradient colors={['#667eea', '#764ba2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeaderGradient}>
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Crear Nueva Herramienta</Text>
+                  <TouchableOpacity onPress={() => setShowCrearHerramientaModal(false)}>
+                    <Ionicons name="close" size={24} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+
+              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                {crearHerramientaError && (
+                  <View style={[styles.errorBox, isMobile && styles.errorBoxMobile]}>
+                    <Ionicons name="alert-circle" size={20} color="#ef4444" />
+                    <Text style={[styles.errorText, { fontFamily }]}>{crearHerramientaError}</Text>
+                  </View>
+                )}
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre *</Text>
+                  <TextInput
+                    style={[styles.textInput, isMobile && styles.textInputMobile]}
+                    placeholder="Ej: Martillo, Taladro..."
+                    placeholderTextColor="#9ca3af"
+                    value={nuevaHerramientaNombre}
+                    onChangeText={setNuevaHerramientaNombre}
+                    editable={!crearHerramientaLoading}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Descripción</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textInputMultiline, isMobile && styles.textInputMobile]}
+                    placeholder="Ej: Herramienta de mano para clavar..."
+                    placeholderTextColor="#9ca3af"
+                    value={nuevaHerramientaDescripcion}
+                    onChangeText={setNuevaHerramientaDescripcion}
+                    multiline
+                    numberOfLines={3}
+                    editable={!crearHerramientaLoading}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Categoría</Text>
+                  <TextInput
+                    style={[styles.textInput, isMobile && styles.textInputMobile]}
+                    placeholder="Ej: Herramientas de Mano, Eléctricas..."
+                    placeholderTextColor="#9ca3af"
+                    value={nuevaHerramientaCategoria}
+                    onChangeText={setNuevaHerramientaCategoria}
+                    editable={!crearHerramientaLoading}
+                  />
+                </View>
+              </ScrollView>
+
+              <LinearGradient colors={['#667eea', '#764ba2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalFooterGradient}>
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={[styles.modalSecondaryButton, isMobile && styles.modalSecondaryButtonMobile]}
+                    onPress={() => setShowCrearHerramientaModal(false)}
+                    disabled={crearHerramientaLoading}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.modalPrimaryButton, isMobile && styles.modalPrimaryButtonMobile]}
+                    onPress={async () => {
+                      if (!nuevaHerramientaNombre.trim()) {
+                        setCrearHerramientaError('El nombre es requerido');
+                        return;
+                      }
+
+                      setCrearHerramientaLoading(true);
+                      setCrearHerramientaError(null);
+
+                      const { success, error } = await crearHerramienta(
+                        nuevaHerramientaNombre,
+                        nuevaHerramientaDescripcion || undefined,
+                        nuevaHerramientaCategoria || undefined
+                      );
+
+                      if (success) {
+                        setNuevaHerramientaNombre('');
+                        setNuevaHerramientaDescripcion('');
+                        setNuevaHerramientaCategoria('');
+                        setShowCrearHerramientaModal(false);
+                      } else {
+                        setCrearHerramientaError(error || 'Error al crear herramienta');
+                      }
+                      setCrearHerramientaLoading(false);
+                    }}
+                    disabled={crearHerramientaLoading}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {crearHerramientaLoading ? 'Creando...' : 'Crear'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
             </View>
           </View>
         )}

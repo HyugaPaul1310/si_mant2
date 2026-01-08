@@ -1,13 +1,3 @@
-/**
- * Cloudflare R2 Upload Server (SIMPLE)
- * Recibe FormData y sube directamente a Cloudflare R2
- * 
- * Instalación:
- * npm install express cors multer axios
- * 
- * Uso:
- * node api/cloudflare-upload-server.js
- */
 
 const express = require('express');
 const cors = require('cors');
@@ -37,7 +27,7 @@ const PORT = process.env.PORT || 5001;
 
 // Validar configuración
 if (!ACCOUNT_ID || !CUSTOM_DOMAIN || !ACCESS_KEY || !SECRET_KEY) {
-  console.error('❌ Error: Faltan variables en .env.local');
+  console.error(' Error: Faltan variables en .env.local');
   console.error('   - EXPO_PUBLIC_CLOUDFLARE_ACCOUNT_ID');
   console.error('   - EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN');
   console.error('   - CLOUDFLARE_API_TOKEN');
@@ -115,7 +105,7 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
     });
 
     const response = await s3Client.send(command);
-    console.log(`✅ Archivo subido exitosamente: ${key}`);
+    console.log(`Archivo subido exitosamente: ${key}`);
 
     // URL pública del archivo
     const publicUrl = `${CUSTOM_DOMAIN}/${key}`;
@@ -127,7 +117,7 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       fileSize: fileBuffer.length,
     });
   } catch (error) {
-    console.error('❌ Error en /api/upload-file:', error.message);
+    console.error('Error en /api/upload-file:', error.message);
     console.error('   Code:', error.Code);
     console.error('   Full error:', error);
     
@@ -160,14 +150,14 @@ app.delete('/api/delete-cloudflare', async (req, res) => {
     
     await s3Client.send(deleteCommand);
 
-    console.log(`✅ Archivo eliminado: ${key}`);
+    console.log(`Archivo eliminado: ${key}`);
 
     return res.json({
       success: true,
       message: 'Archivo eliminado correctamente',
     });
   } catch (error) {
-    console.error('❌ Error en DELETE:', error.message);
+    console.error('Error en DELETE:', error.message);
     return res.status(500).json({
       success: false,
       error: error.message,
@@ -203,7 +193,7 @@ app.get('/api/get-file', async (req, res) => {
       });
     }
 
-    console.log(`📥 Sirviendo archivo: ${key}`);
+    console.log(`Sirviendo archivo: ${key}`);
 
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
@@ -242,9 +232,9 @@ app.get('/api/get-file', async (req, res) => {
     res.set('Content-Length', buffer.length);
     res.send(buffer);
     
-    console.log(`✅ Archivo enviado: ${key} (${buffer.length} bytes)`);
+    console.log(`Archivo enviado: ${key} (${buffer.length} bytes)`);
   } catch (error) {
-    console.error('❌ Error en /api/get-file:', error.message);
+    console.error('Error en /api/get-file:', error.message);
     res.status(500).json({
       success: false,
       error: error.message || 'Error al obtener archivo',
@@ -274,10 +264,10 @@ Endpoints disponibles:
 
 // Manejo de errores
 process.on('unhandledRejection', (reason) => {
-  console.error('❌ Unhandled Rejection:', reason);
+  console.error('Unhandled Rejection:', reason);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
   process.exit(1);
 });

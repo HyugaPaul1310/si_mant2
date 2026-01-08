@@ -647,7 +647,7 @@ export async function obtenerCotizacionesCliente(empresaId?: string, userEmail?:
         const usuarioEmail = cot.reportes?.usuario_email;
         const coincide = usuarioEmail === userEmail;
         if (!coincide) {
-          console.log(`[COTIZACIONES] ❌ No coincide: "${usuarioEmail}" !== "${userEmail}"`);
+          console.log(`[COTIZACIONES] No coincide: "${usuarioEmail}" !== "${userEmail}"`);
         } else {
           console.log(`[COTIZACIONES] ✓ Coincide: "${usuarioEmail}" === "${userEmail}"`);
         }
@@ -793,7 +793,7 @@ export async function guardarEncuestaSatisfaccion(encuesta: {
   satisfaccion: string;
 }) {
   try {
-    console.log('💾 Guardando encuesta:', encuesta.reporte_id);
+    console.log('Guardando encuesta:', encuesta.reporte_id);
     
     // Construir objeto limpio para insertar
     const datosEncuesta = {
@@ -819,14 +819,14 @@ export async function guardarEncuestaSatisfaccion(encuesta: {
       .select();
 
     if (error) {
-      console.error('❌ Error de Supabase:', error.message);
+      console.error('Error de Supabase:', error.message);
       throw error;
     }
     
-    console.log('✅ Encuesta guardada:', data?.[0]?.id);
+    console.log('Encuesta guardada:', data?.[0]?.id);
     return { success: true, data: data?.[0], error: null };
   } catch (error: any) {
-    console.error('❌ Error al guardar encuesta:', error.message);
+    console.error('Error al guardar encuesta:', error.message);
     return { success: false, data: null, error: error.message };
   }
 }

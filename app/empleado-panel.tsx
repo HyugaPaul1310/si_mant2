@@ -74,6 +74,8 @@ function EmpleadoPanelContent() {
   const [materialesRefacciones, setMaterialesRefacciones] = useState('');
   const [guardandoFase2, setGuardandoFase2] = useState(false);
   const [evidenciaReporte, setEvidenciaReporte] = useState<any[]>([]);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -249,22 +251,28 @@ function EmpleadoPanelContent() {
     }
   };
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
   const guardarCotizacion = async () => {
     if (!reporteSeleccionado?.id) return;
     
     if (!descripcionTrabajo.trim()) {
-      alert('Por favor ingresa un análisis general');
+      showToast('Por favor ingresa un análisis general', 'warning');
       return;
     }
     
     if (!precioCotizacion.trim()) {
-      alert('Por favor ingresa el precio de la cotización');
+      showToast('Por favor ingresa el precio de la cotización', 'warning');
       return;
     }
 
     const precioNumerico = parseFloat(precioCotizacion);
     if (isNaN(precioNumerico) || precioNumerico <= 0) {
-      alert('Por favor ingresa un precio válido');
+      showToast('Por favor ingresa un precio válido', 'warning');
       return;
     }
 
@@ -301,13 +309,13 @@ function EmpleadoPanelContent() {
         setDescripcionTrabajo('');
         setPrecioCotizacion('');
         
-        alert('Cotización guardada exitosamente');
+        showToast('Cotización guardada exitosamente', 'success');
       } else {
-        alert('Error al guardar la cotización');
+        showToast('Error al guardar la cotización', 'error');
       }
     } catch (error) {
       console.error('Error al guardar cotización:', error);
-      alert('Error al guardar la cotización');
+      showToast('Error al guardar la cotización', 'error');
     } finally {
       setGuardandoCotizacion(false);
     }
@@ -382,13 +390,6 @@ function EmpleadoPanelContent() {
       gradientStart: '#047857',
       gradientEnd: '#059669',
       iconName: 'archive' as const,
-    },
-    {
-      title: 'Generar inventario',
-      description: 'Reporte de inventario del establecimiento',
-      gradientStart: '#6d28d9',
-      gradientEnd: '#7c3aed',
-      iconName: 'cube' as const,
     },
   ];
 
@@ -1137,7 +1138,7 @@ function EmpleadoPanelContent() {
                   <TouchableOpacity
                     onPress={async () => {
                       if (!revision.trim() || !recomendaciones.trim() || !reparacion.trim()) {
-                        alert('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación');
+                        showToast('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación', 'warning');
                         return;
                       }
 
@@ -1158,16 +1159,12 @@ function EmpleadoPanelContent() {
                       );
 
                       if (!updateResult.success) {
-                        alert('Error al finalizar el reporte: ' + updateResult.error);
+                        showToast('Error al finalizar el reporte: ' + updateResult.error, 'error');
                         return;
                       }
 
                       // Éxito: mostrar mensaje y recargar
-                      alert(
-                        'Trabajo finalizado\n\n' +
-                        'El cliente debe revisar y confirmar la finalización ' +
-                        'antes de responder la encuesta.'
-                      );
+                      showToast('Trabajo finalizado. El cliente debe revisar y confirmar la finalización.', 'success');
                       
                       // Limpiar y cerrar modal
                       setShowReporteDetalle(false);
@@ -1425,6 +1422,67 @@ function EmpleadoPanelContent() {
               {archivoVisualizando.nombre}
             </Text>
           </View>
+        </View>
+      )}
+
+      {/* Toast Personalizado */}
+      {toastMessage && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 16,
+            right: 16,
+            borderRadius: 12,
+            overflow: 'hidden',
+            zIndex: 9999,
+          }}
+        >
+          <LinearGradient
+            colors={
+              toastType === 'success'
+                ? ['#10b981', '#059669']
+                : toastType === 'error'
+                ? ['#ef4444', '#dc2626']
+                : toastType === 'warning'
+                ? ['#f59e0b', '#d97706']
+                : ['#06b6d4', '#0891b2']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              gap: 12,
+            }}
+          >
+            <Ionicons
+              name={
+                toastType === 'success'
+                  ? 'checkmark-circle'
+                  : toastType === 'error'
+                  ? 'alert-circle'
+                  : toastType === 'warning'
+                  ? 'warning'
+                  : 'information-circle'
+              }
+              size={24}
+              color="white"
+            />
+            <Text
+              style={{
+                color: 'white',
+                fontWeight: '600',
+                fontSize: 14,
+                flex: 1,
+                fontFamily,
+              }}
+            >
+              {toastMessage}
+            </Text>
+          </LinearGradient>
         </View>
       )}
     </SafeAreaView>

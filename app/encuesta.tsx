@@ -5,14 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -146,15 +146,15 @@ export default function EncuestaPage() {
       console.log('Fase 2 actualizada');
 
       // Guardar encuesta en tabla separada
-      console.log('💾 Guardando encuesta en BD...');
+      console.log('Guardando encuesta en BD...');
       const resultadoEncuesta = await guardarEncuestaSatisfaccion(encuestaData);
       
       if (!resultadoEncuesta.success) {
-        console.error('❌ Fallo al guardar encuesta:', resultadoEncuesta.error);
+        console.error('Fallo al guardar encuesta:', resultadoEncuesta.error);
         throw new Error(resultadoEncuesta.error || 'No se pudo guardar la encuesta');
       }
       
-      console.log('✅ Encuesta guardada correctamente');
+      console.log('Encuesta guardada correctamente');
 
       // PASO 5: Cambiar estado a "cerrado_por_cliente" (cierre definitivo)
       console.log('Cambiando estado a cerrado_por_cliente...');
@@ -164,7 +164,7 @@ export default function EncuestaPage() {
         throw new Error(resultadoEstado.error || 'No se pudo marcar el reporte como cerrado');
       }
       
-      console.log('✅ Reporte cerrado por cliente - CIERRE DEFINITIVO');
+      console.log('Reporte cerrado por cliente - CIERRE DEFINITIVO');
       console.log('Encuesta finalizada correctamente');
 
       setGuardando(false);

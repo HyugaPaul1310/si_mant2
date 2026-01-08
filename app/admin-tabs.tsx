@@ -168,12 +168,12 @@ export const AdminTabsStructure = {
 /**
  * VENTAJAS DE ESTA ESTRUCTURA:
  * 
- * ✅ MEJOR UX EN MÓVIL: Una sola pestaña visible a la vez
- * ✅ CÓDIGO ORGANIZADO: Cada tab tiene su lógica separada
- * ✅ FÁCIL DE MANTENER: No hay 50+ estados en un solo lugar
- * ✅ ESCALABLE: Fácil agregar nuevas tabs
- * ✅ PERFORMANCE: Menos renders innecesarios
- * ✅ ACCESIBLE: Interfaz más clara y directa
+ * MEJOR UX EN MÓVIL: Una sola pestaña visible a la vez
+ * CÓDIGO ORGANIZADO: Cada tab tiene su lógica separada
+ * FÁCIL DE MANTENER: No hay 50+ estados en un solo lugar
+ * ESCALABLE: Fácil agregar nuevas tabs
+ * PERFORMANCE: Menos renders innecesarios
+ * ACCESIBLE: Interfaz más clara y directa
  * 
  * IMPLEMENTACIÓN PASOS:
  * 

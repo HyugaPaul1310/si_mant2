@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -49,6 +50,8 @@ export default function ClientePanel() {
   const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
   const [cotizacionSeleccionada, setCotizacionSeleccionada] = useState<any | null>(null);
   const [showCotizacionDetalleModal, setShowCotizacionDetalleModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   
 
   useEffect(() => {
@@ -97,6 +100,12 @@ export default function ClientePanel() {
     },
     []
   );
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   const cargarCotizaciones = useCallback(
     async (email?: string) => {
@@ -1294,7 +1303,7 @@ export default function ClientePanel() {
                         if (resultado.success) {
                           // También cambiar el estado del reporte a "en_proceso"
                           await actualizarEstadoReporte(cotizacionSeleccionada.reporte_id, 'en_proceso');
-                          Alert.alert('Éxito', 'Cotización aceptada. El reporte está listo para trabajar.');
+                          showToast('Cotización aceptada. El reporte está listo para trabajar.', 'success');
                           cargarCotizaciones(usuario?.email);
                           setShowCotizacionDetalleModal(false);
                         }
@@ -1422,6 +1431,67 @@ export default function ClientePanel() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Toast Personalizado */}
+      {toastMessage && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 16,
+            right: 16,
+            borderRadius: 12,
+            overflow: 'hidden',
+            zIndex: 9999,
+          }}
+        >
+          <LinearGradient
+            colors={
+              toastType === 'success'
+                ? ['#10b981', '#059669']
+                : toastType === 'error'
+                ? ['#ef4444', '#dc2626']
+                : toastType === 'warning'
+                ? ['#f59e0b', '#d97706']
+                : ['#06b6d4', '#0891b2']
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              gap: 12,
+            }}
+          >
+            <Ionicons
+              name={
+                toastType === 'success'
+                  ? 'checkmark-circle'
+                  : toastType === 'error'
+                  ? 'alert-circle'
+                  : toastType === 'warning'
+                  ? 'warning'
+                  : 'information-circle'
+              }
+              size={24}
+              color="white"
+            />
+            <Text
+              style={{
+                color: 'white',
+                fontWeight: '600',
+                fontSize: 14,
+                flex: 1,
+                fontFamily,
+              }}
+            >
+              {toastMessage}
+            </Text>
+          </LinearGradient>
         </View>
       )}
     </SafeAreaView>
@@ -2363,909 +2433,3 @@ const styles = StyleSheet.create({
     borderColor: '#34d399',
   },
 });
-/*
-    borderRadius: 16,
-    backgroundColor: '#0891b2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 20,
-    letterSpacing: 1,
-  },
-  statusDot: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#020617',
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  welcomeText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 20,
-  },
-  empresaText: {
-    color: '#22d3ee',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  roleText: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  toggleButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#1e293bcc',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  logoutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#1e293bcc',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  statsRow: {
-    marginBottom: 32,
-    flexDirection: 'row',
-    gap: 16,
-  },
-  statsRowMobile: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#1e293b66',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#33415580',
-    padding: 20,
-  },
-  statCardMobile: {
-    backgroundColor: '#1e293b66',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#33415580',
-    padding: 20,
-    marginBottom: 12,
-  },
-  statCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statBadge: {
-    backgroundColor: '#33415580',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statBadgeText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  statValue: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: 30,
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  sectionHeader: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    color: '#06b6d4',
-    fontWeight: '700',
-    fontSize: 14,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionSubtitle: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
-  filterToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#0b1626',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#1e293b',
-  },
-  filtroPanel: {
-    backgroundColor: '#0b1626',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  filtroPanelHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  filtroTitulo: {
-    color: '#06b6d4',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  filtroSection: {
-    gap: 6,
-    marginBottom: 10,
-  },
-  filtroLabel: {
-    color: '#cbd5e1',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  filtroChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filtroChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#132137',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#1f2b3d',
-  },
-  filtroChipActive: {
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
-    borderWidth: 2,
-  },
-  filtroChipText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  filtroChipTextActive: {
-    fontWeight: '700',
-  },
-  limpiarFiltrosButtonSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#ef44441a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ef44444d',
-  },
-  limpiarFiltrosTextSmall: {
-    color: '#f87171',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  filtroResumen: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  filtroResumenText: {
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  optionsGrid: {
-    marginBottom: 24,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  optionsGridMobile: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  optionCard: {
-    width: 'calc(50% - 8px)',
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 2,
-    borderColor: '#ffffff1a',
-  },
-  optionCardMobile: {
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 2,
-    borderColor: '#ffffff1a',
-    marginBottom: 12,
-  },
-  optionContent: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  optionContentMobile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  optionIcon: {
-    width: 56,
-    height: 56,
-    backgroundColor: '#ffffff33',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionTextContainer: {
-    flex: 1,
-  },
-  optionTitle: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: 18,
-    marginBottom: 4,
-  },
-  optionDescription: {
-    color: '#ffffffcc',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#000000b3',
-    zIndex: 30,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContainer: {
-    width: '100%',
-    maxWidth: 768,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 16,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  modalHeaderMobile: {
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modalHeaderText: {
-    flex: 1,
-  },
-  modalTitle: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: 20,
-  },
-  modalTitleMobile: {
-    fontSize: 18,
-    lineHeight: 22,
-  },
-  modalSubtitle: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
-  modalSubtitleMobile: {
-    fontSize: 13,
-  },
-  modalHeaderButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  modalHeaderButtonsMobile: {
-    width: '100%',
-    justifyContent: 'flex-start',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  refreshButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 8,
-  },
-  refreshButtonDisabled: {
-    opacity: 0.7,
-  },
-  refreshButtonText: {
-    color: '#67e8f9',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoBox: {
-    backgroundColor: '#1e293b66',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  infoText: {
-    color: '#cbd5e1',
-    fontSize: 12,
-  },
-  reportCard: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  reportCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 8,
-  },
-  reportCardInfo: {
-    flex: 1,
-  },
-  reportCardTitle: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  reportCardDate: {
-    color: '#64748b',
-    fontSize: 12,
-  },
-  reportCardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  eyeButton: {
-    width: 32,
-    height: 32,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reportCardComment: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  reportCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginTop: 4,
-  },
-  loadingText: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
-  errorBox: {
-    backgroundColor: '#ef44441a',
-    borderWidth: 1,
-    borderColor: '#ef44444d',
-    borderRadius: 12,
-    padding: 16,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-  },
-  emptyContainer: {
-    gap: 12,
-  },
-  emptyText: {
-    color: '#94a3b8',
-    fontSize: 14,
-  },
-  demoBox: {
-    backgroundColor: '#0f172acc',
-    borderWidth: 1,
-    borderColor: '#10b9814d',
-    borderRadius: 12,
-    padding: 16,
-  },
-  demoTitle: {
-    color: '#6ee7b7',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  reportsList: {
-    maxHeight: 420,
-  },
-  reportsContainer: {
-    gap: 12,
-  },
-  detailOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#000000b3',
-    zIndex: 40,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailContainer: {
-    width: '100%',
-    maxWidth: 672,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 16,
-    padding: 20,
-  },
-  detailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 16,
-  },
-  detailHeaderText: {
-    flex: 1,
-  },
-  detailTitle: {
-    color: 'white',
-    fontWeight: '900',
-    fontSize: 18,
-  },
-  detailScroll: {
-    maxHeight: 500,
-  },
-  detailField: {
-    backgroundColor: '#1e293b80',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  detailLabel: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  detailValue: {
-    color: 'white',
-    fontSize: 14,
-  },
-  detailFieldSubtext: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  detailFooter: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingTop: 16,
-  },
-  detailCloseButton: {
-    flex: 1,
-    backgroundColor: '#475569',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  detailCloseButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  detailConfirmButton: {
-    flex: 1,
-    backgroundColor: '#10b981',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#34d399',
-  },
-  detailConfirmButtonText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  detailSeparator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#334155',
-  },
-  separatorText: {
-    color: '#f59e0b',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  successOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#00000099',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    zIndex: 20,
-  },
-  successContainer: {
-    width: '100%',
-    maxWidth: 448,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#22d3ee66',
-    borderRadius: 16,
-    padding: 20,
-  },
-  successHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  successIcon: {
-    backgroundColor: '#22d3ee26',
-    borderRadius: 20,
-    padding: 10,
-  },
-  successTitle: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  successMessage: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  successButton: {
-    backgroundColor: '#06b6d4',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#22d3ee80',
-  },
-  successButtonText: {
-    color: 'white',
-    fontWeight: '600',
-  },
-  logoutOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#000000b3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-  logoutContainer: {
-    width: '100%',
-    maxWidth: 384,
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 16,
-    padding: 24,
-  },
-  logoutHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
-  },
-  logoutIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#ef444433',
-    borderWidth: 1,
-    borderColor: '#f8717180',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoutTitle: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
-  logoutMessage: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    marginBottom: 24,
-  },
-  logoutButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  logoutCancelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    backgroundColor: '#1e293b',
-  },
-  logoutCancelText: {
-    color: '#e2e8f0',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  logoutConfirmButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#ef4444',
-    borderWidth: 1,
-    borderColor: '#f87171',
-  },
-  logoutConfirmText: {
-    color: 'white',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  largeModal: {
-    backgroundColor: '#0f172a',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
-    maxHeight: '85%',
-    maxWidth: '95%',
-    width: '100%',
-    overflow: 'hidden',
-  },
-  largeModalHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  largeModalTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  largeModalSubtitle: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  closeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  listScroll: {
-    flex: 1,
-  },
-  listSpacing: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  reportCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  reportHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  reportHeaderText: {
-    flex: 1,
-  },
-  reportTitle: {
-    color: '#f1f5f9',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  reportSubtitle: {
-    color: '#94a3b8',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  reportMeta: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  estadoBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  estadoText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  infoBox: {
-    backgroundColor: 'rgba(51, 65, 85, 0.4)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    marginHorizontal: 16,
-    marginTop: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  infoText: {
-    color: '#94a3b8',
-    fontSize: 14,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  detailContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 20,
-  },
-  detailSection: {
-    gap: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  detailSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#06b6d4',
-    marginBottom: 12,
-  },
-  detailField: {
-    gap: 6,
-  },
-  detailLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#e2e8f0',
-  },
-  detailActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: 'white',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#000000b3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    zIndex: 10,
-  },
-});
-*/
