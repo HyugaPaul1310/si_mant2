@@ -120,7 +120,7 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
     console.error('Error en /api/upload-file:', error.message);
     console.error('   Code:', error.Code);
     console.error('   Full error:', error);
-    
+
     return res.status(500).json({
       success: false,
       error: error.message || 'Error al subir archivo',
@@ -147,7 +147,7 @@ app.delete('/api/delete-cloudflare', async (req, res) => {
       Bucket: BUCKET_NAME,
       Key: key,
     });
-    
+
     await s3Client.send(deleteCommand);
 
     console.log(`Archivo eliminado: ${key}`);
@@ -185,7 +185,7 @@ app.get('/health', (req, res) => {
 app.get('/api/get-file', async (req, res) => {
   try {
     const { key } = req.query;
-    
+
     if (!key) {
       return res.status(400).json({
         success: false,
@@ -228,10 +228,10 @@ app.get('/api/get-file', async (req, res) => {
       chunks.push(chunk);
     }
     const buffer = Buffer.concat(chunks);
-    
+
     res.set('Content-Length', buffer.length);
     res.send(buffer);
-    
+
     console.log(`Archivo enviado: ${key} (${buffer.length} bytes)`);
   } catch (error) {
     console.error('Error en /api/get-file:', error.message);
@@ -250,7 +250,7 @@ app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║   Cloudflare R2 Upload Server (Simple)                   ║
-║   Escuchando en: http://localhost:${PORT}                    ║
+║   Escuchando en: http://192.168.1.148:${PORT}                    ║
 ║   Bucket: ${BUCKET_NAME}                         ║
 ║   Modo: Público (sin autenticación)                      ║
 ╚══════════════════════════════════════════════════════════╝

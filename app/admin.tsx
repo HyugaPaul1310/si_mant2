@@ -10,18 +10,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,10 +36,10 @@ function AdminPanelContent() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
-  
+
   // SISTEMA DE TABS - Nueva estructura
   const [activeTab, setActiveTab] = useState<'inicio' | 'reportes' | 'encuestas' | 'tareas' | 'inventario' | 'usuarios'>('inicio');
-  
+
   const [usuario, setUsuario] = useState<Admin | null>(null);
   // Contadores dinámicos basados en los reportes
   const [showLogout, setShowLogout] = useState(false);
@@ -64,7 +64,7 @@ function AdminPanelContent() {
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
-  
+
   // PASO 6: Estados para reportes finalizados y cerrados
   const [reportesFinalizados, setReportesFinalizados] = useState<any[]>([]);
   const [reportesCerrados, setReportesCerrados] = useState<any[]>([]);
@@ -97,11 +97,11 @@ function AdminPanelContent() {
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  
+
   // Estados para historial y terminados
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
-  
+
   // Estados para encuestas
   const [encuestas, setEncuestas] = useState<any[]>([]);
   const [loadingEncuestas, setLoadingEncuestas] = useState(false);
@@ -109,13 +109,13 @@ function AdminPanelContent() {
   const [showEncuestasModal, setShowEncuestasModal] = useState(false);
   const [selectedEncuesta, setSelectedEncuesta] = useState<any | null>(null);
   const [showEncuestaDetailModal, setShowEncuestaDetailModal] = useState(false);
-  
+
   // Estados para tareas historial
   const [tareas, setTareas] = useState<any[]>([]);
   const [loadingTareas, setLoadingTareas] = useState(false);
   const [errorTareas, setErrorTareas] = useState('');
   const [showTareasHistorialModal, setShowTareasHistorialModal] = useState(false);
-  
+
   // Estados para inventario
   const [empleadosInventario, setEmpleadosInventario] = useState<any[]>([]);
   const [loadingEmpleadosInventario, setLoadingEmpleadosInventario] = useState(false);
@@ -129,13 +129,14 @@ function AdminPanelContent() {
   const [observacionesHerramienta, setObservacionesHerramienta] = useState('');
   const [asignandoHerramienta, setAsignandoHerramienta] = useState(false);
   const [errorAsignacion, setErrorAsignacion] = useState<string | null>(null);
+  const [showInventarioEmpleadoDropdown, setShowInventarioEmpleadoDropdown] = useState(false);
   const [showCrearHerramientaModal, setShowCrearHerramientaModal] = useState(false);
   const [nuevaHerramientaNombre, setNuevaHerramientaNombre] = useState('');
   const [nuevaHerramientaDescripcion, setNuevaHerramientaDescripcion] = useState('');
   const [nuevaHerramientaCategoria, setNuevaHerramientaCategoria] = useState('');
   const [crearHerramientaLoading, setCrearHerramientaLoading] = useState(false);
   const [crearHerramientaError, setCrearHerramientaError] = useState<string | null>(null);
-  
+
   // Estados para gestión de usuarios
   const [showGestionUsuariosModal, setShowGestionUsuariosModal] = useState(false);
   const [usuarios, setUsuarios] = useState<any[]>([]);
@@ -314,6 +315,29 @@ function AdminPanelContent() {
     cargarEncuestasData();
   }, []);
 
+  // Cargar empleados para inventario cuando se activa la tab
+  useEffect(() => {
+    if (activeTab === 'inventario') {
+      cargarEmpleadosInventario();
+    }
+  }, [activeTab]);
+
+  const cargarEmpleadosInventario = async () => {
+    setLoadingEmpleadosInventario(true);
+    try {
+      const { success, data } = await obtenerUsuariosBackend();
+      if (success && data) {
+        // Filtramos solo empleados
+        const emps = data.filter((u: any) => u.rol === 'empleado');
+        setEmpleadosInventario(emps);
+      }
+    } catch (error) {
+      console.error('Error cargando empleados para inventario:', error);
+    } finally {
+      setLoadingEmpleadosInventario(false);
+    }
+  };
+
   useEffect(() => {
     const cargarEmpleados = async () => {
       try {
@@ -426,7 +450,7 @@ function AdminPanelContent() {
 
   const reportesFiltrados = useMemo(() => {
     let filtrados = reportesPendientes;
-    
+
     // Filtrar por estado
     if (filtrosEstado.length > 0) {
       filtrados = filtrados.filter((r) => {
@@ -438,7 +462,7 @@ function AdminPanelContent() {
         });
       });
     }
-    
+
     // Filtrar por prioridad
     if (filtrosPrioridad.length > 0) {
       filtrados = filtrados.filter((r) => {
@@ -446,18 +470,18 @@ function AdminPanelContent() {
         return filtrosPrioridad.includes(prioridad);
       });
     }
-    
+
     return filtrados;
   }, [reportesPendientes, filtrosEstado, filtrosPrioridad]);
 
   const toggleFiltroEstado = (estado: string) => {
-    setFiltrosEstado(prev => 
+    setFiltrosEstado(prev =>
       prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
     );
   };
 
   const toggleFiltroPrioridad = (prioridad: string) => {
-    setFiltrosPrioridad(prev => 
+    setFiltrosPrioridad(prev =>
       prev.includes(prioridad) ? prev.filter(p => p !== prioridad) : [...prev, prioridad]
     );
   };
@@ -608,7 +632,7 @@ function AdminPanelContent() {
 
   const handleActualizarUsuario = async () => {
     if (!usuarioEditando) return;
-    
+
     setActualizandoUsuario(true);
     setErrorUsuario(null);
     setExitoUsuario(false);
@@ -662,7 +686,7 @@ function AdminPanelContent() {
 
   const handleEliminarUsuario = async (userId: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este usuario? Esta acción no se puede deshacer.')) return;
-    
+
     const resultado = await eliminarUsuarioBackend(userId);
     if (resultado.success) {
       cargarUsuarios(); // Recargar lista
@@ -714,18 +738,18 @@ function AdminPanelContent() {
 
     try {
       const empleadoData = empleados.find(e => e.email === selectedEmpleado);
-      
+
       // Obtener ID del empleado
       const [empleado] = await Promise.all([
         obtenerUsuariosBackend()
       ]);
-      
+
       let empleadoId = null;
       if (empleado.success && empleado.data) {
         const emp = empleado.data.find((e: any) => e.email === selectedEmpleado);
         empleadoId = emp?.id;
       }
-      
+
       const result = await crearTareaBackend({
         titulo: 'Tarea del administrador',
         descripcion: tareasDescripcion.trim(),
@@ -742,7 +766,7 @@ function AdminPanelContent() {
         if (tareasActualizadas.success) {
           setTareas(tareasActualizadas.data || []);
         }
-        
+
         setTimeout(() => {
           setShowTareasModal(false);
           setSelectedEmpleado('');
@@ -763,7 +787,7 @@ function AdminPanelContent() {
   const handleAsignarReporte = async () => {
     console.log('[ADMIN] handleAsignarReporte - selectedEmpleadoReporte:', selectedEmpleadoReporte);
     console.log('[ADMIN] handleAsignarReporte - reporteAAsignar:', reporteAAsignar?.id);
-    
+
     // Validar que selectedEmpleadoReporte no esté vacío y que reporteAAsignar tenga un id válido (puede ser 0)
     if (!selectedEmpleadoReporte || reporteAAsignar?.id === null || reporteAAsignar?.id === undefined) {
       console.error('[ADMIN] Error: selectedEmpleadoReporte es vacío o reporteAAsignar sin id');
@@ -804,7 +828,7 @@ function AdminPanelContent() {
         if (reportesActualizados.success) {
           setReportes(reportesActualizados.data || []);
         }
-        
+
         // Cerrar ambos modales para volver al panel principal
         setShowAsignarEmpleadoModal(false);
         setShowHistorialModal(false);
@@ -838,1815 +862,1815 @@ function AdminPanelContent() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-          <View style={[styles.container, isMobile && styles.containerMobile]}>
-            <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
-              <View style={styles.headerLeft}>
-                <View style={styles.badgeWrapper}>
-                  <LinearGradient
-                    colors={['#06b6d4', '#0891b2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.badge, isMobile && styles.badgeMobile]}
-                  >
-                    <Text style={[styles.badgeText, { fontFamily }]}>{initials}</Text>
-                  </LinearGradient>
-                  <View style={styles.badgeDot} />
-                </View>
-
-                <View style={styles.welcomeTextWrapper}>
-                  <Text style={[styles.welcomeTitle, isMobile && styles.welcomeTitleMobile, { fontFamily }]}>Bienvenido <Text style={styles.welcomeName}>{usuario?.nombre ?? 'Usuario'}</Text></Text>
-                  <Text style={[styles.welcomeSubtitle, { fontFamily }]}>Panel de Administrador</Text>
-                </View>
-              </View>
-
-              <View style={styles.headerActions}>
-                <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
-                  <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
-                  <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* SISTEMA DE TABS - NAVEGACIÓN */}
-            <View style={[styles.tabsNavigationContainer, isMobile && styles.tabsNavigationContainerMobile]}>
-              {[
-                { id: 'inicio', label: 'Inicio', icon: 'home-outline' },
-                { id: 'reportes', label: 'Reportes', icon: 'document-text-outline' },
-                { id: 'encuestas', label: 'Encuestas', icon: 'clipboard-outline' },
-                { id: 'tareas', label: 'Tareas', icon: 'checkmark-circle-outline' },
-                { id: 'inventario', label: 'Inventario', icon: 'cube-outline' },
-                { id: 'usuarios', label: 'Usuarios', icon: 'people-outline' }
-              ].map((tab) => (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={[
-                    styles.tabButton,
-                    isMobile && styles.tabButtonMobile,
-                    activeTab === tab.id && styles.tabButtonActive,
-                    isMobile && activeTab === tab.id && styles.tabButtonActiveMobile
-                  ]}
-                  onPress={() => setActiveTab(tab.id as any)}
-                  activeOpacity={0.7}
+        <View style={[styles.container, isMobile && styles.containerMobile]}>
+          <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
+            <View style={styles.headerLeft}>
+              <View style={styles.badgeWrapper}>
+                <LinearGradient
+                  colors={['#06b6d4', '#0891b2']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.badge, isMobile && styles.badgeMobile]}
                 >
-                  <Ionicons 
-                    name={tab.icon as any} 
-                    size={isMobile ? 18 : 20} 
-                    color={activeTab === tab.id ? '#06b6d4' : '#64748b'} 
-                  />
-                  {!isMobile && (
-                    <Text style={[
-                      styles.tabButtonText,
-                      { fontFamily },
-                      activeTab === tab.id && styles.tabButtonTextActive
-                    ]}>
-                      {tab.label}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* CONTENIDO DE LAS TABS */}
-            {activeTab === 'inicio' && (
-              <View style={styles.tabContent}>
-
-            {showStats && (
-              <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-                {stats.map((stat, index) => (
-                  <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
-                    <View style={styles.statHeader}>
-                      <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
-                        <Ionicons name={stat.iconName as any} size={24} color="white" />
-                      </View>
-                      <View style={styles.statChip}>
-                        <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
-                    <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
-                  </View>
-                ))}
+                  <Text style={[styles.badgeText, { fontFamily }]}>{initials}</Text>
+                </LinearGradient>
+                <View style={styles.badgeDot} />
               </View>
-            )}
 
-            {/* PASO 6: Estadísticas de dos etapas de cierre */}
-            <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-              <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Cierre de Reportes en Dos Etapas</Text>
-              <Text style={[styles.sectionSubtitle, { fontFamily }]}>Seguimiento de reportes finalizados y cerrados</Text>
+              <View style={styles.welcomeTextWrapper}>
+                <Text style={[styles.welcomeTitle, isMobile && styles.welcomeTitleMobile, { fontFamily }]}>Bienvenido <Text style={styles.welcomeName}>{usuario?.nombre ?? 'Usuario'}</Text></Text>
+                <Text style={[styles.welcomeSubtitle, { fontFamily }]}>Panel de Administrador</Text>
+              </View>
             </View>
 
-            <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-              <TouchableOpacity 
-                style={[styles.statCard, isMobile && styles.statCardMobile]}
-                onPress={() => setShowFinalizadosModal(true)}
-              >
-                <View style={styles.statHeader}>
-                  <View style={[styles.statIcon, { backgroundColor: '#f59e0b' }]}>
-                    <Ionicons name="checkmark-outline" size={24} color="white" />
-                  </View>
-                  <View style={styles.statChip}>
-                    <Text style={[styles.statChipText, { fontFamily }]}>Pendientes</Text>
-                  </View>
-                </View>
-                <Text style={[styles.statValue, { fontFamily }]}>{reportesFinalizados.length}</Text>
-                <Text style={[styles.statLabel, { fontFamily, color: '#f59e0b' }]}>Finalizados por técnico</Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
+                <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
               </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={[styles.statCard, isMobile && styles.statCardMobile]}
-                onPress={() => setShowCerradosModal(true)}
-              >
-                <View style={styles.statHeader}>
-                  <View style={[styles.statIcon, { backgroundColor: '#10b981' }]}>
-                    <Ionicons name="checkmark-done-outline" size={24} color="white" />
-                  </View>
-                  <View style={styles.statChip}>
-                    <Text style={[styles.statChipText, { fontFamily }]}>Completados</Text>
-                  </View>
-                </View>
-                <Text style={[styles.statValue, { fontFamily }]}>{reportesCerrados.length}</Text>
-                <Text style={[styles.statLabel, { fontFamily, color: '#10b981' }]}>Cerrados por cliente</Text>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
+                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
               </TouchableOpacity>
-            </View>
-
-            <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-              <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
-              <Text style={[styles.sectionSubtitle, { fontFamily }]}>Accede a las herramientas del sistema</Text>
-            </View>
-
-            <View style={[styles.optionsGrid, isMobile && styles.optionsGridMobile]}>
-              {mainOptions.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={0.9}
-                  style={[styles.optionTouchable, isMobile && styles.optionTouchableMobile]}
-                  onPress={() => openEmailModalIfOption(option.title)}
-                >
-                  <LinearGradient
-                    colors={option.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.optionCard}
-                  >
-                    <View style={styles.optionContent}>
-                      <View style={styles.optionIconWrapper}>
-                        <Ionicons name={option.iconName as any} size={28} color="white" />
-                      </View>
-                      <View style={styles.optionTextWrapper}>
-                        <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
-                        <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
-            )}
 
-            {/* TAB 2: REPORTES */}
-            {activeTab === 'reportes' && (
-              <View style={styles.tabContent}>
-                <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Reportes</Text>
-                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de reportes y estados</Text>
+          {/* SISTEMA DE TABS - NAVEGACIÓN */}
+          <View style={[styles.tabsNavigationContainer, isMobile && styles.tabsNavigationContainerMobile]}>
+            {[
+              { id: 'inicio', label: 'Inicio', icon: 'home-outline' },
+              { id: 'reportes', label: 'Reportes', icon: 'document-text-outline' },
+              { id: 'encuestas', label: 'Encuestas', icon: 'clipboard-outline' },
+              { id: 'tareas', label: 'Tareas', icon: 'checkmark-circle-outline' },
+              { id: 'inventario', label: 'Inventario', icon: 'cube-outline' },
+              { id: 'usuarios', label: 'Usuarios', icon: 'people-outline' }
+            ].map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                style={[
+                  styles.tabButton,
+                  isMobile && styles.tabButtonMobile,
+                  activeTab === tab.id && styles.tabButtonActive,
+                  isMobile && activeTab === tab.id && styles.tabButtonActiveMobile
+                ]}
+                onPress={() => setActiveTab(tab.id as any)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={tab.icon as any}
+                  size={isMobile ? 18 : 20}
+                  color={activeTab === tab.id ? '#06b6d4' : '#64748b'}
+                />
+                {!isMobile && (
+                  <Text style={[
+                    styles.tabButtonText,
+                    { fontFamily },
+                    activeTab === tab.id && styles.tabButtonTextActive
+                  ]}>
+                    {tab.label}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* CONTENIDO DE LAS TABS */}
+          {activeTab === 'inicio' && (
+            <View style={styles.tabContent}>
+
+              {showStats && (
+                <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+                  {stats.map((stat, index) => (
+                    <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
+                      <View style={styles.statHeader}>
+                        <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
+                          <Ionicons name={stat.iconName as any} size={24} color="white" />
+                        </View>
+                        <View style={styles.statChip}>
+                          <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                      <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
+                    </View>
+                  ))}
                 </View>
-                <TouchableOpacity 
-                  onPress={() => setShowHistorialModal(true)}
-                  style={{
-                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#2563eb',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
+              )}
+
+              {/* PASO 6: Estadísticas de dos etapas de cierre */}
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Cierre de Reportes en Dos Etapas</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Seguimiento de reportes finalizados y cerrados</Text>
+              </View>
+
+              <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+                <TouchableOpacity
+                  style={[styles.statCard, isMobile && styles.statCardMobile]}
+                  onPress={() => setShowFinalizadosModal(true)}
                 >
-                  <Ionicons name="document-text-outline" size={24} color="#2563eb" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Reportes</Text>
-                    <Text style={[{ color: '#93c5fd', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver y gestionar reportes pendientes</Text>
+                  <View style={styles.statHeader}>
+                    <View style={[styles.statIcon, { backgroundColor: '#f59e0b' }]}>
+                      <Ionicons name="checkmark-outline" size={24} color="white" />
+                    </View>
+                    <View style={styles.statChip}>
+                      <Text style={[styles.statChipText, { fontFamily }]}>Pendientes</Text>
+                    </View>
                   </View>
+                  <Text style={[styles.statValue, { fontFamily }]}>{reportesFinalizados.length}</Text>
+                  <Text style={[styles.statLabel, { fontFamily, color: '#f59e0b' }]}>Finalizados por técnico</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setShowTerminadosModal(true)}
-                  style={{
-                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#10b981',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
+
+                <TouchableOpacity
+                  style={[styles.statCard, isMobile && styles.statCardMobile]}
+                  onPress={() => setShowCerradosModal(true)}
                 >
-                  <Ionicons name="checkmark-circle-outline" size={24} color="#10b981" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Reportes Terminados</Text>
-                    <Text style={[{ color: '#6ee7b7', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver reportes completados</Text>
+                  <View style={styles.statHeader}>
+                    <View style={[styles.statIcon, { backgroundColor: '#10b981' }]}>
+                      <Ionicons name="checkmark-done-outline" size={24} color="white" />
+                    </View>
+                    <View style={styles.statChip}>
+                      <Text style={[styles.statChipText, { fontFamily }]}>Completados</Text>
+                    </View>
                   </View>
+                  <Text style={[styles.statValue, { fontFamily }]}>{reportesCerrados.length}</Text>
+                  <Text style={[styles.statLabel, { fontFamily, color: '#10b981' }]}>Cerrados por cliente</Text>
                 </TouchableOpacity>
               </View>
-            )}
 
-            {/* TAB 3: ENCUESTAS */}
-            {activeTab === 'encuestas' && (
-              <View style={styles.tabContent}>
-                <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
-                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Estadísticas de satisfacción</Text>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Accede a las herramientas del sistema</Text>
+              </View>
+
+              <View style={[styles.optionsGrid, isMobile && styles.optionsGridMobile]}>
+                {mainOptions.map((option, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    activeOpacity={0.9}
+                    style={[styles.optionTouchable, isMobile && styles.optionTouchableMobile]}
+                    onPress={() => openEmailModalIfOption(option.title)}
+                  >
+                    <LinearGradient
+                      colors={option.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.optionCard}
+                    >
+                      <View style={styles.optionContent}>
+                        <View style={styles.optionIconWrapper}>
+                          <Ionicons name={option.iconName as any} size={28} color="white" />
+                        </View>
+                        <View style={styles.optionTextWrapper}>
+                          <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
+                          <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
+                        </View>
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* TAB 2: REPORTES */}
+          {activeTab === 'reportes' && (
+            <View style={styles.tabContent}>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Reportes</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de reportes y estados</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowHistorialModal(true)}
+                style={{
+                  backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#2563eb',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="document-text-outline" size={24} color="#2563eb" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Reportes</Text>
+                  <Text style={[{ color: '#93c5fd', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver y gestionar reportes pendientes</Text>
                 </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowTerminadosModal(true)}
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#10b981',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="checkmark-circle-outline" size={24} color="#10b981" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Reportes Terminados</Text>
+                  <Text style={[{ color: '#6ee7b7', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver reportes completados</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
 
-                {loadingEncuestas && (
-                  <View style={styles.infoBox}>
-                    <Text style={[styles.infoText, { fontFamily }]}>Cargando encuestas...</Text>
-                  </View>
-                )}
+          {/* TAB 3: ENCUESTAS */}
+          {activeTab === 'encuestas' && (
+            <View style={styles.tabContent}>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Estadísticas de satisfacción</Text>
+              </View>
 
-                {!loadingEncuestas && errorEncuestas ? (
-                  <View style={styles.errorPanel}>
-                    <Text style={[styles.errorPanelText, { fontFamily }]}>{errorEncuestas}</Text>
-                  </View>
-                ) : null}
+              {loadingEncuestas && (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando encuestas...</Text>
+                </View>
+              )}
 
-                {!loadingEncuestas && !errorEncuestas && encuestas.length === 0 ? (
-                  <View style={styles.noResultadosContainer}>
-                    <Ionicons name="clipboard-outline" size={48} color="#475569" />
-                    <Text style={[styles.noResultadosTitle, { fontFamily }]}>
-                      No hay encuestas registradas
-                    </Text>
-                    <Text style={[styles.noResultadosText, { fontFamily }]}>
-                      No hay encuestas de satisfacción en este momento.
-                    </Text>
-                  </View>
-                ) : null}
+              {!loadingEncuestas && errorEncuestas ? (
+                <View style={styles.errorPanel}>
+                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorEncuestas}</Text>
+                </View>
+              ) : null}
 
-                {!loadingEncuestas && !errorEncuestas && encuestas.length > 0 ? (
-                  <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                    <View style={styles.listSpacing}>
-                      {encuestas.map((encuesta: any) => (
-                        <TouchableOpacity 
-                          key={encuesta.id} 
-                          style={styles.reportCard}
-                          onPress={() => {
-                            setSelectedEncuesta(encuesta);
-                            setShowEncuestaDetailModal(true);
-                          }}
-                        >
-                          {/* En Web: Mostrar todo, En Mobile: Solo lo esencial */}
-                          {!isMobile ? (
-                            <>
-                              <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
-                                <View style={styles.reportHeaderText}>
-                                  <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.titulo || 'Encuesta de Satisfacción'}
+              {!loadingEncuestas && !errorEncuestas && encuestas.length === 0 ? (
+                <View style={styles.noResultadosContainer}>
+                  <Ionicons name="clipboard-outline" size={48} color="#475569" />
+                  <Text style={[styles.noResultadosTitle, { fontFamily }]}>
+                    No hay encuestas registradas
+                  </Text>
+                  <Text style={[styles.noResultadosText, { fontFamily }]}>
+                    No hay encuestas de satisfacción en este momento.
+                  </Text>
+                </View>
+              ) : null}
+
+              {!loadingEncuestas && !errorEncuestas && encuestas.length > 0 ? (
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {encuestas.map((encuesta: any) => (
+                      <TouchableOpacity
+                        key={encuesta.id}
+                        style={styles.reportCard}
+                        onPress={() => {
+                          setSelectedEncuesta(encuesta);
+                          setShowEncuestaDetailModal(true);
+                        }}
+                      >
+                        {/* En Web: Mostrar todo, En Mobile: Solo lo esencial */}
+                        {!isMobile ? (
+                          <>
+                            <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
+                              <View style={styles.reportHeaderText}>
+                                <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.titulo || 'Encuesta de Satisfacción'}
+                                </Text>
+                                <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.cliente_email || 'Sin cliente'} · {encuesta.empresa || 'Sin empresa'}
+                                </Text>
+                                <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
+                                  Calificación: {encuesta.satisfaccion || 'N/A'} / 5
+                                </Text>
+                              </View>
+                              <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    setSelectedEncuesta(encuesta);
+                                    setShowEncuestaDetailModal(true);
+                                  }}
+                                  style={styles.eyeCard}
+                                >
+                                  <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+
+                            <View style={{ marginTop: 12, gap: 8 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="person-outline" size={14} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
+                                  Realizado por: {encuesta.empleado_nombre || 'Sin nombre'}
+                                </Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="business-outline" size={14} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
+                                  Empresa: {encuesta.empresa || 'Sin empresa'}
+                                </Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
+                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
+                                  {new Date(encuesta.created_at).toLocaleDateString('es-ES')}
+                                </Text>
+                              </View>
+                            </View>
+                          </>
+                        ) : (
+                          <>
+                            {/* Vista Mobile: Solo lo esencial */}
+                            <View style={{ gap: 10 }}>
+                              <View style={{ gap: 6 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                  <Ionicons name="business-outline" size={16} color="#06b6d4" />
+                                  <Text style={[{ color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 }, { fontFamily }]} numberOfLines={1}>
+                                    {encuesta.empresa || 'Sin empresa'}
                                   </Text>
-                                  <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.cliente_email || 'Sin cliente'} · {encuesta.empresa || 'Sin empresa'}
-                                  </Text>
-                                  <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
-                                    Calificación: {encuesta.satisfaccion || 'N/A'} / 5
-                                  </Text>
-                                </View>
-                                <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      setSelectedEncuesta(encuesta);
-                                      setShowEncuestaDetailModal(true);
-                                    }}
-                                    style={styles.eyeCard}
-                                  >
-                                    <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                                  </TouchableOpacity>
                                 </View>
                               </View>
 
-                              <View style={{ marginTop: 12, gap: 8 }}>
+                              <View style={{ gap: 4, paddingLeft: 24 }}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                   <Ionicons name="person-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
-                                    Realizado por: {encuesta.empleado_nombre || 'Sin nombre'}
+                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
+                                    Realizó: {encuesta.empleado_nombre || 'Sin nombre'}
                                   </Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <Ionicons name="business-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
-                                    Empresa: {encuesta.empresa || 'Sin empresa'}
+                                  <Ionicons name="person-circle-outline" size={14} color="#94a3b8" />
+                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
+                                    Cliente: {encuesta.cliente_nombre || 'Sin nombre'}
                                   </Text>
                                 </View>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                   <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
+                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]}>
                                     {new Date(encuesta.created_at).toLocaleDateString('es-ES')}
                                   </Text>
                                 </View>
                               </View>
-                            </>
-                          ) : (
-                            <>
-                              {/* Vista Mobile: Solo lo esencial */}
-                              <View style={{ gap: 10 }}>
-                                <View style={{ gap: 6 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Ionicons name="business-outline" size={16} color="#06b6d4" />
-                                    <Text style={[{ color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 }, { fontFamily }]} numberOfLines={1}>
-                                      {encuesta.empresa || 'Sin empresa'}
-                                    </Text>
-                                  </View>
-                                </View>
+                            </View>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          )}
 
-                                <View style={{ gap: 4, paddingLeft: 24 }}>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Ionicons name="person-outline" size={14} color="#94a3b8" />
-                                    <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
-                                      Realizó: {encuesta.empleado_nombre || 'Sin nombre'}
-                                    </Text>
-                                  </View>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Ionicons name="person-circle-outline" size={14} color="#94a3b8" />
-                                    <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
-                                      Cliente: {encuesta.cliente_nombre || 'Sin nombre'}
-                                    </Text>
-                                  </View>
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                    <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]}>
-                                      {new Date(encuesta.created_at).toLocaleDateString('es-ES')}
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
-                            </>
-                          )}
+          {/* TAB 4: TAREAS */}
+          {activeTab === 'tareas' && (
+            <View style={styles.tabContent}>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Tareas</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Crear y asignar tareas al equipo</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedEmpleado('');
+                  setTareasDescripcion('');
+                  setTareasError(null);
+                  setShowTareasModal(true);
+                }}
+                style={{
+                  backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#f97316',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="create-outline" size={24} color="#f97316" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Generar Nueva Tarea</Text>
+                  <Text style={[{ color: '#fed7aa', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Crear y asignar tarea a empleado</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowTareasHistorialModal(true);
+                }}
+                style={{
+                  backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#06b6d4',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="list-outline" size={24} color="#06b6d4" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Tareas</Text>
+                  <Text style={[{ color: '#a5f3fc', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver todas las tareas creadas</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* TAB 5: INVENTARIO */}
+          {activeTab === 'inventario' && (
+            <View style={styles.tabContent}>
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={[styles.listSpacing, { paddingTop: 0 }]}>
+                  <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { marginBottom: 24 }]}>
+                    <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Inventario</Text>
+                    <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
+                  </View>
+
+                  {/* BOTONES DE ACCIÓN DE INVENTARIO */}
+                  <View style={{ gap: 12, marginBottom: 24 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowCrearHerramientaModal(true);
+                      }}
+                      style={{
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        borderWidth: 1,
+                        borderColor: '#8b5cf6',
+                        borderRadius: 12,
+                        padding: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12
+                      }}
+                    >
+                      <Ionicons name="add-circle-outline" size={24} color="#8b5cf6" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Crear Nueva Herramienta</Text>
+                        <Text style={[{ color: '#d8b4fe', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Agregar herramienta al inventario</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (empleadosInventario.length === 0) {
+                          alert('No hay empleados disponibles para asignar herramientas');
+                          return;
+                        }
+                        if (empleadosInventario.length === 1) {
+                          setEmpleadoSelectedInventario(empleadosInventario[0]);
+                          setShowAsignarHerramientaModal(true);
+                        } else {
+                          // Si hay múltiples empleados, mostrar lista de selección
+                          alert('Por favor selecciona un empleado primero desde la lista inferior');
+                        }
+                      }}
+                      style={{
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                        borderWidth: 1,
+                        borderColor: '#22c55e',
+                        borderRadius: 12,
+                        padding: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12
+                      }}
+                    >
+                      <Ionicons name="link-outline" size={24} color="#22c55e" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Asignar Herramienta</Text>
+                        <Text style={[{ color: '#86efac', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Asignar herramienta a empleado</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+
+                  {loadingEmpleadosInventario ? (
+                    <View style={styles.infoBox}>
+                      <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
+                    </View>
+                  ) : empleadosInventario.length === 0 ? (
+                    <View style={styles.noResultadosContainer}>
+                      <Ionicons name="cube-outline" size={64} color="#334155" />
+                      <Text style={[styles.noResultadosTitle, { fontFamily, marginTop: 16 }]}>No hay inventario asignado</Text>
+                      <Text style={[styles.noResultadosText, { fontFamily }]}>Aún no hay herramientas asignadas a empleados</Text>
+                    </View>
+                  ) : (
+                    <View>
+                      <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '600', marginBottom: 12 }, { fontFamily }]}>
+                        {empleadosInventario.length} {empleadosInventario.length === 1 ? 'empleado' : 'empleados'} con herramientas
+                      </Text>
+                      {empleadosInventario.map((empleado: any, index: number) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={{
+                            backgroundColor: '#1e293b',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            padding: 16,
+                            marginBottom: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                          onPress={async () => {
+                            setEmpleadoSelectedInventario(empleado);
+                            setLoadingInventarioEmpleado(true);
+                            const { success, data } = await obtenerInventarioEmpleadoBackend(empleado.id);
+                            if (success) {
+                              setInventarioEmpleado(data || []);
+                            }
+                            setLoadingInventarioEmpleado(false);
+                            setShowInventarioModal(true);
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ color: '#f0f9ff', fontWeight: '600', fontSize: 16 }, { fontFamily }]} numberOfLines={1}>
+                              {empleado.nombre}
+                            </Text>
+                            <Text style={[{ color: '#94a3b8', fontSize: 13, marginTop: 4 }, { fontFamily }]}>
+                              {empleado.email}
+                            </Text>
+                          </View>
+                          <View
+                            style={{
+                              backgroundColor: '#06b6d4',
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginLeft: 12,
+                            }}
+                          >
+                            <Ionicons name="eye-outline" size={20} color="white" />
+                          </View>
                         </TouchableOpacity>
                       ))}
                     </View>
-                  </ScrollView>
-                ) : null}
-              </View>
-            )}
-
-            {/* TAB 4: TAREAS */}
-            {activeTab === 'tareas' && (
-              <View style={styles.tabContent}>
-                <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Tareas</Text>
-                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Crear y asignar tareas al equipo</Text>
+                  )}
                 </View>
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSelectedEmpleado('');
-                    setTareasDescripcion('');
-                    setTareasError(null);
-                    setShowTareasModal(true);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#f97316',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <Ionicons name="create-outline" size={24} color="#f97316" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Generar Nueva Tarea</Text>
-                    <Text style={[{ color: '#fed7aa', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Crear y asignar tarea a empleado</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => {
-                    setShowTareasHistorialModal(true);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#06b6d4',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <Ionicons name="list-outline" size={24} color="#06b6d4" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Tareas</Text>
-                    <Text style={[{ color: '#a5f3fc', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver todas las tareas creadas</Text>
-                  </View>
-                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
+
+          {/* TAB 6: USUARIOS */}
+          {activeTab === 'usuarios' && (
+            <View style={styles.tabContent}>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Usuarios</Text>
+                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de usuarios y permisos</Text>
               </View>
-            )}
-
-            {/* TAB 5: INVENTARIO */}
-            {activeTab === 'inventario' && (
-              <View style={styles.tabContent}>
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={[styles.listSpacing, { paddingTop: 0 }]}>
-                    <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { marginBottom: 24 }]}>
-                      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Inventario</Text>
-                      <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
-                    </View>
-
-                    {/* BOTONES DE ACCIÓN DE INVENTARIO */}
-                    <View style={{ gap: 12, marginBottom: 24 }}>
-                      <TouchableOpacity 
-                        onPress={() => {
-                          setShowCrearHerramientaModal(true);
-                        }}
-                        style={{
-                          backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                          borderWidth: 1,
-                          borderColor: '#8b5cf6',
-                          borderRadius: 12,
-                          padding: 16,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 12
-                        }}
-                      >
-                        <Ionicons name="add-circle-outline" size={24} color="#8b5cf6" />
-                        <View style={{ flex: 1 }}>
-                          <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Crear Nueva Herramienta</Text>
-                          <Text style={[{ color: '#d8b4fe', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Agregar herramienta al inventario</Text>
-                        </View>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity 
-                        onPress={() => {
-                          if (empleadosInventario.length === 0) {
-                            alert('No hay empleados disponibles para asignar herramientas');
-                            return;
-                          }
-                          if (empleadosInventario.length === 1) {
-                            setEmpleadoSelectedInventario(empleadosInventario[0]);
-                            setShowAsignarHerramientaModal(true);
-                          } else {
-                            // Si hay múltiples empleados, mostrar lista de selección
-                            alert('Por favor selecciona un empleado primero desde la lista inferior');
-                          }
-                        }}
-                        style={{
-                          backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                          borderWidth: 1,
-                          borderColor: '#22c55e',
-                          borderRadius: 12,
-                          padding: 16,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 12
-                        }}
-                      >
-                        <Ionicons name="link-outline" size={24} color="#22c55e" />
-                        <View style={{ flex: 1 }}>
-                          <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Asignar Herramienta</Text>
-                          <Text style={[{ color: '#86efac', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Asignar herramienta a empleado</Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-
-                    {loadingEmpleadosInventario ? (
-                      <View style={styles.infoBox}>
-                        <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
-                      </View>
-                    ) : empleadosInventario.length === 0 ? (
-                      <View style={styles.noResultadosContainer}>
-                        <Ionicons name="cube-outline" size={64} color="#334155" />
-                        <Text style={[styles.noResultadosTitle, { fontFamily, marginTop: 16 }]}>No hay inventario asignado</Text>
-                        <Text style={[styles.noResultadosText, { fontFamily }]}>Aún no hay herramientas asignadas a empleados</Text>
-                      </View>
-                    ) : (
-                      <View>
-                        <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '600', marginBottom: 12 }, { fontFamily }]}>
-                          {empleadosInventario.length} {empleadosInventario.length === 1 ? 'empleado' : 'empleados'} con herramientas
-                        </Text>
-                        {empleadosInventario.map((empleado: any, index: number) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={{
-                              backgroundColor: '#1e293b',
-                              borderColor: '#334155',
-                              borderWidth: 1,
-                              borderRadius: 12,
-                              padding: 16,
-                              marginBottom: 12,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                            }}
-                            onPress={async () => {
-                              setEmpleadoSelectedInventario(empleado);
-                              setLoadingInventarioEmpleado(true);
-                              const { success, data } = await obtenerInventarioEmpleadoBackend(empleado.id);
-                              if (success) {
-                                setInventarioEmpleado(data || []);
-                              }
-                              setLoadingInventarioEmpleado(false);
-                              setShowInventarioModal(true);
-                            }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#f0f9ff', fontWeight: '600', fontSize: 16 }, { fontFamily }]} numberOfLines={1}>
-                                {empleado.nombre}
-                              </Text>
-                              <Text style={[{ color: '#94a3b8', fontSize: 13, marginTop: 4 }, { fontFamily }]}>
-                                {empleado.email}
-                              </Text>
-                            </View>
-                            <View
-                              style={{
-                                backgroundColor: '#06b6d4',
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginLeft: 12,
-                              }}
-                            >
-                              <Ionicons name="eye-outline" size={20} color="white" />
-                            </View>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </ScrollView>
-              </View>
-            )}
-
-            {/* TAB 6: USUARIOS */}
-            {activeTab === 'usuarios' && (
-              <View style={styles.tabContent}>
-                <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Usuarios</Text>
-                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de usuarios y permisos</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  cargarUsuarios();
+                  setShowGestionUsuariosModal(true);
+                }}
+                style={{
+                  backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#06b6d4',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="people-outline" size={24} color="#06b6d4" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Gestión de Usuarios</Text>
+                  <Text style={[{ color: '#67e8f9', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Editar roles, permisos y estado</Text>
                 </View>
-                <TouchableOpacity 
-                  onPress={() => {
-                    cargarUsuarios();
-                    setShowGestionUsuariosModal(true);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(6, 182, 212, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#06b6d4',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <Ionicons name="people-outline" size={24} color="#06b6d4" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Gestión de Usuarios</Text>
-                    <Text style={[{ color: '#67e8f9', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Editar roles, permisos y estado</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => router.push('/gestion-empresas')}
-                  style={{
-                    backgroundColor: 'rgba(124, 58, 237, 0.2)',
-                    borderWidth: 1,
-                    borderColor: '#8b5cf6',
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 12
-                  }}
-                >
-                  <Ionicons name="business-outline" size={24} color="#8b5cf6" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Gestión de Empresas</Text>
-                    <Text style={[{ color: '#d8b4fe', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Administrar empresas y sucursales</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-
-          </View>
-        </ScrollView>
-
-        {/* Todos los modales y overlays van aquí */}
-
-        {showLogout && (
-          <View style={styles.overlay}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(248, 113, 113, 0.2)', borderColor: 'rgba(248, 113, 113, 0.5)' }]}>
-                  <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push('/gestion-empresas')}
+                style={{
+                  backgroundColor: 'rgba(124, 58, 237, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#8b5cf6',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="business-outline" size={24} color="#8b5cf6" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Gestión de Empresas</Text>
+                  <Text style={[{ color: '#d8b4fe', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Administrar empresas y sucursales</Text>
                 </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Cerrar sesión</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+        </View>
+      </ScrollView>
+
+      {/* Todos los modales y overlays van aquí */}
+
+      {showLogout && (
+        <View style={styles.overlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(248, 113, 113, 0.2)', borderColor: 'rgba(248, 113, 113, 0.5)' }]}>
+                <Ionicons name="alert-circle-outline" size={22} color="#f87171" />
               </View>
-              <Text style={[styles.modalBodyText, { fontFamily }]}>¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.</Text>
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalSecondary} onPress={() => setShowLogout(false)}>
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Cerrar sesión</Text>
+            </View>
+            <Text style={[styles.modalBodyText, { fontFamily }]}>¿Seguro que deseas salir? Se cerrará tu sesión en este dispositivo.</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSecondary} onPress={() => setShowLogout(false)}>
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#ef4444', '#dc2626']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity onPress={confirmLogout} activeOpacity={0.85}>
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>Cerrar sesión</Text>
                 </TouchableOpacity>
-                <LinearGradient
-                  colors={['#ef4444', '#dc2626']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
-                >
-                  <TouchableOpacity onPress={confirmLogout} activeOpacity={0.85}>
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>Cerrar sesión</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
+              </LinearGradient>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {showEmailModal && (
-          <View style={styles.overlay}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
-                  <Ionicons name="mail-outline" size={22} color="#a78bfa" />
+      {showEmailModal && (
+        <View style={styles.overlay}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
+                <Ionicons name="mail-outline" size={22} color="#a78bfa" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Generar cuenta</Text>
+            </View>
+
+            {createError ? (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{createError}</Text>
+              </View>
+            ) : null}
+            <ScrollView
+              style={styles.modalFormScroll}
+              contentContainerStyle={styles.modalFormContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Empresa</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TouchableOpacity
+                    style={styles.selectInputPro}
+                    onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
+                    disabled={creatingUser}
+                  >
+                    <Text style={[styles.selectInputText, { fontFamily, color: empresaSeleccionada ? '#e5e7eb' : '#64748b' }]}>
+                      {empresaSeleccionada?.nombre || 'Selecciona empresa'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color="#64748b" />
+                  </TouchableOpacity>
                 </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Generar cuenta</Text>
+                {showEmpresaPicker && (
+                  <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                    {empresas.length === 0 ? (
+                      <View style={styles.selectItem}>
+                        <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
+                      </View>
+                    ) : (
+                      empresas.map((emp) => (
+                        <TouchableOpacity
+                          key={emp.id}
+                          style={[
+                            styles.selectItem,
+                            empresaSeleccionada?.id === emp.id && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          ]}
+                          onPress={() => {
+                            setEmpresaSeleccionada(emp);
+                            setNewUserCompany(emp.nombre);
+                            setShowEmpresaPicker(false);
+                          }}
+                        >
+                          <Text style={[styles.selectItemText, empresaSeleccionada?.id === emp.id && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                )}
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Nombre</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserName}
+                    onChangeText={setNewUserName}
+                    placeholder="Nombre completo"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Apellido</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserLastName}
+                    onChangeText={setNewUserLastName}
+                    placeholder="Apellido"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Correo electrónico</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserEmail}
+                    onChangeText={setNewUserEmail}
+                    placeholder="usuario@correo.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    textContentType="none"
+                    importantForAutofill="no"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Teléfono</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="call-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserPhone}
+                    onChangeText={handlePhoneChange}
+                    placeholder="1234567890"
+                    keyboardType="phone-pad"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserBirth}
+                    onChangeText={handleBirthChange}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Ciudad (opcional)</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="location-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserCity}
+                    onChangeText={setNewUserCity}
+                    placeholder="Ciudad"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                </View>
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Estado (Opcional)</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="map-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TouchableOpacity
+                    style={styles.selectInputPro}
+                    onPress={() => setShowStatePicker(!showStatePicker)}
+                    disabled={creatingUser}
+                  >
+                    <Text style={[styles.selectInputText, { fontFamily, color: newUserState ? '#e5e7eb' : '#64748b' }]}>
+                      {newUserState || 'Selecciona estado'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+                {showStatePicker && (
+                  <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                    {['Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 'México', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'].map((estado) => (
+                      <TouchableOpacity
+                        key={estado}
+                        style={[
+                          styles.selectItem,
+                          newUserState === estado && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                        ]}
+                        onPress={() => {
+                          setNewUserState(estado);
+                          setShowStatePicker(false);
+                        }}
+                      >
+                        <Text style={[styles.selectItemText, newUserState === estado && styles.selectItemTextHighlight, { fontFamily }]}>
+                          {estado}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Contraseña</Text>
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                  <TextInput
+                    key={`pwd-${passwordFieldKey}`}
+                    style={[styles.formInputPro, { fontFamily }]}
+                    value={newUserPassword}
+                    onChangeText={setNewUserPassword}
+                    placeholder="••••••••"
+                    secureTextEntry={!showNewPassword}
+                    autoCorrect={false}
+                    autoComplete="off"
+                    textContentType="none"
+                    importantForAutofill="no"
+                    placeholderTextColor="#6b7280"
+                    editable={!creatingUser}
+                  />
+                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} disabled={creatingUser}>
+                    <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={18} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={[styles.modalActions, isMobile && styles.modalActionsMobile]}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => {
+                  setShowEmailModal(false);
+                  setNewUserCompany('');
+                  setNewUserName('');
+                  setNewUserLastName('');
+                  setNewUserEmail('');
+                  setNewUserPassword('');
+                  setNewUserPhone('');
+                  setNewUserBirth('');
+                  setNewUserCity('');
+                  setNewUserState('');
+                  setShowStatePicker(false);
+                  setShowNewPassword(false);
+                  setCreateError(null);
+                  setEmpresaSeleccionada(null);
+                  setShowEmpresaPicker(false);
+                }}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={creatingUser ? ['#6b7280', '#6b7280'] : ['#8b5cf6', '#7c3aed']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  disabled={creatingUser}
+                  onPress={async () => {
+                    if (creatingUser) return;
+                    setCreateError(null);
+                    const name = newUserName.trim();
+                    const email = newUserEmail.trim().toLowerCase();
+                    const pwd = newUserPassword.trim();
+                    const phone = newUserPhone.trim();
+                    const birth = newUserBirth.trim();
+                    const city = newUserCity.trim();
+                    const company = newUserCompany.trim();
+                    const state = newUserState.trim();
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!name || !email || !pwd) {
+                      setCreateError('Completa nombre, correo y contraseña.');
+                      return;
+                    }
+                    if (!emailRegex.test(email)) {
+                      setCreateError('Correo inválido.');
+                      return;
+                    }
+                    if (pwd.length < 6) {
+                      setCreateError('La contraseña debe tener al menos 6 caracteres.');
+                      return;
+                    }
+                    if (phone && phone.length !== 10) {
+                      setCreateError('El teléfono debe tener 10 dígitos numéricos.');
+                      return;
+                    }
+                    if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+                      setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
+                      return;
+                    }
+                    setCreatingUser(true);
+                    try {
+                      const res = await registerBackend({
+                        nombre: name,
+                        apellido: newUserLastName.trim() || undefined,
+                        email,
+                        contraseña: pwd,
+                        telefono: phone || undefined,
+                        fecha_nacimiento: birth || undefined,
+                        ciudad: (() => {
+                          const parts = [] as string[];
+                          if (state) parts.push(state);
+                          if (city) parts.push(city);
+                          return parts.length ? parts.join(', ') : undefined;
+                        })(),
+                        empresa: company || undefined,
+                        empresa_id: empresaSeleccionada?.id || undefined,
+                      });
+                      if (!res.success) {
+                        setCreateError(res.error || 'No se pudo crear la cuenta');
+                      } else {
+                        setShowEmailModal(false);
+                        setNewUserCompany('');
+                        setNewUserName('');
+                        setNewUserLastName('');
+                        setNewUserEmail('');
+                        setNewUserPassword('');
+                        setNewUserPhone('');
+                        setNewUserBirth('');
+                        setNewUserCity('');
+                        setNewUserState('');
+                      }
+                    } catch (e: any) {
+                      setCreateError(e?.message || 'Error inesperado');
+                    } finally {
+                      setCreatingUser(false);
+                    }
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {creatingUser ? 'Generando…' : 'Generar'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {showAsignarEmpleadoModal && reporteAAsignar && (
+        <View style={styles.overlay}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                <Ionicons name="person-add-outline" size={22} color="#3b82f6" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Reporte a Empleado</Text>
+            </View>
+
+            {asignarError ? (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{asignarError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalForm}>
+              {/* Reporte Info */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Equipo/Servicio</Text>
+                <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                  <Text style={[styles.formInputText, { color: '#9ca3af' }]}>{reporteAAsignar.equipo_descripcion}</Text>
+                </View>
               </View>
 
-              {createError ? (
-                <View style={styles.errorBox}>
-                  <Text style={[styles.errorText, { fontFamily }]}>{createError}</Text>
+              {/* Usuario que reportó */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Reportado por</Text>
+                <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                  <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
+                    {reporteAAsignar.usuario_nombre} {reporteAAsignar.usuario_apellido || ''}
+                  </Text>
                 </View>
-              ) : null}
-              <ScrollView
-                style={styles.modalFormScroll}
-                contentContainerStyle={styles.modalFormContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Empresa</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TouchableOpacity
-                      style={styles.selectInputPro}
-                      onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
-                      disabled={creatingUser}
-                    >
-                      <Text style={[styles.selectInputText, { fontFamily, color: empresaSeleccionada ? '#e5e7eb' : '#64748b' }]}>
-                        {empresaSeleccionada?.nombre || 'Selecciona empresa'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={18} color="#64748b" />
-                    </TouchableOpacity>
-                  </View>
-                  {showEmpresaPicker && (
-                    <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
-                      {empresas.length === 0 ? (
-                        <View style={styles.selectItem}>
-                          <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
+              </View>
+
+              {/* Empleado Selector */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Asignar a empleado*</Text>
+                <TouchableOpacity
+                  style={[styles.formInput, { paddingRight: 12 }]}
+                  onPress={() => setShowEmpleadoDropdownReporte(!showEmpleadoDropdownReporte)}
+                >
+                  <Text style={[styles.formInputText, { color: selectedEmpleadoReporte ? '#f0f9ff' : '#9ca3af' }]}>
+                    {selectedEmpleadoReporte
+                      ? empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre + ' (' + selectedEmpleadoReporte + ')'
+                      : 'Selecciona un empleado'
+                    }
+                  </Text>
+                  <Ionicons name={showEmpleadoDropdownReporte ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
+                </TouchableOpacity>
+
+                {showEmpleadoDropdownReporte && (
+                  <View style={[styles.dropdownList, { maxHeight: 250 }]}>
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                      {empleados.length === 0 ? (
+                        <View style={styles.dropdownItem}>
+                          <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
+                            No hay empleados disponibles
+                          </Text>
                         </View>
                       ) : (
-                        empresas.map((emp) => (
+                        empleados.map((empleado, index) => (
                           <TouchableOpacity
-                            key={emp.id}
+                            key={index}
                             style={[
-                              styles.selectItem,
-                              empresaSeleccionada?.id === emp.id && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                              styles.dropdownItem,
+                              selectedEmpleadoReporte === empleado.email && { backgroundColor: 'rgba(59, 130, 246, 0.2)' }
                             ]}
                             onPress={() => {
-                              setEmpresaSeleccionada(emp);
-                              setNewUserCompany(emp.nombre);
-                              setShowEmpresaPicker(false);
+                              console.log('[ADMIN] Seleccionando empleado:', empleado.email);
+                              setSelectedEmpleadoReporte(empleado.email);
+                              console.log('[ADMIN] selectedEmpleadoReporte establecido a:', empleado.email);
+                              setShowEmpleadoDropdownReporte(false);
                             }}
                           >
-                            <Text style={[styles.selectItemText, empresaSeleccionada?.id === emp.id && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
+                            <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
+                              {empleado.nombre} ({empleado.email})
+                            </Text>
                           </TouchableOpacity>
                         ))
                       )}
                     </ScrollView>
-                  )}
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserName}
-                      onChangeText={setNewUserName}
-                      placeholder="Nombre completo"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
                   </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Apellido</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserLastName}
-                      onChangeText={setNewUserLastName}
-                      placeholder="Apellido"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                  </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Correo electrónico</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserEmail}
-                      onChangeText={setNewUserEmail}
-                      placeholder="usuario@correo.com"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="off"
-                      textContentType="none"
-                      importantForAutofill="no"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                  </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Teléfono</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="call-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserPhone}
-                      onChangeText={handlePhoneChange}
-                      placeholder="1234567890"
-                      keyboardType="phone-pad"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                  </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserBirth}
-                      onChangeText={handleBirthChange}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                  </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Ciudad (opcional)</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="location-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserCity}
-                      onChangeText={setNewUserCity}
-                      placeholder="Ciudad"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                  </View>
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Estado (Opcional)</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="map-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TouchableOpacity
-                      style={styles.selectInputPro}
-                      onPress={() => setShowStatePicker(!showStatePicker)}
-                      disabled={creatingUser}
-                    >
-                      <Text style={[styles.selectInputText, { fontFamily, color: newUserState ? '#e5e7eb' : '#64748b' }]}>
-                        {newUserState || 'Selecciona estado'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={18} color="#64748b" />
-                    </TouchableOpacity>
-                  </View>
-                  {showStatePicker && (
-                    <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
-                      {['Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 'México', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'].map((estado) => (
-                        <TouchableOpacity
-                          key={estado}
-                          style={[
-                            styles.selectItem,
-                            newUserState === estado && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
-                          ]}
-                          onPress={() => {
-                            setNewUserState(estado);
-                            setShowStatePicker(false);
-                          }}
-                        >
-                          <Text style={[styles.selectItemText, newUserState === estado && styles.selectItemTextHighlight, { fontFamily }]}>
-                            {estado}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  )}
-                </View>
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Contraseña</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      key={`pwd-${passwordFieldKey}`}
-                      style={[styles.formInputPro, { fontFamily }]}
-                      value={newUserPassword}
-                      onChangeText={setNewUserPassword}
-                      placeholder="••••••••"
-                      secureTextEntry={!showNewPassword}
-                      autoCorrect={false}
-                      autoComplete="off"
-                      textContentType="none"
-                      importantForAutofill="no"
-                      placeholderTextColor="#6b7280"
-                      editable={!creatingUser}
-                    />
-                    <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} disabled={creatingUser}>
-                      <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={18} color="#64748b" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={[styles.modalActions, isMobile && styles.modalActionsMobile]}>
-                <TouchableOpacity
-                  style={styles.modalSecondary}
-                  onPress={() => {
-                    setShowEmailModal(false);
-                    setNewUserCompany('');
-                    setNewUserName('');
-                    setNewUserLastName('');
-                    setNewUserEmail('');
-                    setNewUserPassword('');
-                    setNewUserPhone('');
-                    setNewUserBirth('');
-                    setNewUserCity('');
-                    setNewUserState('');
-                    setShowStatePicker(false);
-                    setShowNewPassword(false);
-                    setCreateError(null);
-                    setEmpresaSeleccionada(null);
-                    setShowEmpresaPicker(false);
-                  }}
-                >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-                </TouchableOpacity>
-                <LinearGradient
-                  colors={creatingUser ? ['#6b7280', '#6b7280'] : ['#8b5cf6', '#7c3aed']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
-                >
-                  <TouchableOpacity
-                    disabled={creatingUser}
-                    onPress={async () => {
-                      if (creatingUser) return;
-                      setCreateError(null);
-                      const name = newUserName.trim();
-                      const email = newUserEmail.trim().toLowerCase();
-                      const pwd = newUserPassword.trim();
-                      const phone = newUserPhone.trim();
-                      const birth = newUserBirth.trim();
-                      const city = newUserCity.trim();
-                      const company = newUserCompany.trim();
-                      const state = newUserState.trim();
-                      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                      if (!name || !email || !pwd) {
-                        setCreateError('Completa nombre, correo y contraseña.');
-                        return;
-                      }
-                      if (!emailRegex.test(email)) {
-                        setCreateError('Correo inválido.');
-                        return;
-                      }
-                      if (pwd.length < 6) {
-                        setCreateError('La contraseña debe tener al menos 6 caracteres.');
-                        return;
-                      }
-                      if (phone && phone.length !== 10) {
-                        setCreateError('El teléfono debe tener 10 dígitos numéricos.');
-                        return;
-                      }
-                      if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
-                        setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
-                        return;
-                      }
-                      setCreatingUser(true);
-                      try {
-                        const res = await registerBackend({
-                          nombre: name,
-                          apellido: newUserLastName.trim() || undefined,
-                          email,
-                          contraseña: pwd,
-                          telefono: phone || undefined,
-                          fecha_nacimiento: birth || undefined,
-                          ciudad: (() => {
-                            const parts = [] as string[];
-                            if (state) parts.push(state);
-                            if (city) parts.push(city);
-                            return parts.length ? parts.join(', ') : undefined;
-                          })(),
-                          empresa: company || undefined,
-                            empresa_id: empresaSeleccionada?.id || undefined,
-                        });
-                        if (!res.success) {
-                          setCreateError(res.error || 'No se pudo crear la cuenta');
-                        } else {
-                          setShowEmailModal(false);
-                          setNewUserCompany('');
-                          setNewUserName('');
-                          setNewUserLastName('');
-                          setNewUserEmail('');
-                          setNewUserPassword('');
-                          setNewUserPhone('');
-                          setNewUserBirth('');
-                          setNewUserCity('');
-                          setNewUserState('');
-                        }
-                      } catch (e: any) {
-                        setCreateError(e?.message || 'Error inesperado');
-                      } finally {
-                        setCreatingUser(false);
-                      }
-                    }}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                      {creatingUser ? 'Generando…' : 'Generar'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {showAsignarEmpleadoModal && reporteAAsignar && (
-          <View style={styles.overlay}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
-                  <Ionicons name="person-add-outline" size={22} color="#3b82f6" />
-                </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Reporte a Empleado</Text>
-              </View>
-
-              {asignarError ? (
-                <View style={styles.errorBox}>
-                  <Text style={[styles.errorText, { fontFamily }]}>{asignarError}</Text>
-                </View>
-              ) : null}
-
-              <View style={styles.modalForm}>
-                {/* Reporte Info */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Equipo/Servicio</Text>
-                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
-                    <Text style={[styles.formInputText, { color: '#9ca3af' }]}>{reporteAAsignar.equipo_descripcion}</Text>
-                  </View>
-                </View>
-
-                {/* Usuario que reportó */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Reportado por</Text>
-                  <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
-                    <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
-                      {reporteAAsignar.usuario_nombre} {reporteAAsignar.usuario_apellido || ''}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Empleado Selector */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Asignar a empleado*</Text>
-                  <TouchableOpacity
-                    style={[styles.formInput, { paddingRight: 12 }]}
-                    onPress={() => setShowEmpleadoDropdownReporte(!showEmpleadoDropdownReporte)}
-                  >
-                    <Text style={[styles.formInputText, { color: selectedEmpleadoReporte ? '#f0f9ff' : '#9ca3af' }]}>
-                      {selectedEmpleadoReporte 
-                        ? empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre + ' (' + selectedEmpleadoReporte + ')'
-                        : 'Selecciona un empleado'
-                      }
-                    </Text>
-                    <Ionicons name={showEmpleadoDropdownReporte ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
-                  </TouchableOpacity>
-                  
-                  {showEmpleadoDropdownReporte && (
-                    <View style={[styles.dropdownList, { maxHeight: 250 }]}>
-                      <ScrollView showsVerticalScrollIndicator={false}>
-                        {empleados.length === 0 ? (
-                          <View style={styles.dropdownItem}>
-                            <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
-                              No hay empleados disponibles
-                            </Text>
-                          </View>
-                        ) : (
-                          empleados.map((empleado, index) => (
-                            <TouchableOpacity
-                              key={index}
-                              style={[
-                                styles.dropdownItem,
-                                selectedEmpleadoReporte === empleado.email && { backgroundColor: 'rgba(59, 130, 246, 0.2)' }
-                              ]}
-                              onPress={() => {
-                                console.log('[ADMIN] Seleccionando empleado:', empleado.email);
-                                setSelectedEmpleadoReporte(empleado.email);
-                                console.log('[ADMIN] selectedEmpleadoReporte establecido a:', empleado.email);
-                                setShowEmpleadoDropdownReporte(false);
-                              }}
-                            >
-                              <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
-                                {empleado.nombre} ({empleado.email})
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={styles.modalSecondary} 
-                  onPress={() => {
-                    setShowAsignarEmpleadoModal(false);
-                    setReporteAAsignar(null);
-                    setSelectedEmpleadoReporte('');
-                  }}
-                  disabled={asignandoReporte}
-                >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-                </TouchableOpacity>
-                <LinearGradient
-                  colors={['#3b82f6', '#1e40af']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
-                >
-                  <TouchableOpacity 
-                    onPress={handleAsignarReporte}
-                    disabled={asignandoReporte}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                      {asignandoReporte ? 'Asignando...' : 'Asignar Reporte'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {showHistorialModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Reportes</Text>
-                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todos los reportes y su estado</Text>
-                </View>
-                <View style={styles.largeModalActions}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      setLoadingReportes(true);
-                      const { success, data, error } = await obtenerReportesBackend();
-                      if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
-                      else setReportes(data || []);
-                      setLoadingReportes(false);
-                    }}
-                    style={styles.refreshButton}
-                  >
-                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowHistorialModal(false)} style={styles.closeButton}>
-                    <Ionicons name="close" size={20} color="#cbd5e1" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Filtros */}
-              <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
-                <TouchableOpacity 
-                  style={styles.filtrosHeader}
-                  onPress={() => setMostrarFiltros(!mostrarFiltros)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.filtrosHeaderLeft}>
-                    <Ionicons name="filter-outline" size={18} color="#22d3ee" />
-                    <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
-                    {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
-                      <View style={styles.filtrosActiveBadge}>
-                        <Text style={[styles.filtrosActiveBadgeText, { fontFamily }]}>
-                          {filtrosEstado.length + filtrosPrioridad.length}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
-                      <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
-                        <Ionicons name="close-circle" size={16} color="#f87171" />
-                        <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
-                      </TouchableOpacity>
-                    )}
-                    <Ionicons 
-                      name={mostrarFiltros ? "chevron-up" : "chevron-down"} 
-                      size={24} 
-                      color="#22d3ee" 
-                    />
-                  </View>
-                </TouchableOpacity>
-
-                {mostrarFiltros && (
-                  <>
-                    <View style={styles.filtroSection}>
-                      <Text style={[styles.filtroLabel, { fontFamily }]}>
-                        <Ionicons name="flag-outline" size={14} color="#94a3b8" /> Estado
-                      </Text>
-                      <View style={styles.filtroChips}>
-                        {[
-                          { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
-                          { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
-                          { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
-                        ].map((estado) => {
-                          const isActive = filtrosEstado.includes(estado.value);
-                          return (
-                            <TouchableOpacity
-                              key={estado.value}
-                              onPress={() => toggleFiltroEstado(estado.value)}
-                              style={[
-                                styles.filtroChip,
-                                isActive && { ...styles.filtroChipActive, borderColor: estado.color }
-                              ]}
-                            >
-                              <Ionicons 
-                                name={estado.icon as any} 
-                                size={14} 
-                                color={isActive ? estado.color : '#94a3b8'} 
-                              />
-                              <Text style={[
-                                styles.filtroChipText,
-                                { fontFamily },
-                                isActive && { ...styles.filtroChipTextActive, color: estado.color }
-                              ]}>
-                                {estado.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    <View style={styles.filtroSection}>
-                      <Text style={[styles.filtroLabel, { fontFamily }]}>
-                        <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
-                      </Text>
-                      <View style={styles.filtroChips}>
-                        {[
-                          { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
-                          { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
-                          { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
-                        ].map((prioridad) => {
-                          const isActive = filtrosPrioridad.includes(prioridad.value);
-                          return (
-                            <TouchableOpacity
-                              key={prioridad.value}
-                              onPress={() => toggleFiltroPrioridad(prioridad.value)}
-                              style={[
-                                styles.filtroChip,
-                                isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
-                              ]}
-                            >
-                              <Ionicons 
-                                name={prioridad.icon as any} 
-                                size={14} 
-                                color={isActive ? prioridad.color : '#94a3b8'} 
-                              />
-                              <Text style={[
-                                styles.filtroChipText,
-                                { fontFamily },
-                                isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
-                              ]}>
-                                {prioridad.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    {!loadingReportes && (
-                      <View style={styles.filtrosResultados}>
-                        <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
-                        <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
-                          Mostrando {reportesFiltrados.length} de {reportesPendientes.length} reportes
-                        </Text>
-                      </View>
-                    )}
-                  </>
                 )}
               </View>
+            </View>
 
-              {loadingReportes && (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
-                </View>
-              )}
-
-              {!loadingReportes && errorReportes ? (
-                <View style={styles.errorPanel}>
-                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
-                </View>
-              ) : null}
-
-              {!loadingReportes && !errorReportes && reportesFiltrados.length === 0 ? (
-                <View style={styles.noResultadosContainer}>
-                  <Ionicons name="search-outline" size={48} color="#475569" />
-                  <Text style={[styles.noResultadosTitle, { fontFamily }]}>
-                    {reportesPendientes.length === 0 ? 'No hay reportes' : 'No se encontraron resultados'}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => {
+                  setShowAsignarEmpleadoModal(false);
+                  setReporteAAsignar(null);
+                  setSelectedEmpleadoReporte('');
+                }}
+                disabled={asignandoReporte}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#3b82f6', '#1e40af']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={handleAsignarReporte}
+                  disabled={asignandoReporte}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {asignandoReporte ? 'Asignando...' : 'Asignar Reporte'}
                   </Text>
-                  <Text style={[styles.noResultadosText, { fontFamily }]}>
-                    {reportesPendientes.length === 0 
-                      ? 'No hay reportes pendientes en este momento.'
-                      : 'Intenta ajustar los filtros para ver más resultados.'}
-                  </Text>
-                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && reportesPendientes.length > 0 && (
-                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonLarge}>
-                      <Ionicons name="refresh-outline" size={18} color="#fff" />
-                      <Text style={[styles.limpiarFiltrosTextLarge, { fontFamily }]}>Limpiar filtros</Text>
-                    </TouchableOpacity>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {showHistorialModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Reportes</Text>
+                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todos los reportes y su estado</Text>
+              </View>
+              <View style={styles.largeModalActions}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setLoadingReportes(true);
+                    const { success, data, error } = await obtenerReportesBackend();
+                    if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+                    else setReportes(data || []);
+                    setLoadingReportes(false);
+                  }}
+                  style={styles.refreshButton}
+                >
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowHistorialModal(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Filtros */}
+            <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
+              <TouchableOpacity
+                style={styles.filtrosHeader}
+                onPress={() => setMostrarFiltros(!mostrarFiltros)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.filtrosHeaderLeft}>
+                  <Ionicons name="filter-outline" size={18} color="#22d3ee" />
+                  <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
+                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
+                    <View style={styles.filtrosActiveBadge}>
+                      <Text style={[styles.filtrosActiveBadgeText, { fontFamily }]}>
+                        {filtrosEstado.length + filtrosPrioridad.length}
+                      </Text>
+                    </View>
                   )}
                 </View>
-              ) : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                      <Ionicons name="close-circle" size={16} color="#f87171" />
+                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Ionicons
+                    name={mostrarFiltros ? "chevron-up" : "chevron-down"}
+                    size={24}
+                    color="#22d3ee"
+                  />
+                </View>
+              </TouchableOpacity>
 
-              {!loadingReportes && !errorReportes && reportesFiltrados.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={styles.listSpacing}>
-                    {reportesFiltrados.map((rep) => {
-                      const badge = estadoBadgeStyle(rep.estado);
-                      return (
-                        <View key={rep.id} style={styles.reportCard}>
-                          <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
-                            <View style={styles.reportHeaderText}>
-                              <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
-                                {rep.equipo_descripcion || 'Equipo / servicio'}
-                              </Text>
-                              <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
-                                {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
-                              </Text>
-                              <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
-                                {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
-                              </Text>
-                            </View>
-                            <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
-                              <TouchableOpacity
-                                onPress={async () => {
-                                  setSelectedReporteDetail(rep);
-                                  setShowReporteDetailModal(true);
-                                  setCargandoArchivos(true);
-                                  console.log(`[ADMIN] Cargando archivos para reporte: ${rep.id}`);
-                                  const resultado = await obtenerArchivosReporteBackend(rep.id);
-                                  console.log(`[ADMIN] Resultado obtenerArchivosReporte:`, resultado);
-                                  if (resultado.success) {
-                                    console.log(`[ADMIN] Archivos encontrados: ${resultado.data?.length || 0}`);
-                                    setArchivosReporte(resultado.data || []);
-                                  } else {
-                                    console.log(`[ADMIN] Error al obtener archivos: ${resultado.error}`);
-                                  }
-                                  setCargandoArchivos(false);
-                                }}
-                                style={styles.eyeCard}
-                              >
-                                <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                              </TouchableOpacity>
-                              <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-                                <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(rep.estado)}</Text>
-                              </View>
-                            </View>
-                          </View>
-
-                          <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                            {rep.comentario || 'Sin comentarios'}
-                          </Text>
-
-                          <View style={styles.estadoButtonsRow}>
-                            {estadosDisponibles.map((op) => {
-                              const active = rep.estado === op.value;
-                              const btn = estadoBotonStyle(active);
-                              return (
-                                <TouchableOpacity
-                                  key={op.value}
-                                  onPress={() => handleCambiarEstado(rep.id, op.value)}
-                                  disabled={updatingId === rep.id}
-                                  style={[
-                                    styles.estadoButton,
-                                    {
-                                      backgroundColor: btn.bg,
-                                      borderColor: btn.border,
-                                      opacity: updatingId === rep.id ? 0.7 : 1,
-                                    },
-                                  ]}
-                                >
-                                  <Text style={[styles.estadoButtonText, { fontFamily, color: btn.text }]}>{op.label}</Text>
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </View>
-
+              {mostrarFiltros && (
+                <>
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>
+                      <Ionicons name="flag-outline" size={14} color="#94a3b8" /> Estado
+                    </Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'pendiente', label: 'Pendiente', icon: 'time-outline', color: '#f59e0b' },
+                        { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
+                        { value: 'en espera', label: 'En espera', icon: 'pause-circle-outline', color: '#eab308' },
+                      ].map((estado) => {
+                        const isActive = filtrosEstado.includes(estado.value);
+                        return (
                           <TouchableOpacity
-                            onPress={() => {
-                              setReporteAAsignar(rep);
-                              setSelectedEmpleadoReporte('');
-                              setAsignarError(null);
-                              setShowHistorialModal(false);
-                              setShowAsignarEmpleadoModal(true);
-                            }}
-                            style={{
-                              marginTop: 12,
-                              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                              borderColor: '#3b82f6',
-                              borderWidth: 1,
-                              borderRadius: 8,
-                              paddingVertical: 8,
-                              paddingHorizontal: 12,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                            }}
+                            key={estado.value}
+                            onPress={() => toggleFiltroEstado(estado.value)}
+                            style={[
+                              styles.filtroChip,
+                              isActive && { ...styles.filtroChipActive, borderColor: estado.color }
+                            ]}
                           >
-                            <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
-                            <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
-                              Asignar a empleado
+                            <Ionicons
+                              name={estado.icon as any}
+                              size={14}
+                              color={isActive ? estado.color : '#94a3b8'}
+                            />
+                            <Text style={[
+                              styles.filtroChipText,
+                              { fontFamily },
+                              isActive && { ...styles.filtroChipTextActive, color: estado.color }
+                            ]}>
+                              {estado.label}
                             </Text>
                           </TouchableOpacity>
-                        </View>
-                      );
-                    })}
+                        );
+                      })}
+                    </View>
                   </View>
-                </ScrollView>
-              ) : null}
-            </View>
-          </View>
-        )}
 
-        {showTerminadosModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Reportes Terminados</Text>
-                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todos los reportes completados</Text>
-                </View>
-                <View style={styles.largeModalActions}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      setLoadingReportes(true);
-                      const { success, data, error } = await obtenerReportesBackend();
-                      if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
-                      else setReportes(data || []);
-                      setLoadingReportes(false);
-                    }}
-                    style={styles.refreshButton}
-                  >
-                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowTerminadosModal(false)} style={styles.closeButton}>
-                    <Ionicons name="close" size={20} color="#cbd5e1" />
-                  </TouchableOpacity>
-                </View>
-              </View>
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>
+                      <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
+                    </Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                        { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                        { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                      ].map((prioridad) => {
+                        const isActive = filtrosPrioridad.includes(prioridad.value);
+                        return (
+                          <TouchableOpacity
+                            key={prioridad.value}
+                            onPress={() => toggleFiltroPrioridad(prioridad.value)}
+                            style={[
+                              styles.filtroChip,
+                              isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
+                            ]}
+                          >
+                            <Ionicons
+                              name={prioridad.icon as any}
+                              size={14}
+                              color={isActive ? prioridad.color : '#94a3b8'}
+                            />
+                            <Text style={[
+                              styles.filtroChipText,
+                              { fontFamily },
+                              isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
+                            ]}>
+                              {prioridad.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
 
-              {loadingReportes && (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
-                </View>
+                  {!loadingReportes && (
+                    <View style={styles.filtrosResultados}>
+                      <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                      <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                        Mostrando {reportesFiltrados.length} de {reportesPendientes.length} reportes
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
-
-              {!loadingReportes && errorReportes ? (
-                <View style={styles.errorPanel}>
-                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
-                </View>
-              ) : null}
-
-              {!loadingReportes && !errorReportes && reportesTerminados.length === 0 ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes terminados.</Text>
-                </View>
-              ) : null}
-
-              {!loadingReportes && !errorReportes && reportesTerminados.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={styles.listSpacing}>
-                    {reportesTerminados.map((rep) => (
-                      <View key={rep.id} style={styles.reportCard}>
-                        <View style={styles.reportHeader}>
-                          <View style={styles.reportHeaderText}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
-                              {rep.equipo_descripcion || 'Equipo / servicio'}
-                            </Text>
-                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
-                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
-                            </Text>
-                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
-                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={async () => {
-                              setSelectedReporteDetail(rep);
-                              setShowReporteDetailModal(true);
-                              setCargandoArchivos(true);
-                              console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
-                              const resultado = await obtenerArchivosReporteBackend(rep.id);
-                              console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
-                              if (resultado.success) {
-                                console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
-                                setArchivosReporte(resultado.data || []);
-                              } else {
-                                console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
-                              }
-                              setCargandoArchivos(false);
-                            }}
-                            style={styles.eyeCard}
-                          >
-                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                          </TouchableOpacity>
-                        </View>
-
-                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
-                        </Text>
-
-                        <View style={styles.estadoSoloBadge}>
-                          <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(rep.estado)}</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
             </View>
-          </View>
-        )}
 
-        {/* PASO 6: Modal de Reportes Finalizados por Técnico */}
-        {showFinalizadosModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
-              <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
-                <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
-                  <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Reportes Finalizados por Técnico</Text>
-                  <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Esperando confirmación del cliente</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowFinalizadosModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={20} color="#cbd5e1" />
-                </TouchableOpacity>
+            {loadingReportes && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
               </View>
+            )}
 
-              {loadingFinalizados ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes finalizados...</Text>
-                </View>
-              ) : null}
-
-              {!loadingFinalizados && reportesFinalizados.length === 0 ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes finalizados por técnico.</Text>
-                </View>
-              ) : null}
-
-              {!loadingFinalizados && reportesFinalizados.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={styles.listSpacing}>
-                    {reportesFinalizados.map((rep) => (
-                      <View key={rep.id} style={styles.reportCard}>
-                        <View style={styles.reportHeader}>
-                          <View style={styles.reportHeaderText}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
-                              {rep.equipo_descripcion || 'Equipo / servicio'}
-                            </Text>
-                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
-                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
-                            </Text>
-                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
-                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
-                            </Text>
-                          </View>
-                          <TouchableOpacity
-                            onPress={async () => {
-                              setSelectedReporteDetail(rep);
-                              setShowReporteDetailModal(true);
-                              setCargandoArchivos(true);
-                              const resultado = await obtenerArchivosReporteBackend(rep.id);
-                              if (resultado.success) {
-                                setArchivosReporte(resultado.data || []);
-                              }
-                              setCargandoArchivos(false);
-                            }}
-                            style={styles.eyeCard}
-                          >
-                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                          </TouchableOpacity>
-                        </View>
-
-                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
-                        </Text>
-
-                        <View style={{ backgroundColor: '#fef3c7', borderRadius: 8, padding: 10, marginTop: 10 }}>
-                          <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '600' }}>
-                            ⏳ Esperando confirmación del cliente
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-            </View>
-          </View>
-        )}
-
-        {/* PASO 6: Modal de Reportes Cerrados por Cliente */}
-        {showCerradosModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
-              <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
-                <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
-                  <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Reportes Cerrados por Cliente</Text>
-                  <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Ciclo de vida completado</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowCerradosModal(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={20} color="#cbd5e1" />
-                </TouchableOpacity>
+            {!loadingReportes && errorReportes ? (
+              <View style={styles.errorPanel}>
+                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
               </View>
+            ) : null}
 
-              {loadingCerrados ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes cerrados...</Text>
-                </View>
-              ) : null}
+            {!loadingReportes && !errorReportes && reportesFiltrados.length === 0 ? (
+              <View style={styles.noResultadosContainer}>
+                <Ionicons name="search-outline" size={48} color="#475569" />
+                <Text style={[styles.noResultadosTitle, { fontFamily }]}>
+                  {reportesPendientes.length === 0 ? 'No hay reportes' : 'No se encontraron resultados'}
+                </Text>
+                <Text style={[styles.noResultadosText, { fontFamily }]}>
+                  {reportesPendientes.length === 0
+                    ? 'No hay reportes pendientes en este momento.'
+                    : 'Intenta ajustar los filtros para ver más resultados.'}
+                </Text>
+                {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0) && reportesPendientes.length > 0 && (
+                  <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonLarge}>
+                    <Ionicons name="refresh-outline" size={18} color="#fff" />
+                    <Text style={[styles.limpiarFiltrosTextLarge, { fontFamily }]}>Limpiar filtros</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null}
 
-              {!loadingCerrados && reportesCerrados.length === 0 ? (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes cerrados por cliente.</Text>
-                </View>
-              ) : null}
-
-              {!loadingCerrados && reportesCerrados.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={styles.listSpacing}>
-                    {reportesCerrados.map((rep) => (
+            {!loadingReportes && !errorReportes && reportesFiltrados.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesFiltrados.map((rep) => {
+                    const badge = estadoBadgeStyle(rep.estado);
+                    return (
                       <View key={rep.id} style={styles.reportCard}>
-                        <View style={styles.reportHeader}>
+                        <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
                           <View style={styles.reportHeaderText}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
                               {rep.equipo_descripcion || 'Equipo / servicio'}
                             </Text>
-                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
                               {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
                             </Text>
-                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
                               {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
                             </Text>
                           </View>
-                          <TouchableOpacity
-                            onPress={async () => {
-                              setSelectedReporteDetail(rep);
-                              setShowReporteDetailModal(true);
-                              setCargandoArchivos(true);
-                              const resultado = await obtenerArchivosReporteBackend(rep.id);
-                              if (resultado.success) {
-                                setArchivosReporte(resultado.data || []);
-                              }
-                              setCargandoArchivos(false);
-                            }}
-                            style={styles.eyeCard}
-                          >
-                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                          </TouchableOpacity>
+                          <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
+                            <TouchableOpacity
+                              onPress={async () => {
+                                setSelectedReporteDetail(rep);
+                                setShowReporteDetailModal(true);
+                                setCargandoArchivos(true);
+                                console.log(`[ADMIN] Cargando archivos para reporte: ${rep.id}`);
+                                const resultado = await obtenerArchivosReporteBackend(rep.id);
+                                console.log(`[ADMIN] Resultado obtenerArchivosReporte:`, resultado);
+                                if (resultado.success) {
+                                  console.log(`[ADMIN] Archivos encontrados: ${resultado.data?.length || 0}`);
+                                  setArchivosReporte(resultado.data || []);
+                                } else {
+                                  console.log(`[ADMIN] Error al obtener archivos: ${resultado.error}`);
+                                }
+                                setCargandoArchivos(false);
+                              }}
+                              style={styles.eyeCard}
+                            >
+                              <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                            </TouchableOpacity>
+                            <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                              <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(rep.estado)}</Text>
+                            </View>
+                          </View>
                         </View>
 
                         <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
                           {rep.comentario || 'Sin comentarios'}
                         </Text>
 
-                        <View style={{ backgroundColor: '#d1fae5', borderRadius: 8, padding: 10, marginTop: 10 }}>
-                          <Text style={{ color: '#065f46', fontSize: 12, fontWeight: '600' }}>
-                            ✓ Cerrado definitivamente por cliente
-                          </Text>
+                        <View style={styles.estadoButtonsRow}>
+                          {estadosDisponibles.map((op) => {
+                            const active = rep.estado === op.value;
+                            const btn = estadoBotonStyle(active);
+                            return (
+                              <TouchableOpacity
+                                key={op.value}
+                                onPress={() => handleCambiarEstado(rep.id, op.value)}
+                                disabled={updatingId === rep.id}
+                                style={[
+                                  styles.estadoButton,
+                                  {
+                                    backgroundColor: btn.bg,
+                                    borderColor: btn.border,
+                                    opacity: updatingId === rep.id ? 0.7 : 1,
+                                  },
+                                ]}
+                              >
+                                <Text style={[styles.estadoButtonText, { fontFamily, color: btn.text }]}>{op.label}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
                         </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-            </View>
-          </View>
-        )}
 
-        {showReporteDetailModal && selectedReporteDetail && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
-              <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
-                <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
-                  <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Detalles del reporte</Text>
-                  <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Resumen completo del ticket</Text>
+                        <TouchableOpacity
+                          onPress={() => {
+                            setReporteAAsignar(rep);
+                            setSelectedEmpleadoReporte('');
+                            setAsignarError(null);
+                            setShowHistorialModal(false);
+                            setShowAsignarEmpleadoModal(true);
+                          }}
+                          style={{
+                            marginTop: 12,
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
+                          <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
+                            Asignar a empleado
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
                 </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {showTerminadosModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Reportes Terminados</Text>
+                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todos los reportes completados</Text>
+              </View>
+              <View style={styles.largeModalActions}>
                 <TouchableOpacity
-                  onPress={() => {
-                    setShowReporteDetailModal(false);
-                    setSelectedReporteDetail(null);
-                    setArchivosReporte([]);
+                  onPress={async () => {
+                    setLoadingReportes(true);
+                    const { success, data, error } = await obtenerReportesBackend();
+                    if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+                    else setReportes(data || []);
+                    setLoadingReportes(false);
                   }}
-                  style={styles.closeButton}
+                  style={styles.refreshButton}
                 >
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowTerminadosModal(false)} style={styles.closeButton}>
                   <Ionicons name="close" size={20} color="#cbd5e1" />
                 </TouchableOpacity>
               </View>
+            </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={[styles.detailScroll, isMobile && styles.detailScrollMobile]}>
-                <View style={styles.detailContent}>
+            {loadingReportes && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
+              </View>
+            )}
+
+            {!loadingReportes && errorReportes ? (
+              <View style={styles.errorPanel}>
+                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorReportes}</Text>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && reportesTerminados.length === 0 ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No hay reportes terminados.</Text>
+              </View>
+            ) : null}
+
+            {!loadingReportes && !errorReportes && reportesTerminados.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesTerminados.map((rep) => (
+                    <View key={rep.id} style={styles.reportCard}>
+                      <View style={styles.reportHeader}>
+                        <View style={styles.reportHeaderText}>
+                          <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.equipo_descripcion || 'Equipo / servicio'}
+                          </Text>
+                          <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                          </Text>
+                          <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
+                            if (resultado.success) {
+                              console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
+                              setArchivosReporte(resultado.data || []);
+                            } else {
+                              console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                        {rep.comentario || 'Sin comentarios'}
+                      </Text>
+
+                      <View style={styles.estadoSoloBadge}>
+                        <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(rep.estado)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {/* PASO 6: Modal de Reportes Finalizados por Técnico */}
+      {showFinalizadosModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
+            <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
+              <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
+                <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Reportes Finalizados por Técnico</Text>
+                <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Esperando confirmación del cliente</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowFinalizadosModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingFinalizados ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes finalizados...</Text>
+              </View>
+            ) : null}
+
+            {!loadingFinalizados && reportesFinalizados.length === 0 ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No hay reportes finalizados por técnico.</Text>
+              </View>
+            ) : null}
+
+            {!loadingFinalizados && reportesFinalizados.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesFinalizados.map((rep) => (
+                    <View key={rep.id} style={styles.reportCard}>
+                      <View style={styles.reportHeader}>
+                        <View style={styles.reportHeaderText}>
+                          <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.equipo_descripcion || 'Equipo / servicio'}
+                          </Text>
+                          <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                          </Text>
+                          <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            if (resultado.success) {
+                              setArchivosReporte(resultado.data || []);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                        {rep.comentario || 'Sin comentarios'}
+                      </Text>
+
+                      <View style={{ backgroundColor: '#fef3c7', borderRadius: 8, padding: 10, marginTop: 10 }}>
+                        <Text style={{ color: '#92400e', fontSize: 12, fontWeight: '600' }}>
+                          ⏳ Esperando confirmación del cliente
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {/* PASO 6: Modal de Reportes Cerrados por Cliente */}
+      {showCerradosModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
+            <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
+              <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
+                <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Reportes Cerrados por Cliente</Text>
+                <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Ciclo de vida completado</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowCerradosModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingCerrados ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes cerrados...</Text>
+              </View>
+            ) : null}
+
+            {!loadingCerrados && reportesCerrados.length === 0 ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No hay reportes cerrados por cliente.</Text>
+              </View>
+            ) : null}
+
+            {!loadingCerrados && reportesCerrados.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesCerrados.map((rep) => (
+                    <View key={rep.id} style={styles.reportCard}>
+                      <View style={styles.reportHeader}>
+                        <View style={styles.reportHeaderText}>
+                          <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.equipo_descripcion || 'Equipo / servicio'}
+                          </Text>
+                          <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                          </Text>
+                          <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            if (resultado.success) {
+                              setArchivosReporte(resultado.data || []);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                        {rep.comentario || 'Sin comentarios'}
+                      </Text>
+
+                      <View style={{ backgroundColor: '#d1fae5', borderRadius: 8, padding: 10, marginTop: 10 }}>
+                        <Text style={{ color: '#065f46', fontSize: 12, fontWeight: '600' }}>
+                          ✓ Cerrado definitivamente por cliente
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {showReporteDetailModal && selectedReporteDetail && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
+            <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
+              <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
+                <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Detalles del reporte</Text>
+                <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Resumen completo del ticket</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowReporteDetailModal(false);
+                  setSelectedReporteDetail(null);
+                  setArchivosReporte([]);
+                }}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={20} color="#cbd5e1" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={[styles.detailScroll, isMobile && styles.detailScrollMobile]}>
+              <View style={styles.detailContent}>
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Equipo / Servicio</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {selectedReporteDetail.equipo_descripcion || 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+
+                {selectedReporteDetail.modelo ? (
                   <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Equipo / Servicio</Text>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Modelo</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.serie ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Serie</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Solicitante</Text>
                     <View style={styles.detailValueBox}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {selectedReporteDetail.equipo_descripcion || 'N/A'}
+                        {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
+                      </Text>
+                      <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.empresa ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Empresa</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.sucursal ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Sucursal</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.direccion ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Dirección</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedReporteDetail.comentario ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Comentario / Problema</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                <View style={styles.detailRow}>
+                  {selectedReporteDetail.prioridad ? (
+                    <View style={[styles.detailField, styles.detailFieldHalf]}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Prioridad</Text>
+                      <View style={styles.detailValueBox}>
+                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedReporteDetail.estado ? (
+                    <View style={[styles.detailField, styles.detailFieldHalf]}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
+                      <View
+                        style={[
+                          styles.detailValueBox,
+                          styles.detailPillBox,
+                          {
+                            backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
+                            borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.detailPillText,
+                            { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
+                          ]}
+                        >
+                          {estadoDisplay(selectedReporteDetail.estado)}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+
+                {selectedReporteDetail.created_at ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Fecha de creación</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>
+                        {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
                       </Text>
                     </View>
                   </View>
+                ) : null}
 
-                  {selectedReporteDetail.modelo ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Modelo</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.serie ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Serie</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Solicitante</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>
-                          {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
-                        </Text>
-                        <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.empresa ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Empresa</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.sucursal ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Sucursal</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.direccion ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Dirección</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.comentario ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Comentario / Problema</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  <View style={styles.detailRow}>
-                    {selectedReporteDetail.prioridad ? (
-                      <View style={[styles.detailField, styles.detailFieldHalf]}>
-                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Prioridad</Text>
-                        <View style={styles.detailValueBox}>
-                          <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
-                        </View>
-                      </View>
-                    ) : null}
-
-                    {selectedReporteDetail.estado ? (
-                      <View style={[styles.detailField, styles.detailFieldHalf]}>
-                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
-                        <View
-                          style={[
-                            styles.detailValueBox,
-                            styles.detailPillBox,
-                            {
-                              backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
-                              borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.detailPillText,
-                              { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
-                            ]}
-                          >
-                            {estadoDisplay(selectedReporteDetail.estado)}
-                          </Text>
-                        </View>
-                      </View>
-                    ) : null}
+                {/* Fotos y Videos */}
+                {cargandoArchivos ? (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Cargando archivos...</Text>
                   </View>
+                ) : null}
 
-                  {selectedReporteDetail.created_at ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Fecha de creación</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>
-                          {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {/* Fotos y Videos */}
-                  {cargandoArchivos ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Cargando archivos...</Text>
-                    </View>
-                  ) : null}
-
-                  {!cargandoArchivos && archivosReporte.length > 0 && (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
-                      <View style={styles.archivosContainer}>
-                        {archivosReporte.map((archivo, idx) => {
-                          console.log(`[ADMIN] Rendering archivo ${idx}:`, {
-                            tipo: archivo.tipo_archivo,
-                            url: archivo.cloudflare_url
-                          });
-                          const proxyUrl = getProxyUrl(archivo.cloudflare_url);
-                          return (
-                          <TouchableOpacity 
-                            key={idx} 
+                {!cargandoArchivos && archivosReporte.length > 0 && (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                    <View style={styles.archivosContainer}>
+                      {archivosReporte.map((archivo, idx) => {
+                        console.log(`[ADMIN] Rendering archivo ${idx}:`, {
+                          tipo: archivo.tipo_archivo,
+                          url: archivo.cloudflare_url
+                        });
+                        const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                        return (
+                          <TouchableOpacity
+                            key={idx}
                             style={styles.archivoItem}
                             onPress={() => {
                               setArchivoVisualizando({
@@ -2676,298 +2700,298 @@ function AdminPanelContent() {
                             )}
                           </TouchableOpacity>
                         );
-                        })}
-                      </View>
+                      })}
                     </View>
-                  )}
-                </View>
-              </ScrollView>
-
-              <View style={styles.detailFooter}>
-                <TouchableOpacity
-                  style={styles.detailCloseButton}
-                  onPress={() => {
-                    setShowReporteDetailModal(false);
-                    setSelectedReporteDetail(null);
-                    setArchivosReporte([]);
-                  }}
-                  activeOpacity={0.9}
-                >
-                  <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
-                </TouchableOpacity>
+                  </View>
+                )}
               </View>
+            </ScrollView>
+
+            <View style={styles.detailFooter}>
+              <TouchableOpacity
+                style={styles.detailCloseButton}
+                onPress={() => {
+                  setShowReporteDetailModal(false);
+                  setSelectedReporteDetail(null);
+                  setArchivosReporte([]);
+                }}
+                activeOpacity={0.9}
+              >
+                <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Modal para visualizar archivo en grande */}
-        {showArchivoModal && archivoVisualizando && (
-          <View style={styles.overlayHeavy}>
-            <View style={styles.archivoModalContent}>
+      {/* Modal para visualizar archivo en grande */}
+      {showArchivoModal && archivoVisualizando && (
+        <View style={styles.overlayHeavy}>
+          <View style={styles.archivoModalContent}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowArchivoModal(false);
+                setArchivoVisualizando(null);
+              }}
+              style={styles.archivoModalClose}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+
+            {archivoVisualizando.tipo === 'foto' ? (
+              <Image
+                source={{ uri: archivoVisualizando.url }}
+                style={styles.archivoModalImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Video
+                source={{ uri: archivoVisualizando.url }}
+                rate={1.0}
+                volume={1.0}
+                isMuted={false}
+                resizeMode="contain"
+                useNativeControls
+                style={styles.archivoModalVideo}
+              />
+            )}
+
+            <Text style={[styles.archivoModalName, { fontFamily }]}>
+              {archivoVisualizando.nombre}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Modal de Detalle de Encuesta */}
+      {showEncuestaDetailModal && selectedEncuesta && (
+        <View style={styles.overlay}>
+          <View style={[styles.detailModal, isMobile && styles.largeModalMobile]}>
+            {/* Header específico para encuestas */}
+            <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', marginBottom: 16, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[{ color: '#fff', fontSize: isMobile ? 18 : 20, fontWeight: '800' }, { fontFamily }]}>
+                  Encuesta de Satisfacción
+                </Text>
+                <Text style={[{ color: '#94a3b8', fontSize: isMobile ? 12 : 13, marginTop: 4 }, { fontFamily }]}>
+                  {selectedEncuesta.empresa || 'Sin empresa'}
+                </Text>
+              </View>
               <TouchableOpacity
                 onPress={() => {
-                  setShowArchivoModal(false);
-                  setArchivoVisualizando(null);
+                  setShowEncuestaDetailModal(false);
+                  setSelectedEncuesta(null);
                 }}
-                style={styles.archivoModalClose}
+                style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: 'rgba(30, 41, 59, 0.8)', alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
               >
-                <Ionicons name="close" size={28} color="#fff" />
+                <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
-
-              {archivoVisualizando.tipo === 'foto' ? (
-                <Image
-                  source={{ uri: archivoVisualizando.url }}
-                  style={styles.archivoModalImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Video
-                  source={{ uri: archivoVisualizando.url }}
-                  rate={1.0}
-                  volume={1.0}
-                  isMuted={false}
-                  resizeMode="contain"
-                  useNativeControls
-                  style={styles.archivoModalVideo}
-                />
-              )}
-
-              <Text style={[styles.archivoModalName, { fontFamily }]}>
-                {archivoVisualizando.nombre}
-              </Text>
             </View>
-          </View>
-        )}
 
-        {/* Modal de Detalle de Encuesta */}
-        {showEncuestaDetailModal && selectedEncuesta && (
-          <View style={styles.overlay}>
-            <View style={[styles.detailModal, isMobile && styles.largeModalMobile]}>
-              {/* Header específico para encuestas */}
-              <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', marginBottom: 16, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[{ color: '#fff', fontSize: isMobile ? 18 : 20, fontWeight: '800' }, { fontFamily }]}>
-                    Encuesta de Satisfacción
-                  </Text>
-                  <Text style={[{ color: '#94a3b8', fontSize: isMobile ? 12 : 13, marginTop: 4 }, { fontFamily }]}>
-                    {selectedEncuesta.empresa || 'Sin empresa'}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowEncuestaDetailModal(false);
-                    setSelectedEncuesta(null);
-                  }}
-                  style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: 'rgba(30, 41, 59, 0.8)', alignItems: 'center', justifyContent: 'center' }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
+            <ScrollView style={[styles.detailScroll, isMobile && styles.detailScrollMobile]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+              {/* Información compacta de la encuesta */}
+              <View style={{ gap: isMobile ? 10 : 12, marginBottom: 20 }}>
+                {selectedEncuesta.cliente_nombre ? (
+                  <View style={{ gap: 4 }}>
+                    <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
+                      CLIENTE
+                    </Text>
+                    <View>
+                      <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
+                        {selectedEncuesta.cliente_nombre}
+                      </Text>
+                      <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
+                        {selectedEncuesta.cliente_email}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedEncuesta.empleado_nombre ? (
+                  <View style={{ gap: 4 }}>
+                    <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
+                      EVALUADOR
+                    </Text>
+                    <View>
+                      <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
+                        {selectedEncuesta.empleado_nombre}
+                      </Text>
+                      <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
+                        {selectedEncuesta.empleado_email}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                {selectedEncuesta.created_at ? (
+                  <View style={{ gap: 4 }}>
+                    <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
+                      FECHA
+                    </Text>
+                    <View>
+                      <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#06b6d4', fontWeight: '600' }, { fontFamily }]}>
+                        {new Date(selectedEncuesta.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </Text>
+                      <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
+                        {new Date(selectedEncuesta.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
               </View>
 
-              <ScrollView style={[styles.detailScroll, isMobile && styles.detailScrollMobile]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
-                {/* Información compacta de la encuesta */}
-                <View style={{ gap: isMobile ? 10 : 12, marginBottom: 20 }}>
-                  {selectedEncuesta.cliente_nombre ? (
-                    <View style={{ gap: 4 }}>
-                      <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
-                        CLIENTE
+              {/* Separador */}
+              <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
+
+              {/* Preguntas y Respuestas */}
+              <View style={{ gap: 12 }}>
+                <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 12 : 13, fontWeight: '700' }, { fontFamily }]}>
+                  EVALUACIÓN DE ATRIBUTOS
+                </Text>
+
+                {selectedEncuesta.trato_equipo ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Trato del equipo técnico
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.trato_equipo}
                       </Text>
-                      <View>
-                        <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
-                          {selectedEncuesta.cliente_nombre}
-                        </Text>
-                        <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
-                          {selectedEncuesta.cliente_email}
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.trato_equipo}
                         </Text>
                       </View>
                     </View>
-                  ) : null}
+                  </View>
+                ) : null}
 
-                  {selectedEncuesta.empleado_nombre ? (
-                    <View style={{ gap: 4 }}>
-                      <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
-                        EVALUADOR
+                {selectedEncuesta.equipo_tecnico ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Desempeño del equipo técnico
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.equipo_tecnico}
                       </Text>
-                      <View>
-                        <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
-                          {selectedEncuesta.empleado_nombre}
-                        </Text>
-                        <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
-                          {selectedEncuesta.empleado_email}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedEncuesta.created_at ? (
-                    <View style={{ gap: 4 }}>
-                      <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
-                        FECHA
-                      </Text>
-                      <View>
-                        <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#06b6d4', fontWeight: '600' }, { fontFamily }]}>
-                          {new Date(selectedEncuesta.created_at).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
-                        </Text>
-                        <Text style={[{ fontSize: 11, color: '#64748b', marginTop: 2 }, { fontFamily }]}>
-                          {new Date(selectedEncuesta.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.equipo_tecnico}
                         </Text>
                       </View>
                     </View>
-                  ) : null}
-                </View>
+                  </View>
+                ) : null}
 
-                {/* Separador */}
-                <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
-
-                {/* Preguntas y Respuestas */}
-                <View style={{ gap: 12 }}>
-                  <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 12 : 13, fontWeight: '700' }, { fontFamily }]}>
-                    EVALUACIÓN DE ATRIBUTOS
-                  </Text>
-
-                  {selectedEncuesta.trato_equipo ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Trato del equipo técnico
+                {selectedEncuesta.personal_administrativo ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Atención del personal administrativo
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.personal_administrativo}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
-                          {selectedEncuesta.trato_equipo}
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.personal_administrativo}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.trato_equipo}
-                          </Text>
-                        </View>
                       </View>
                     </View>
-                  ) : null}
+                  </View>
+                ) : null}
 
-                  {selectedEncuesta.equipo_tecnico ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Desempeño del equipo técnico
+                {selectedEncuesta.rapidez ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Rapidez en la solución del problema
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.rapidez}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
-                          {selectedEncuesta.equipo_tecnico}
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.rapidez}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.equipo_tecnico}
-                          </Text>
-                        </View>
                       </View>
                     </View>
-                  ) : null}
+                  </View>
+                ) : null}
 
-                  {selectedEncuesta.personal_administrativo ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Atención del personal administrativo
+                {selectedEncuesta.costo_calidad ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Relación costo - calidad
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.costo_calidad}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
-                          {selectedEncuesta.personal_administrativo}
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.costo_calidad}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.personal_administrativo}
-                          </Text>
-                        </View>
                       </View>
                     </View>
-                  ) : null}
+                  </View>
+                ) : null}
 
-                  {selectedEncuesta.rapidez ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Rapidez en la solución del problema
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
-                          {selectedEncuesta.rapidez}
+                {selectedEncuesta.recomendacion ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      ¿Recomienda nuestros servicios?
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ backgroundColor: selectedEncuesta.recomendacion === 'Sí' ? '#06b6d4' : '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
+                          {selectedEncuesta.recomendacion === 'Sí' ? '✓ Sí' : '✗ No'}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.rapidez}
-                          </Text>
-                        </View>
                       </View>
                     </View>
-                  ) : null}
+                  </View>
+                ) : null}
 
-                  {selectedEncuesta.costo_calidad ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Relación costo - calidad
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
-                          {selectedEncuesta.costo_calidad}
+                {selectedEncuesta.satisfaccion ? (
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                      Nivel de satisfacción general
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.satisfaccion} / 5
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.costo_calidad}
-                          </Text>
-                        </View>
                       </View>
                     </View>
-                  ) : null}
-
-                  {selectedEncuesta.recomendacion ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        ¿Recomienda nuestros servicios?
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <View style={{ backgroundColor: selectedEncuesta.recomendacion === 'Sí' ? '#06b6d4' : '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
-                            {selectedEncuesta.recomendacion === 'Sí' ? '✓ Sí' : '✗ No'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedEncuesta.satisfaccion ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
-                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                        Nivel de satisfacción general
-                      </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.satisfaccion} / 5
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
-              </ScrollView>
-
-              <View style={styles.detailFooter}>
-                <TouchableOpacity
-                  style={styles.detailCloseButton}
-                  onPress={() => {
-                    setShowEncuestaDetailModal(false);
-                    setSelectedEncuesta(null);
-                  }}
-                  activeOpacity={0.9}
-                >
-                  <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
-                </TouchableOpacity>
+                  </View>
+                ) : null}
               </View>
+            </ScrollView>
+
+            <View style={styles.detailFooter}>
+              <TouchableOpacity
+                style={styles.detailCloseButton}
+                onPress={() => {
+                  setShowEncuestaDetailModal(false);
+                  setSelectedEncuesta(null);
+                }}
+                activeOpacity={0.9}
+              >
+                <Text style={[styles.detailCloseText, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {showTareasModal && (
-          <Pressable style={styles.overlay} onPress={() => setShowTareasModal(false)}>
-            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+      {showTareasModal && (
+        <Pressable style={styles.overlay} onPress={() => setShowTareasModal(false)}>
+          <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
               <View style={styles.modalHeaderRow}>
                 <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(249, 115, 22, 0.2)', borderColor: 'rgba(249, 115, 22, 0.5)' }]}>
                   <Ionicons name="create-outline" size={22} color="#fb923c" />
@@ -3004,14 +3028,14 @@ function AdminPanelContent() {
                     onPress={() => setShowEmpleadoDropdown(!showEmpleadoDropdown)}
                   >
                     <Text style={[styles.formInputText, { color: selectedEmpleado ? '#f0f9ff' : '#9ca3af' }]}>
-                      {selectedEmpleado 
+                      {selectedEmpleado
                         ? empleados.find(e => e.email === selectedEmpleado)?.nombre + ' (' + selectedEmpleado + ')'
                         : 'Selecciona un empleado'
                       }
                     </Text>
                     <Ionicons name={showEmpleadoDropdown ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
                   </TouchableOpacity>
-                  
+
                   {showEmpleadoDropdown && (
                     <View style={[styles.dropdownList, { maxHeight: 250 }]}>
                       <ScrollView showsVerticalScrollIndicator={false}>
@@ -3062,8 +3086,8 @@ function AdminPanelContent() {
               </View>
 
               <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={styles.modalSecondary} 
+                <TouchableOpacity
+                  style={styles.modalSecondary}
                   onPress={() => setShowTareasModal(false)}
                   disabled={creandoTarea}
                 >
@@ -3075,7 +3099,7 @@ function AdminPanelContent() {
                   end={{ x: 1, y: 0 }}
                   style={styles.modalPrimary}
                 >
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleCrearTarea}
                     disabled={creandoTarea}
                     activeOpacity={0.85}
@@ -3087,132 +3111,132 @@ function AdminPanelContent() {
                 </LinearGradient>
               </View>
             </View>
-            </TouchableWithoutFeedback>
-          </Pressable>
-        )}
+          </TouchableWithoutFeedback>
+        </Pressable>
+      )}
 
-        {/* Modal de Gestión de Usuarios */}
-        {showGestionUsuariosModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
-                    <Ionicons name="people-outline" size={24} color="#06b6d4" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Gestión de Usuarios</Text>
-                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Administrar roles y permisos</Text>
-                  </View>
+      {/* Modal de Gestión de Usuarios */}
+      {showGestionUsuariosModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
+                  <Ionicons name="people-outline" size={24} color="#06b6d4" />
                 </View>
-                <TouchableOpacity onPress={() => setShowGestionUsuariosModal(false)} activeOpacity={0.7}>
-                  <Ionicons name="close" size={24} color="#94a3b8" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Gestión de Usuarios</Text>
+                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Administrar roles y permisos</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowGestionUsuariosModal(false)} activeOpacity={0.7}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Filtros */}
+            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+              {/* Búsqueda por correo */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#334155' }}>
+                <Ionicons name="search-outline" size={18} color="#64748b" />
+                <TextInput
+                  style={[{ flex: 1, color: '#f1f5f9', paddingVertical: 12, paddingHorizontal: 10, fontSize: 14 }, { fontFamily }]}
+                  placeholder="Buscar por correo..."
+                  placeholderTextColor="#64748b"
+                  value={filtroCorreo}
+                  onChangeText={setFiltroCorreo}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                {filtroCorreo.length > 0 && (
+                  <TouchableOpacity onPress={() => setFiltroCorreo('')} activeOpacity={0.7}>
+                    <Ionicons name="close-circle" size={18} color="#64748b" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Filtro por estado */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setFiltroEstado('todos')}
+                  style={[
+                    { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                    filtroEstado === 'todos'
+                      ? { backgroundColor: '#1e40af', borderColor: '#2563eb' }
+                      : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'todos' ? '#93c5fd' : '#94a3b8' }, { fontFamily }]}>
+                    Todos
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setFiltroEstado('activo')}
+                  style={[
+                    { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                    filtroEstado === 'activo'
+                      ? { backgroundColor: '#065f46', borderColor: '#059669' }
+                      : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'activo' ? '#6ee7b7' : '#94a3b8' }, { fontFamily }]}>
+                    Activos
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setFiltroEstado('inactivo')}
+                  style={[
+                    { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                    filtroEstado === 'inactivo'
+                      ? { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }
+                      : { backgroundColor: '#1e293b', borderColor: '#334155' }
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'inactivo' ? '#fca5a5' : '#94a3b8' }, { fontFamily }]}>
+                    Inactivos
+                  </Text>
                 </TouchableOpacity>
               </View>
+            </View>
 
-              {/* Filtros */}
-              <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
-                {/* Búsqueda por correo */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#334155' }}>
-                  <Ionicons name="search-outline" size={18} color="#64748b" />
-                  <TextInput
-                    style={[{ flex: 1, color: '#f1f5f9', paddingVertical: 12, paddingHorizontal: 10, fontSize: 14 }, { fontFamily }]}
-                    placeholder="Buscar por correo..."
-                    placeholderTextColor="#64748b"
-                    value={filtroCorreo}
-                    onChangeText={setFiltroCorreo}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
-                  {filtroCorreo.length > 0 && (
-                    <TouchableOpacity onPress={() => setFiltroCorreo('')} activeOpacity={0.7}>
-                      <Ionicons name="close-circle" size={18} color="#64748b" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Filtro por estado */}
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => setFiltroEstado('todos')}
-                    style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-                      filtroEstado === 'todos' 
-                        ? { backgroundColor: '#1e40af', borderColor: '#2563eb' }
-                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'todos' ? '#93c5fd' : '#94a3b8' }, { fontFamily }]}>
-                      Todos
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setFiltroEstado('activo')}
-                    style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-                      filtroEstado === 'activo' 
-                        ? { backgroundColor: '#065f46', borderColor: '#059669' }
-                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'activo' ? '#6ee7b7' : '#94a3b8' }, { fontFamily }]}>
-                      Activos
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setFiltroEstado('inactivo')}
-                    style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
-                      filtroEstado === 'inactivo' 
-                        ? { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }
-                        : { backgroundColor: '#1e293b', borderColor: '#334155' }
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'inactivo' ? '#fca5a5' : '#94a3b8' }, { fontFamily }]}>
-                      Inactivos
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+            {loadingUsuarios ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando usuarios...</Text>
               </View>
+            ) : usuarios.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Ionicons name="people-outline" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
+                <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
+                  No hay usuarios registrados
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
+                {usuarios
+                  .filter((user) => {
+                    // Filtro por correo
+                    const matchCorreo = filtroCorreo === '' ||
+                      user.email?.toLowerCase().includes(filtroCorreo.toLowerCase());
 
-              {loadingUsuarios ? (
-                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando usuarios...</Text>
-                </View>
-              ) : usuarios.length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  <Ionicons name="people-outline" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
-                  <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
-                    No hay usuarios registrados
-                  </Text>
-                </View>
-              ) : (
-                <ScrollView style={{ maxHeight: 500 }} showsVerticalScrollIndicator={false}>
-                  {usuarios
-                    .filter((user) => {
-                      // Filtro por correo
-                      const matchCorreo = filtroCorreo === '' || 
-                        user.email?.toLowerCase().includes(filtroCorreo.toLowerCase());
-                      
-                      // Filtro por estado
-                      const matchEstado = filtroEstado === 'todos' || user.estado === filtroEstado;
-                      
-                      return matchCorreo && matchEstado;
-                    })
-                    .map((user) => {
-                    const rolColor = 
-                      user.rol === 'admin' ? '#dc2626' : 
-                      user.rol === 'empleado' ? '#2563eb' : 
-                      '#10b981';
-                    
-                    const rolLabel = 
-                      user.rol === 'admin' ? 'Administrador' : 
-                      user.rol === 'empleado' ? 'Empleado' : 
-                      'Cliente';
-                    
+                    // Filtro por estado
+                    const matchEstado = filtroEstado === 'todos' || user.estado === filtroEstado;
+
+                    return matchCorreo && matchEstado;
+                  })
+                  .map((user) => {
+                    const rolColor =
+                      user.rol === 'admin' ? '#dc2626' :
+                        user.rol === 'empleado' ? '#2563eb' :
+                          '#10b981';
+
+                    const rolLabel =
+                      user.rol === 'admin' ? 'Administrador' :
+                        user.rol === 'empleado' ? 'Empleado' :
+                          'Cliente';
+
                     const estadoActivo = user.estado === 'activo';
 
                     return (
@@ -3252,7 +3276,7 @@ function AdminPanelContent() {
                               </View>
                             </View>
                           </View>
-                          
+
                           {/* Footer con fecha y acciones */}
                           <View style={styles.userCardFooter}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -3273,821 +3297,881 @@ function AdminPanelContent() {
                       </View>
                     );
                   })}
-                </ScrollView>
-              )}
-            </View>
+              </ScrollView>
+            )}
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Modal de Editar Usuario */}
-        {showEditUserModal && usuarioEditando && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={[styles.modalHeaderRow, isMobile && styles.modalHeaderRowMobile]}>
-                <View style={[styles.modalIconWrapper, isMobile && styles.modalIconWrapperMobile, { backgroundColor: 'rgba(30, 64, 175, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
-                  <Ionicons name="create-outline" size={isMobile ? 20 : 22} color="#3b82f6" />
-                </View>
-                <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily, flex: 1 }]} numberOfLines={1}>Editar Usuario</Text>
+      {/* Modal de Editar Usuario */}
+      {showEditUserModal && usuarioEditando && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={[styles.modalHeaderRow, isMobile && styles.modalHeaderRowMobile]}>
+              <View style={[styles.modalIconWrapper, isMobile && styles.modalIconWrapperMobile, { backgroundColor: 'rgba(30, 64, 175, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                <Ionicons name="create-outline" size={isMobile ? 20 : 22} color="#3b82f6" />
               </View>
+              <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily, flex: 1 }]} numberOfLines={1}>Editar Usuario</Text>
+            </View>
 
-              <ScrollView style={[{ maxHeight: 520 }, isMobile && { maxHeight: 480 }]} showsVerticalScrollIndicator={false}>
-                <View style={[{ gap: 16 }, isMobile && { gap: 12 }]}>
-                  {errorUsuario && (
-                    <View style={styles.alertError}>
-                      <Ionicons name="alert-circle" size={18} color="#fca5a5" />
-                      <Text style={[styles.alertErrorText, isMobile && { fontSize: 12 }, { fontFamily }]}>{errorUsuario}</Text>
-                    </View>
-                  )}
-
-                  {exitoUsuario && (
-                    <View style={styles.alertSuccess}>
-                      <Ionicons name="checkmark-circle" size={18} color="#6ee7b7" />
-                      <Text style={[styles.alertSuccessText, { fontFamily }]}>Usuario actualizado exitosamente</Text>
-                    </View>
-                  )}
-
-                  {/* Información del Usuario */}
-                  <View style={[styles.infoPanel, isMobile && styles.infoPanelMobile]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="information-circle" size={isMobile ? 14 : 16} color="#38bdf8" />
-                      <Text style={[styles.infoPanelTitle, isMobile && styles.infoPanelTitleMobile, { fontFamily }]}>INFORMACIÓN DE LA CUENTA</Text>
-                    </View>
-                    <Text style={[styles.infoPanelText, isMobile && styles.infoPanelTextMobile, { fontFamily }]}>
-                      Cambiar el rol modificará los permisos y accesos del usuario en el sistema.
-                    </Text>
+            <ScrollView style={[{ maxHeight: 520 }, isMobile && { maxHeight: 480 }]} showsVerticalScrollIndicator={false}>
+              <View style={[{ gap: 16 }, isMobile && { gap: 12 }]}>
+                {errorUsuario && (
+                  <View style={styles.alertError}>
+                    <Ionicons name="alert-circle" size={18} color="#fca5a5" />
+                    <Text style={[styles.alertErrorText, isMobile && { fontSize: 12 }, { fontFamily }]}>{errorUsuario}</Text>
                   </View>
+                )}
 
-                  {/* Datos Personales */}
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Nombre*</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                        value={editNombre}
-                        onChangeText={setEditNombre}
-                        placeholder="Nombre"
-                        placeholderTextColor="#6b7280"
-                        editable={!actualizandoUsuario}
-                      />
-                    </View>
+                {exitoUsuario && (
+                  <View style={styles.alertSuccess}>
+                    <Ionicons name="checkmark-circle" size={18} color="#6ee7b7" />
+                    <Text style={[styles.alertSuccessText, { fontFamily }]}>Usuario actualizado exitosamente</Text>
                   </View>
+                )}
 
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Apellido</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                        value={editApellido}
-                        onChangeText={setEditApellido}
-                        placeholder="Apellido"
-                        placeholderTextColor="#6b7280"
-                        editable={!actualizandoUsuario}
-                      />
-                    </View>
+                {/* Información del Usuario */}
+                <View style={[styles.infoPanel, isMobile && styles.infoPanelMobile]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="information-circle" size={isMobile ? 14 : 16} color="#38bdf8" />
+                    <Text style={[styles.infoPanelTitle, isMobile && styles.infoPanelTitleMobile, { fontFamily }]}>INFORMACIÓN DE LA CUENTA</Text>
                   </View>
+                  <Text style={[styles.infoPanelText, isMobile && styles.infoPanelTextMobile, { fontFamily }]}>
+                    Cambiar el rol modificará los permisos y accesos del usuario en el sistema.
+                  </Text>
+                </View>
 
-                  {/* Contacto */}
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Email*</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons name="mail-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                        value={editEmail}
-                        onChangeText={setEditEmail}
-                        placeholder="correo@ejemplo.com"
-                        placeholderTextColor="#6b7280"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        editable={!actualizandoUsuario}
-                      />
-                    </View>
+                {/* Datos Personales */}
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Nombre*</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                      value={editNombre}
+                      onChangeText={setEditNombre}
+                      placeholder="Nombre"
+                      placeholderTextColor="#6b7280"
+                      editable={!actualizandoUsuario}
+                    />
                   </View>
+                </View>
 
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Teléfono</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons name="call-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
-                      <TextInput
-                        style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                        value={editTelefono}
-                        onChangeText={setEditTelefono}
-                        placeholder="1234567890"
-                        placeholderTextColor="#6b7280"
-                        keyboardType="phone-pad"
-                        editable={!actualizandoUsuario}
-                      />
-                    </View>
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Apellido</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons name="person-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                      value={editApellido}
+                      onChangeText={setEditApellido}
+                      placeholder="Apellido"
+                      placeholderTextColor="#6b7280"
+                      editable={!actualizandoUsuario}
+                    />
                   </View>
+                </View>
 
-                  {/* Empresa y Ciudad */}
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Empresa</Text>
-                    {empresas.length > 0 ? (
-                      <>
-                        <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                          <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                {/* Contacto */}
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Email*</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons name="mail-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                      value={editEmail}
+                      onChangeText={setEditEmail}
+                      placeholder="correo@ejemplo.com"
+                      placeholderTextColor="#6b7280"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!actualizandoUsuario}
+                    />
+                  </View>
+                </View>
+
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Teléfono</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons name="call-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                      value={editTelefono}
+                      onChangeText={setEditTelefono}
+                      placeholder="1234567890"
+                      placeholderTextColor="#6b7280"
+                      keyboardType="phone-pad"
+                      editable={!actualizandoUsuario}
+                    />
+                  </View>
+                </View>
+
+                {/* Empresa y Ciudad */}
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Empresa</Text>
+                  {empresas.length > 0 ? (
+                    <>
+                      <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                        <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                        <TouchableOpacity
+                          style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                          onPress={() => setShowEmpresaPickerEdit(!showEmpresaPickerEdit)}
+                          disabled={actualizandoUsuario}
+                        >
+                          <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                            {editEmpresa || 'Seleccionar empresa'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                        </TouchableOpacity>
+                      </View>
+                      {showEmpresaPickerEdit && (
+                        <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 140 }]} scrollEnabled={true} nestedScrollEnabled={true}>
                           <TouchableOpacity
-                            style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
-                            onPress={() => setShowEmpresaPickerEdit(!showEmpresaPickerEdit)}
-                            disabled={actualizandoUsuario}
+                            style={[
+                              styles.selectItem,
+                              isMobile && styles.selectItemMobile,
+                              editEmpresa === '' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                            ]}
+                            onPress={() => {
+                              setEditEmpresa('');
+                              setShowEmpresaPickerEdit(false);
+                            }}
                           >
-                            <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
-                              {editEmpresa || 'Seleccionar empresa'}
-                            </Text>
-                            <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                            <Text style={[styles.selectItemText, editEmpresa === '' && styles.selectItemTextHighlight, { fontFamily }]}>Sin empresa</Text>
                           </TouchableOpacity>
-                        </View>
-                        {showEmpresaPickerEdit && (
-                          <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 140 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                          {empresas.map((emp) => (
                             <TouchableOpacity
+                              key={emp.id}
                               style={[
-                                styles.selectItem, 
+                                styles.selectItem,
                                 isMobile && styles.selectItemMobile,
-                                editEmpresa === '' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                                editEmpresa === emp.nombre && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
                               ]}
                               onPress={() => {
-                                setEditEmpresa('');
+                                setEditEmpresa(emp.nombre);
                                 setShowEmpresaPickerEdit(false);
                               }}
                             >
-                              <Text style={[styles.selectItemText, editEmpresa === '' && styles.selectItemTextHighlight, { fontFamily }]}>Sin empresa</Text>
+                              <Text style={[styles.selectItemText, editEmpresa === emp.nombre && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
                             </TouchableOpacity>
-                            {empresas.map((emp) => (
-                              <TouchableOpacity
-                                key={emp.id}
-                                style={[
-                                  styles.selectItem, 
-                                  isMobile && styles.selectItemMobile,
-                                  editEmpresa === emp.nombre && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
-                                ]}
-                                onPress={() => {
-                                  setEditEmpresa(emp.nombre);
-                                  setShowEmpresaPickerEdit(false);
-                                }}
-                              >
-                                <Text style={[styles.selectItemText, editEmpresa === emp.nombre && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        )}
-                      </>
-                    ) : (
-                      <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                        <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
-                        <TextInput
-                          style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                          value={editEmpresa}
-                          onChangeText={setEditEmpresa}
-                          placeholder="Nombre de la empresa"
-                          placeholderTextColor="#6b7280"
-                          editable={!actualizandoUsuario}
-                        />
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Ciudad</Text>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </>
+                  ) : (
                     <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons name="location-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                      <Ionicons name="business-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
                       <TextInput
                         style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
-                        value={editCiudad}
-                        onChangeText={setEditCiudad}
-                        placeholder="Ciudad"
+                        value={editEmpresa}
+                        onChangeText={setEditEmpresa}
+                        placeholder="Nombre de la empresa"
                         placeholderTextColor="#6b7280"
                         editable={!actualizandoUsuario}
                       />
                     </View>
-                  </View>
-
-                  {/* Rol y Permisos */}
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Rol del Usuario*</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons 
-                        name={editRol === 'admin' ? 'shield-checkmark' : editRol === 'empleado' ? 'briefcase-outline' : 'person-circle-outline'} 
-                        size={isMobile ? 16 : 18} 
-                        color={editRol === 'admin' ? '#dc2626' : editRol === 'empleado' ? '#2563eb' : '#10b981'} 
-                        style={styles.inputIcon}
-                      />
-                      <TouchableOpacity
-                        style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
-                        onPress={() => setShowRolPicker(!showRolPicker)}
-                        disabled={actualizandoUsuario}
-                      >
-                        <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
-                          {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
-                        </Text>
-                        <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
-                      </TouchableOpacity>
-                    </View>
-                    {showRolPicker && (
-                      <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 120 }]} scrollEnabled={true} nestedScrollEnabled={true}>
-                        {['cliente', 'empleado', 'admin'].map((rol) => (
-                          <TouchableOpacity
-                            key={rol}
-                            style={[
-                              styles.selectItem, 
-                              isMobile && styles.selectItemMobile,
-                              editRol === rol && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
-                            ]}
-                            onPress={() => {
-                              setEditRol(rol as 'cliente' | 'empleado' | 'admin');
-                              setShowRolPicker(false);
-                            }}
-                          >
-                            <Text style={[styles.selectItemText, editRol === rol && styles.selectItemTextHighlight, { fontFamily }]}>
-                              {rol === 'admin' ? 'Administrador' : rol === 'empleado' ? 'Empleado' : 'Cliente'}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    )}
-                  </View>
-
-                  {/* Estado de la Cuenta */}
-                  <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
-                    <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Estado de la Cuenta*</Text>
-                    <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
-                      <Ionicons 
-                        name={editEstado === 'activo' ? 'checkmark-circle' : 'close-circle'} 
-                        size={isMobile ? 16 : 18} 
-                        color={editEstado === 'activo' ? '#10b981' : '#ef4444'} 
-                        style={styles.inputIcon}
-                      />
-                      <TouchableOpacity
-                        style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
-                        onPress={() => setShowEstadoPicker(!showEstadoPicker)}
-                        disabled={actualizandoUsuario}
-                      >
-                        <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
-                          {editEstado === 'activo' ? 'Activo' : 'Inactivo'}
-                        </Text>
-                        <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
-                      </TouchableOpacity>
-                    </View>
-                    {showEstadoPicker && (
-                      <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 100 }]} scrollEnabled={true} nestedScrollEnabled={true}>
-                        <TouchableOpacity
-                          style={[
-                            styles.selectItem, 
-                            isMobile && styles.selectItemMobile,
-                            editEstado === 'activo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
-                          ]}
-                          onPress={() => {
-                            setEditEstado('activo');
-                            setShowEstadoPicker(false);
-                          }}
-                        >
-                          <Text style={[styles.selectItemText, editEstado === 'activo' && styles.selectItemTextHighlight, { fontFamily }]}>Activo</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.selectItem, 
-                            isMobile && styles.selectItemMobile, 
-                            { borderBottomWidth: 0 },
-                            editEstado === 'inactivo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
-                          ]}
-                          onPress={() => {
-                            setEditEstado('inactivo');
-                            setShowEstadoPicker(false);
-                          }}
-                        >
-                          <Text style={[styles.selectItemText, editEstado === 'inactivo' && styles.selectItemTextHighlight, { fontFamily }]}>Inactivo</Text>
-                        </TouchableOpacity>
-                      </ScrollView>
-                    )}
-                  </View>
-
-                  {/* Información adicional */}
-                  {usuarioEditando.created_at && (
-                    <View style={styles.infoFooter}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="calendar-outline" size={14} color="#64748b" />
-                        <Text style={[styles.infoFooterText, { fontFamily }]}>
-                          Registrado: {new Date(usuarioEditando.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                        </Text>
-                      </View>
-                    </View>
                   )}
                 </View>
-              </ScrollView>
 
-              <View style={[styles.modalActions, isMobile ? { marginTop: 14, gap: 10 } : { marginTop: 18, gap: 12 }]}>
-                <TouchableOpacity
-                  style={[styles.cancelButtonPro, isMobile && styles.cancelButtonProMobile]}
-                  onPress={() => {
-                    setShowEditUserModal(false);
-                    setShowRolPicker(false);
-                    setShowEstadoPicker(false);
-                    setShowEmpresaPickerEdit(false);
-                  }}
-                  disabled={actualizandoUsuario}
-                >
-                  <Text style={[styles.cancelButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>Cancelar</Text>
-                </TouchableOpacity>
-                <LinearGradient
-                  colors={['#2563eb', '#3b82f6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.saveButtonPro, isMobile && styles.saveButtonProMobile]}
-                >
-                  <TouchableOpacity
-                    onPress={handleActualizarUsuario}
-                    disabled={actualizandoUsuario}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <Text style={[styles.saveButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>
-                      {actualizandoUsuario ? 'Actualizando...' : 'Guardar Cambios'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Ciudad</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons name="location-outline" size={isMobile ? 16 : 18} color="#64748b" style={styles.inputIcon} />
+                    <TextInput
+                      style={[styles.formInputPro, isMobile && styles.formInputProMobile, { fontFamily }]}
+                      value={editCiudad}
+                      onChangeText={setEditCiudad}
+                      placeholder="Ciudad"
+                      placeholderTextColor="#6b7280"
+                      editable={!actualizandoUsuario}
+                    />
+                  </View>
+                </View>
+
+                {/* Rol y Permisos */}
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Rol del Usuario*</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons
+                      name={editRol === 'admin' ? 'shield-checkmark' : editRol === 'empleado' ? 'briefcase-outline' : 'person-circle-outline'}
+                      size={isMobile ? 16 : 18}
+                      color={editRol === 'admin' ? '#dc2626' : editRol === 'empleado' ? '#2563eb' : '#10b981'}
+                      style={styles.inputIcon}
+                    />
+                    <TouchableOpacity
+                      style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                      onPress={() => setShowRolPicker(!showRolPicker)}
+                      disabled={actualizandoUsuario}
+                    >
+                      <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                        {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+                  {showRolPicker && (
+                    <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 120 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                      {['cliente', 'empleado', 'admin'].map((rol) => (
+                        <TouchableOpacity
+                          key={rol}
+                          style={[
+                            styles.selectItem,
+                            isMobile && styles.selectItemMobile,
+                            editRol === rol && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          ]}
+                          onPress={() => {
+                            setEditRol(rol as 'cliente' | 'empleado' | 'admin');
+                            setShowRolPicker(false);
+                          }}
+                        >
+                          <Text style={[styles.selectItemText, editRol === rol && styles.selectItemTextHighlight, { fontFamily }]}>
+                            {rol === 'admin' ? 'Administrador' : rol === 'empleado' ? 'Empleado' : 'Cliente'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+
+                {/* Estado de la Cuenta */}
+                <View style={[styles.formGroup, isMobile && styles.formGroupMobile]}>
+                  <Text style={[styles.formLabel, isMobile && styles.formLabelMobile, { fontFamily }]}>Estado de la Cuenta*</Text>
+                  <View style={[styles.inputWrapper, isMobile && styles.inputWrapperMobile]}>
+                    <Ionicons
+                      name={editEstado === 'activo' ? 'checkmark-circle' : 'close-circle'}
+                      size={isMobile ? 16 : 18}
+                      color={editEstado === 'activo' ? '#10b981' : '#ef4444'}
+                      style={styles.inputIcon}
+                    />
+                    <TouchableOpacity
+                      style={[styles.selectInputPro, isMobile && styles.selectInputProMobile]}
+                      onPress={() => setShowEstadoPicker(!showEstadoPicker)}
+                      disabled={actualizandoUsuario}
+                    >
+                      <Text style={[styles.selectInputText, isMobile && styles.selectInputTextMobile, { fontFamily }]}>
+                        {editEstado === 'activo' ? 'Activo' : 'Inactivo'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={isMobile ? 16 : 18} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+                  {showEstadoPicker && (
+                    <ScrollView style={[styles.selectDropdown, isMobile && { maxHeight: 100 }]} scrollEnabled={true} nestedScrollEnabled={true}>
+                      <TouchableOpacity
+                        style={[
+                          styles.selectItem,
+                          isMobile && styles.selectItemMobile,
+                          editEstado === 'activo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                        ]}
+                        onPress={() => {
+                          setEditEstado('activo');
+                          setShowEstadoPicker(false);
+                        }}
+                      >
+                        <Text style={[styles.selectItemText, editEstado === 'activo' && styles.selectItemTextHighlight, { fontFamily }]}>Activo</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.selectItem,
+                          isMobile && styles.selectItemMobile,
+                          { borderBottomWidth: 0 },
+                          editEstado === 'inactivo' && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                        ]}
+                        onPress={() => {
+                          setEditEstado('inactivo');
+                          setShowEstadoPicker(false);
+                        }}
+                      >
+                        <Text style={[styles.selectItemText, editEstado === 'inactivo' && styles.selectItemTextHighlight, { fontFamily }]}>Inactivo</Text>
+                      </TouchableOpacity>
+                    </ScrollView>
+                  )}
+                </View>
+
+                {/* Información adicional */}
+                {usuarioEditando.created_at && (
+                  <View style={styles.infoFooter}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="calendar-outline" size={14} color="#64748b" />
+                      <Text style={[styles.infoFooterText, { fontFamily }]}>
+                        Registrado: {new Date(usuarioEditando.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
+            </ScrollView>
+
+            <View style={[styles.modalActions, isMobile ? { marginTop: 14, gap: 10 } : { marginTop: 18, gap: 12 }]}>
+              <TouchableOpacity
+                style={[styles.cancelButtonPro, isMobile && styles.cancelButtonProMobile]}
+                onPress={() => {
+                  setShowEditUserModal(false);
+                  setShowRolPicker(false);
+                  setShowEstadoPicker(false);
+                  setShowEmpresaPickerEdit(false);
+                }}
+                disabled={actualizandoUsuario}
+              >
+                <Text style={[styles.cancelButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#2563eb', '#3b82f6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.saveButtonPro, isMobile && styles.saveButtonProMobile]}
+              >
+                <TouchableOpacity
+                  onPress={handleActualizarUsuario}
+                  disabled={actualizandoUsuario}
+                  activeOpacity={0.85}
+                  style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={[styles.saveButtonTextPro, isMobile && { fontSize: 13 }, { fontFamily }]}>
+                    {actualizandoUsuario ? 'Actualizando...' : 'Guardar Cambios'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Modal Historial de Tareas */}
-        {showTareasHistorialModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
-                    <Ionicons name="list-outline" size={24} color="#06b6d4" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Tareas</Text>
-                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todas las tareas creadas</Text>
-                  </View>
+      {/* Modal Historial de Tareas */}
+      {showTareasHistorialModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
+                  <Ionicons name="list-outline" size={24} color="#06b6d4" />
                 </View>
-                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} activeOpacity={0.7}>
-                  <Ionicons name="close" size={24} color="#94a3b8" />
-                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Tareas</Text>
+                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todas las tareas creadas</Text>
+                </View>
               </View>
+              <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} activeOpacity={0.7}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
 
-              {loadingTareas ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando tareas...</Text>
-                </View>
-              ) : errorTareas ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="alert-circle" size={40} color="#ef4444" />
-                  <Text style={[{ color: '#fca5a5', fontSize: 16, marginTop: 12 }, { fontFamily }]}>{errorTareas}</Text>
-                </View>
-              ) : tareas.length === 0 ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="document-outline" size={40} color="#64748b" />
-                  <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>No hay tareas creadas</Text>
-                </View>
-              ) : (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
-                    {tareas.map((tarea, index) => {
-                      const estadoColor = tarea.estado === 'completada' ? '#10b981' : 
-                                         tarea.estado === 'en_proceso' ? '#f59e0b' : 
-                                         tarea.estado === 'rechazada' ? '#ef4444' : '#06b6d4';
-                      const estadoLabel = tarea.estado === 'completada' ? 'Completada' :
-                                         tarea.estado === 'en_proceso' ? 'En Proceso' :
-                                         tarea.estado === 'rechazada' ? 'Rechazada' : 'Pendiente';
+            {loadingTareas ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando tareas...</Text>
+              </View>
+            ) : errorTareas ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="alert-circle" size={40} color="#ef4444" />
+                <Text style={[{ color: '#fca5a5', fontSize: 16, marginTop: 12 }, { fontFamily }]}>{errorTareas}</Text>
+              </View>
+            ) : tareas.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="document-outline" size={40} color="#64748b" />
+                <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>No hay tareas creadas</Text>
+              </View>
+            ) : (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
+                  {tareas.map((tarea, index) => {
+                    const estadoColor = tarea.estado === 'completada' ? '#10b981' :
+                      tarea.estado === 'en_proceso' ? '#f59e0b' :
+                        tarea.estado === 'rechazada' ? '#ef4444' : '#06b6d4';
+                    const estadoLabel = tarea.estado === 'completada' ? 'Completada' :
+                      tarea.estado === 'en_proceso' ? 'En Proceso' :
+                        tarea.estado === 'rechazada' ? 'Rechazada' : 'Pendiente';
 
-                      return (
-                        <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 8 }, { fontFamily }]}>
-                                {tarea.descripcion}
-                              </Text>
-                            </View>
-                            <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
-                              <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
-                                {estadoLabel}
-                              </Text>
-                            </View>
+                    return (
+                      <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 8 }, { fontFamily }]}>
+                              {tarea.descripcion}
+                            </Text>
                           </View>
-
-                          <View style={{ gap: 10, marginTop: 12 }}>
-                            {tarea.admin_nombre && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="person-circle-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  <Text style={{ fontWeight: '600' }}>Creada por:</Text> {tarea.admin_nombre}
-                                </Text>
-                              </View>
-                            )}
-
-                            {tarea.empleado_nombre && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="person-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  <Text style={{ fontWeight: '600' }}>Asignada a:</Text> {tarea.empleado_nombre}
-                                </Text>
-                              </View>
-                            )}
-
-                            {tarea.created_at && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                              </View>
-                            )}
+                          <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
+                            <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
+                              {estadoLabel}
+                            </Text>
                           </View>
                         </View>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              )}
 
-              <View style={[styles.modalActions, { marginTop: 16, gap: 10 }]}>
-                <TouchableOpacity
-                  style={[styles.modalSecondary, { flex: 1 }]}
-                  onPress={() => setShowTareasHistorialModal(false)}
-                >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Modal Inventario del Empleado */}
-        {showInventarioModal && empleadoSelectedInventario && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ backgroundColor: '#8b5cf6', borderRadius: 12, padding: 10 }}>
-                    <Ionicons name="cube-outline" size={24} color="#c4b5fd" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Inventario</Text>
-                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>{empleadoSelectedInventario.nombre}</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => setShowInventarioModal(false)} activeOpacity={0.7}>
-                  <Ionicons name="close" size={24} color="#94a3b8" />
-                </TouchableOpacity>
-              </View>
-
-              {loadingInventarioEmpleado ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando inventario...</Text>
-                </View>
-              ) : inventarioEmpleado.length === 0 ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="cube-outline" size={40} color="#64748b" />
-                  <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>Sin herramientas asignadas</Text>
-                </View>
-              ) : (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
-                    {inventarioEmpleado.map((herramienta: any, index: number) => {
-                      const estadoColor = herramienta.estado === 'devuelta' ? '#10b981' : herramienta.estado === 'perdida' ? '#ef4444' : '#06b6d4';
-                      const estadoLabel = herramienta.estado === 'devuelta' ? 'Devuelta' : herramienta.estado === 'perdida' ? 'Perdida' : 'Asignada';
-
-                      return (
-                        <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
-                                {herramienta.herramienta_nombre}
-                              </Text>
+                        <View style={{ gap: 10, marginTop: 12 }}>
+                          {tarea.admin_nombre && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Ionicons name="person-circle-outline" size={16} color="#94a3b8" />
                               <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                Cantidad: <Text style={{ fontWeight: '600' }}>{herramienta.cantidad}</Text>
+                                <Text style={{ fontWeight: '600' }}>Creada por:</Text> {tarea.admin_nombre}
                               </Text>
                             </View>
-                            <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
-                              <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
-                                {estadoLabel}
-                              </Text>
-                            </View>
-                          </View>
+                          )}
 
-                          <View style={{ gap: 10, marginTop: 12 }}>
+                          {tarea.empleado_nombre && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <Ionicons name="person-outline" size={16} color="#94a3b8" />
+                              <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                                <Text style={{ fontWeight: '600' }}>Asignada a:</Text> {tarea.empleado_nombre}
+                              </Text>
+                            </View>
+                          )}
+
+                          {tarea.created_at && (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                               <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
                               <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                Asignado: {new Date(herramienta.fecha_asignacion).toLocaleDateString('es-ES')}
+                                {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </Text>
                             </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            )}
 
-                            {herramienta.observaciones && (
-                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                                <Ionicons name="document-text-outline" size={16} color="#94a3b8" style={{ marginTop: 2 }} />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13, flex: 1 }, { fontFamily }]}>
-                                  {herramienta.observaciones}
-                                </Text>
-                              </View>
-                            )}
+            <View style={[styles.modalActions, { marginTop: 16, gap: 10 }]}>
+              <TouchableOpacity
+                style={[styles.modalSecondary, { flex: 1 }]}
+                onPress={() => setShowTareasHistorialModal(false)}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
-                            {herramienta.estado === 'asignada' && (
-                              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                                <TouchableOpacity
-                                  style={{ flex: 1, backgroundColor: '#10b98133', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#10b98166' }}
-                                  onPress={async () => {
-                                    const { success } = await marcarHerramientaComoDevueltaBackend(herramienta.id);
-                                    if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
-                                      if (s2) setInventarioEmpleado(data || []);
-                                    }
-                                  }}
-                                >
-                                  <Text style={[{ color: '#6ee7b7', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Devuelta</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={{ flex: 1, backgroundColor: '#ef444433', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ef444466' }}
-                                  onPress={async () => {
-                                    const { success } = await marcarHerramientaComoPerdidaBackend(herramienta.id);
-                                    if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
-                                      if (s2) setInventarioEmpleado(data || []);
-                                    }
-                                  }}
-                                >
-                                  <Text style={[{ color: '#fca5a5', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Perdida</Text>
-                                </TouchableOpacity>
-                              </View>
-                            )}
+      {/* Modal Inventario del Empleado */}
+      {showInventarioModal && empleadoSelectedInventario && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{ backgroundColor: '#8b5cf6', borderRadius: 12, padding: 10 }}>
+                  <Ionicons name="cube-outline" size={24} color="#c4b5fd" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Inventario</Text>
+                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>{empleadoSelectedInventario.nombre}</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowInventarioModal(false)} activeOpacity={0.7}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingInventarioEmpleado ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando inventario...</Text>
+              </View>
+            ) : inventarioEmpleado.length === 0 ? (
+              <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="cube-outline" size={40} color="#64748b" />
+                <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>Sin herramientas asignadas</Text>
+              </View>
+            ) : (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
+                  {inventarioEmpleado.map((herramienta: any, index: number) => {
+                    const estadoColor = herramienta.estado === 'devuelta' ? '#10b981' : herramienta.estado === 'perdida' ? '#ef4444' : '#06b6d4';
+                    const estadoLabel = herramienta.estado === 'devuelta' ? 'Devuelta' : herramienta.estado === 'perdida' ? 'Perdida' : 'Asignada';
+
+                    return (
+                      <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
+                              {herramienta.herramienta_nombre}
+                            </Text>
+                            <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                              Cantidad: <Text style={{ fontWeight: '600' }}>{herramienta.cantidad}</Text>
+                            </Text>
+                          </View>
+                          <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
+                            <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
+                              {estadoLabel}
+                            </Text>
                           </View>
                         </View>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              )}
 
-              <View style={[styles.modalActions, { marginTop: 16, gap: 10, paddingHorizontal: 20, paddingVertical: 16 }]}>
-                <TouchableOpacity
-                  style={[styles.modalSecondary, { flex: 1 }]}
-                  onPress={() => setShowInventarioModal(false)}
-                >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalPrimary, { flex: 1, backgroundColor: '#8b5cf6', borderColor: '#a855f7' }]}
-                  onPress={() => {
-                    setHerramientaNombreInput('');
-                    setShowAsignarHerramientaModal(true);
-                  }}
-                >
-                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>+ Asignar Herramienta</Text>
-                </TouchableOpacity>
-              </View>
+                        <View style={{ gap: 10, marginTop: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
+                            <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
+                              Asignado: {herramienta.created_at ? new Date(herramienta.created_at).toLocaleDateString('es-ES') : 'Fecha desconocida'}
+                            </Text>
+                          </View>
+
+                          {herramienta.observaciones && (
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                              <Ionicons name="document-text-outline" size={16} color="#94a3b8" style={{ marginTop: 2 }} />
+                              <Text style={[{ color: '#cbd5e1', fontSize: 13, flex: 1 }, { fontFamily }]}>
+                                {herramienta.observaciones}
+                              </Text>
+                            </View>
+                          )}
+
+                          {herramienta.estado === 'asignada' && (
+                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                              <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#10b98133', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#10b98166' }}
+                                onPress={async () => {
+                                  const { success } = await marcarHerramientaComoDevueltaBackend(herramienta.id);
+                                  if (success) {
+                                    const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
+                                    if (s2) setInventarioEmpleado(data || []);
+                                  }
+                                }}
+                              >
+                                <Text style={[{ color: '#6ee7b7', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Devuelta</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={{ flex: 1, backgroundColor: '#ef444433', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ef444466' }}
+                                onPress={async () => {
+                                  const { success } = await marcarHerramientaComoPerdidaBackend(herramienta.id);
+                                  if (success) {
+                                    const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
+                                    if (s2) setInventarioEmpleado(data || []);
+                                  }
+                                }}
+                              >
+                                <Text style={[{ color: '#fca5a5', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Marcar Perdida</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            )}
+
+            <View style={[styles.modalActions, { marginTop: 16, gap: 10, paddingHorizontal: 20, paddingVertical: 16 }]}>
+              <TouchableOpacity
+                style={[styles.modalSecondary, { flex: 1 }]}
+                onPress={() => setShowInventarioModal(false)}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalPrimary, { flex: 1, backgroundColor: '#8b5cf6', borderColor: '#a855f7' }]}
+                onPress={() => {
+                  setHerramientaNombreInput('');
+                  setShowAsignarHerramientaModal(true);
+                }}
+              >
+                <Text style={[styles.modalPrimaryText, { fontFamily }]}>+ Asignar Herramienta</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Modal Asignar Herramienta */}
-        {showAsignarHerramientaModal && empleadoSelectedInventario && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.5)' }]}>
-                  <Ionicons name="add-circle-outline" size={22} color="#86efac" />
-                </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Herramienta</Text>
+      {/* Modal Asignar Herramienta */}
+      {showAsignarHerramientaModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.5)' }]}>
+                <Ionicons name="add-circle-outline" size={22} color="#86efac" />
               </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Herramienta</Text>
+            </View>
 
-              {errorAsignacion && (
-                <View style={styles.errorBox}>
-                  <Text style={[styles.errorText, { fontFamily }]}>{errorAsignacion}</Text>
-                </View>
-              )}
+            {errorAsignacion && (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{errorAsignacion}</Text>
+              </View>
+            )}
 
-              <View style={styles.modalForm}>
-                {/* Empleado - Read Only */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Empleado</Text>
+            <View style={styles.modalForm}>
+              {/* Empleado - Selección o Read Only */}
+              <View style={[styles.formGroup, { zIndex: 20 }]}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Empleado</Text>
+                {empleadoSelectedInventario ? (
                   <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
                     <Text style={[styles.formInputText, { color: '#f0f9ff' }]}>{empleadoSelectedInventario.nombre}</Text>
+                    <TouchableOpacity
+                      onPress={() => setEmpleadoSelectedInventario(null)}
+                      style={{ position: 'absolute', right: 10, padding: 4 }}
+                    >
+                      <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
                   </View>
-                </View>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.formInput, { paddingRight: 12 }]}
+                      onPress={() => setShowInventarioEmpleadoDropdown(!showInventarioEmpleadoDropdown)}
+                    >
+                      <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
+                        Selecciona un empleado
+                      </Text>
+                      <Ionicons name={showInventarioEmpleadoDropdown ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
+                    </TouchableOpacity>
 
-                {/* Herramienta */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Herramienta*</Text>
-                  <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Nombre de la herramienta"
-                    placeholderTextColor="#6b7280"
-                    value={herramientaNombreInput}
-                    onChangeText={setHerramientaNombreInput}
-                    editable={!asignandoHerramienta}
-                  />
-                </View>
-
-                {/* Cantidad */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Cantidad*</Text>
-                  <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Cantidad"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={cantidadHerramienta}
-                    onChangeText={setCantidadHerramienta}
-                    editable={!asignandoHerramienta}
-                  />
-                </View>
-
-                {/* Observaciones */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Observaciones</Text>
-                  <TextInput
-                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
-                    placeholder="Observaciones adicionales..."
-                    placeholderTextColor="#6b7280"
-                    multiline
-                    numberOfLines={3}
-                    value={observacionesHerramienta}
-                    onChangeText={setObservacionesHerramienta}
-                    editable={!asignandoHerramienta}
-                  />
-                </View>
+                    {showInventarioEmpleadoDropdown && (
+                      <View style={[styles.dropdownList, { maxHeight: 200 }]}>
+                        <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
+                          {empleadosInventario.length === 0 ? (
+                            <View style={styles.dropdownItem}>
+                              <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
+                                No hay empleados disponibles
+                              </Text>
+                            </View>
+                          ) : (
+                            empleadosInventario.map((empleado, index) => (
+                              <TouchableOpacity
+                                key={index}
+                                style={styles.dropdownItem}
+                                onPress={() => {
+                                  setEmpleadoSelectedInventario(empleado);
+                                  setShowInventarioEmpleadoDropdown(false);
+                                }}
+                              >
+                                <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
+                                  {empleado.nombre} ({empleado.email})
+                                </Text>
+                              </TouchableOpacity>
+                            ))
+                          )}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </>
+                )}
               </View>
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={styles.modalSecondary} 
-                  onPress={() => {
-                    setShowAsignarHerramientaModal(false);
-                    setHerramientaNombreInput('');
-                    setCantidadHerramienta('1');
-                    setObservacionesHerramienta('');
-                    setErrorAsignacion(null);
+              {/* Herramienta */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Herramienta*</Text>
+                <TextInput
+                  style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                  placeholder="Nombre de la herramienta"
+                  placeholderTextColor="#6b7280"
+                  value={herramientaNombreInput}
+                  onChangeText={setHerramientaNombreInput}
+                  editable={!asignandoHerramienta}
+                />
+              </View>
+
+              {/* Cantidad */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Cantidad*</Text>
+                <TextInput
+                  style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                  placeholder="Cantidad"
+                  placeholderTextColor="#6b7280"
+                  keyboardType="numeric"
+                  value={cantidadHerramienta}
+                  onChangeText={setCantidadHerramienta}
+                  editable={!asignandoHerramienta}
+                />
+              </View>
+
+              {/* Observaciones */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Observaciones</Text>
+                <TextInput
+                  style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
+                  placeholder="Observaciones adicionales..."
+                  placeholderTextColor="#6b7280"
+                  multiline
+                  numberOfLines={3}
+                  value={observacionesHerramienta}
+                  onChangeText={setObservacionesHerramienta}
+                  editable={!asignandoHerramienta}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => {
+                  setShowAsignarHerramientaModal(false);
+                  setHerramientaNombreInput('');
+                  setCantidadHerramienta('1');
+                  setObservacionesHerramienta('');
+                  setErrorAsignacion(null);
+                }}
+                disabled={asignandoHerramienta}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#22c55e', '#86efac']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!herramientaNombreInput.trim() || !cantidadHerramienta) {
+                      setErrorAsignacion('Escribe el nombre de la herramienta y la cantidad');
+                      return;
+                    }
+                    if (!empleadoSelectedInventario) {
+                      setErrorAsignacion('Selecciona un empleado');
+                      return;
+                    }
+
+                    setAsignandoHerramienta(true);
+                    const { success, error } = await asignarHerramientaAEmpleadoManualBackend({
+                      herramienta_nombre: herramientaNombreInput.trim(),
+                      usuario_id: empleadoSelectedInventario.id,
+                      cantidad: parseInt(cantidadHerramienta) || 1,
+                      observaciones: observacionesHerramienta || null
+                    });
+
+                    if (success) {
+                      // Recargar inventario si se estaba viendo
+                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
+                      if (s2) setInventarioEmpleado(data || []);
+
+                      // Recargar lista de empleados con inventario para actualizar contadores
+                      cargarEmpleadosInventario();
+
+                      setShowAsignarHerramientaModal(false);
+                      setHerramientaNombreInput('');
+                      setCantidadHerramienta('1');
+                      setObservacionesHerramienta('');
+                      setErrorAsignacion(null);
+                      // No reseteamos empleadoSelectedInventario aquí para que el usuario pueda seguir viendo/asignando
+                      // O si se prefiere resetear: setEmpleadoSelectedInventario(null);
+                    } else {
+                      setErrorAsignacion(error || 'Error al asignar herramienta');
+                    }
+                    setAsignandoHerramienta(false);
                   }}
                   disabled={asignandoHerramienta}
+                  activeOpacity={0.85}
                 >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {asignandoHerramienta ? 'Asignando...' : 'Asignar'}
+                  </Text>
                 </TouchableOpacity>
-                <LinearGradient
-                  colors={['#22c55e', '#86efac']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
-                >
-                  <TouchableOpacity 
-                    onPress={async () => {
-                      if (!herramientaNombreInput.trim() || !cantidadHerramienta) {
-                        setErrorAsignacion('Escribe el nombre de la herramienta y la cantidad');
-                        return;
-                      }
-
-                      setAsignandoHerramienta(true);
-                      const { success, error } = await asignarHerramientaAEmpleadoManualBackend({
-                        herramienta_nombre: herramientaNombreInput.trim(),
-                        usuario_id: empleadoSelectedInventario.id,
-                        cantidad: parseInt(cantidadHerramienta) || 1,
-                        observaciones: observacionesHerramienta || null
-                      });
-
-                      if (success) {
-                        const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
-                        if (s2) setInventarioEmpleado(data || []);
-                        setShowAsignarHerramientaModal(false);
-                        setHerramientaNombreInput('');
-                        setCantidadHerramienta('1');
-                        setObservacionesHerramienta('');
-                        setErrorAsignacion(null);
-                      } else {
-                        setErrorAsignacion(error || 'Error al asignar herramienta');
-                      }
-                      setAsignandoHerramienta(false);
-                    }}
-                    disabled={asignandoHerramienta}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                      {asignandoHerramienta ? 'Asignando...' : 'Asignar'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
+              </LinearGradient>
             </View>
           </View>
-        )}
+        </View>
+      )}
 
-        {/* Modal para crear nueva herramienta */}
-        {showCrearHerramientaModal && (
-          <View style={styles.overlay}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
-                  <Ionicons name="hammer-outline" size={22} color="#c4b5fd" />
-                </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Crear Herramienta</Text>
+      {/* Modal para crear nueva herramienta */}
+      {showCrearHerramientaModal && (
+        <View style={styles.overlay}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
+                <Ionicons name="hammer-outline" size={22} color="#c4b5fd" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Crear Herramienta</Text>
+            </View>
+
+            {crearHerramientaError && (
+              <View style={styles.errorBox}>
+                <Text style={[styles.errorText, { fontFamily }]}>{crearHerramientaError}</Text>
+              </View>
+            )}
+
+            <View style={styles.modalForm}>
+              {/* Campo Nombre */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Nombre de la Herramienta *</Text>
+                <TextInput
+                  style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                  placeholder="Ej: Martillo, Taladro..."
+                  placeholderTextColor="#6b7280"
+                  value={nuevaHerramientaNombre}
+                  onChangeText={setNuevaHerramientaNombre}
+                  editable={!crearHerramientaLoading}
+                />
               </View>
 
-              {crearHerramientaError && (
-                <View style={styles.errorBox}>
-                  <Text style={[styles.errorText, { fontFamily }]}>{crearHerramientaError}</Text>
-                </View>
-              )}
-
-              <View style={styles.modalForm}>
-                {/* Campo Nombre */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre de la Herramienta *</Text>
-                  <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Ej: Martillo, Taladro..."
-                    placeholderTextColor="#6b7280"
-                    value={nuevaHerramientaNombre}
-                    onChangeText={setNuevaHerramientaNombre}
-                    editable={!crearHerramientaLoading}
-                  />
-                </View>
-
-                {/* Campo Descripción */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Descripción</Text>
-                  <TextInput
-                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
-                    placeholder="Ej: Herramienta de mano para clavar, perforar..."
-                    placeholderTextColor="#6b7280"
-                    value={nuevaHerramientaDescripcion}
-                    onChangeText={setNuevaHerramientaDescripcion}
-                    multiline
-                    numberOfLines={3}
-                    editable={!crearHerramientaLoading}
-                  />
-                </View>
-
-                {/* Campo Categoría */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Categoría</Text>
-                  <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Ej: Herramientas de Mano, Eléctricas..."
-                    placeholderTextColor="#6b7280"
-                    value={nuevaHerramientaCategoria}
-                    onChangeText={setNuevaHerramientaCategoria}
-                    editable={!crearHerramientaLoading}
-                  />
-                </View>
+              {/* Campo Descripción */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Descripción</Text>
+                <TextInput
+                  style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
+                  placeholder="Ej: Herramienta de mano para clavar, perforar..."
+                  placeholderTextColor="#6b7280"
+                  value={nuevaHerramientaDescripcion}
+                  onChangeText={setNuevaHerramientaDescripcion}
+                  multiline
+                  numberOfLines={3}
+                  editable={!crearHerramientaLoading}
+                />
               </View>
 
-              <View style={styles.modalActions}>
-                <TouchableOpacity 
-                  style={styles.modalSecondary} 
-                  onPress={() => setShowCrearHerramientaModal(false)}
+              {/* Campo Categoría */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { fontFamily }]}>Categoría</Text>
+                <TextInput
+                  style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
+                  placeholder="Ej: Herramientas de Mano, Eléctricas..."
+                  placeholderTextColor="#6b7280"
+                  value={nuevaHerramientaCategoria}
+                  onChangeText={setNuevaHerramientaCategoria}
+                  editable={!crearHerramientaLoading}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => setShowCrearHerramientaModal(false)}
+                disabled={crearHerramientaLoading}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#8b5cf6', '#a78bfa']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!nuevaHerramientaNombre.trim()) {
+                      setCrearHerramientaError('El nombre es requerido');
+                      return;
+                    }
+
+                    setCrearHerramientaLoading(true);
+                    setCrearHerramientaError(null);
+
+                    const { success, error } = await crearHerramientaBackend({
+                      nombre: nuevaHerramientaNombre,
+                      descripcion: nuevaHerramientaDescripcion || null,
+                      categoria: nuevaHerramientaCategoria || null,
+                      estado: 'disponible'
+                    });
+
+                    if (success) {
+                      setNuevaHerramientaNombre('');
+                      setNuevaHerramientaDescripcion('');
+                      setNuevaHerramientaCategoria('');
+                      setShowCrearHerramientaModal(false);
+                    } else {
+                      setCrearHerramientaError(error || 'Error al crear herramienta');
+                    }
+                    setCrearHerramientaLoading(false);
+                  }}
                   disabled={crearHerramientaLoading}
+                  activeOpacity={0.85}
                 >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {crearHerramientaLoading ? 'Creando...' : 'Crear Herramienta'}
+                  </Text>
                 </TouchableOpacity>
-                <LinearGradient
-                  colors={['#8b5cf6', '#a78bfa']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
-                >
-                  <TouchableOpacity 
-                    onPress={async () => {
-                      if (!nuevaHerramientaNombre.trim()) {
-                        setCrearHerramientaError('El nombre es requerido');
-                        return;
-                      }
-
-                      setCrearHerramientaLoading(true);
-                      setCrearHerramientaError(null);
-
-                      const { success, error } = await crearHerramientaBackend({
-                        nombre: nuevaHerramientaNombre,
-                        descripcion: nuevaHerramientaDescripcion || null,
-                        categoria: nuevaHerramientaCategoria || null,
-                        estado: 'disponible'
-                      });
-
-                      if (success) {
-                        setNuevaHerramientaNombre('');
-                        setNuevaHerramientaDescripcion('');
-                        setNuevaHerramientaCategoria('');
-                        setShowCrearHerramientaModal(false);
-                      } else {
-                        setCrearHerramientaError(error || 'Error al crear herramienta');
-                      }
-                      setCrearHerramientaLoading(false);
-                    }}
-                    disabled={crearHerramientaLoading}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                      {crearHerramientaLoading ? 'Creando...' : 'Crear Herramienta'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              </View>
+              </LinearGradient>
             </View>
           </View>
-        )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -4293,11 +4377,11 @@ const styles = StyleSheet.create({
     rowGap: 10,
     marginBottom: 8,
   },
-  optionTouchable: { 
+  optionTouchable: {
     flexBasis: 'calc(50% - 10px)',
     minWidth: 280,
   },
-  optionTouchableMobile: { 
+  optionTouchableMobile: {
     flexBasis: '100%',
     minWidth: 'auto',
   },
@@ -4469,8 +4553,8 @@ const styles = StyleSheet.create({
   selectItemMobile: {
     paddingVertical: 8,
   },
-  selectItemText: { 
-    color: '#e5e7eb', 
+  selectItemText: {
+    color: '#e5e7eb',
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: 0.2,

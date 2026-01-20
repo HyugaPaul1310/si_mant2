@@ -69,7 +69,7 @@ router.post('/', verifyToken, async (req, res) => {
     console.log('[BACKEND] result[0].insertId:', result[0]?.insertId);
 
     const insertId = result[0]?.insertId;
-    
+
     console.log('[BACKEND] insertId obtenido:', insertId);
 
     // Obtener el reporte creado
@@ -121,6 +121,24 @@ router.delete('/:id', verifyToken, requireRole(['admin']), async (req, res) => {
   }
 });
 
+// Eliminar archivo de reporte
+router.delete('/archivos/:id', verifyToken, async (req, res) => {
+  try {
+    // Primero obtener el archivo para saber si existe y quizás borrarlo de cloud storage (si se implementara)
+    const [archivo] = await pool.query('SELECT * FROM reportes_archivos WHERE id = ?', [req.params.id]);
+
+    if (archivo.length === 0) {
+      return res.status(404).json({ success: false, error: 'Archivo no encontrado' });
+    }
+
+    await pool.query('DELETE FROM reportes_archivos WHERE id = ?', [req.params.id]);
+    return res.json({ success: true, message: 'Archivo eliminado' });
+  } catch (error) {
+    console.error('Error al eliminar archivo:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Asignar reporte a un empleado
 router.put('/:id/asignar', verifyToken, requireRole(['admin']), async (req, res) => {
   try {
@@ -158,14 +176,14 @@ router.put('/:id/asignar', verifyToken, requireRole(['admin']), async (req, res)
 router.get('/empleado', verifyToken, async (req, res) => {
   try {
     const email = req.query.email;
-    
+
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email requerido' });
     }
 
     // Obtener el usuario_id del email
     const [usuarios] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
-    
+
     if (usuarios.length === 0) {
       return res.json({ success: true, data: [] });
     }
@@ -216,14 +234,14 @@ router.get('/empleado', verifyToken, async (req, res) => {
 router.get('/cliente', verifyToken, async (req, res) => {
   try {
     const email = req.query.email;
-    
+
     if (!email) {
       return res.status(400).json({ success: false, error: 'Email requerido' });
     }
 
     // Obtener el usuario_id del email
     const [usuarios] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
-    
+
     if (usuarios.length === 0) {
       return res.json({ success: true, data: [] });
     }
@@ -266,14 +284,14 @@ router.get('/cliente', verifyToken, async (req, res) => {
 
     console.log('[BACKEND-CLIENTE] Reportes obtenidos:', reportes.length);
     console.log('[BACKEND-CLIENTE] Primer reporte:', reportes[0]);
-    
+
     // Mostrar reportes con cotización
     const cotizados = reportes.filter((r) => r.estado === 'cotizado');
     console.log('[BACKEND-CLIENTE] Reportes cotizados:', cotizados.length);
     if (cotizados.length > 0) {
       console.log('[BACKEND-CLIENTE] Primer cotizado:', cotizados[0]);
     }
-    
+
     return res.json({ success: true, data: reportes });
   } catch (error) {
     console.error('Error al obtener reportes del cliente:', error);
@@ -362,6 +380,11 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
       params.push(trabajo_completado ? 1 : 0);
     }
 
+    if (req.body.finalizado_por_tecnico_at) {
+      setClauses.push('finalizado_por_tecnico_at = ?');
+      params.push(req.body.finalizado_por_tecnico_at);
+    }
+
     // Validar que al menos un campo se intente actualizar
     if (setClauses.length === 0) {
       return res.status(400).json({ success: false, error: 'Debe proporcionar al menos un campo para actualizar' });
@@ -401,9 +424,9 @@ router.post('/archivos', verifyToken, async (req, res) => {
     // Validar que reporte_id sea un número válido (puede ser 0)
     if (reporte_id === null || reporte_id === undefined || !tipo_archivo || !cloudflare_url) {
       console.log('[BACKEND-ARCHIVOS] VALIDACIÓN FALLIDA - campos faltantes');
-      return res.status(400).json({ 
-        success: false, 
-        error: `Faltan campos requeridos. reporte_id: ${reporte_id}, tipo_archivo: ${tipo_archivo}, cloudflare_url: ${!!cloudflare_url}` 
+      return res.status(400).json({
+        success: false,
+        error: `Faltan campos requeridos. reporte_id: ${reporte_id}, tipo_archivo: ${tipo_archivo}, cloudflare_url: ${!!cloudflare_url}`
       });
     }
 
@@ -431,12 +454,12 @@ router.post('/archivos', verifyToken, async (req, res) => {
 // Guardar encuesta de satisfacción
 router.post('/encuestas/guardar', verifyToken, async (req, res) => {
   try {
-    const { 
-      reporte_id, 
-      cliente_email, 
-      cliente_nombre, 
-      empleado_email, 
-      empleado_nombre, 
+    const {
+      reporte_id,
+      cliente_email,
+      cliente_nombre,
+      empleado_email,
+      empleado_nombre,
       empresa,
       trato_equipo,
       equipo_tecnico,
@@ -496,7 +519,7 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
 router.get('/encuestas/todas', verifyToken, async (req, res) => {
   try {
     console.log('[BACKEND-ENCUESTAS] Obteniendo todas las encuestas');
-    
+
     const [encuestas] = await pool.query(`
       SELECT 
         e.*,
@@ -519,7 +542,7 @@ router.get('/encuestas/cliente/:email', verifyToken, async (req, res) => {
   try {
     const { email } = req.params;
     console.log('[BACKEND-ENCUESTAS-CLIENTE] Obteniendo encuestas para:', email);
-    
+
     const [encuestas] = await pool.query(`
       SELECT 
         e.*,
@@ -538,12 +561,33 @@ router.get('/encuestas/cliente/:email', verifyToken, async (req, res) => {
   }
 });
 
+// Obtener encuestas por reporte ID
+router.get('/encuestas/reporte/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('[BACKEND-ENCUESTAS-REPORTE] Obteniendo encuestas para reporte:', id);
+
+    const [encuestas] = await pool.query(`
+      SELECT *
+      FROM encuestas_satisfaccion
+      WHERE reporte_id = ?
+      ORDER BY created_at DESC
+    `, [id]);
+
+    console.log('[BACKEND-ENCUESTAS-REPORTE] Encuestas obtenidas:', encuestas.length);
+    return res.json({ success: true, data: encuestas });
+  } catch (error) {
+    console.error('[BACKEND-ENCUESTAS-REPORTE] Error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Obtener encuestas de un empleado específico
 router.get('/encuestas/empleado/:email', verifyToken, async (req, res) => {
   try {
     const { email } = req.params;
     console.log('[BACKEND-ENCUESTAS-EMPLEADO] Obteniendo encuestas para:', email);
-    
+
     const [encuestas] = await pool.query(`
       SELECT 
         e.*,
@@ -569,7 +613,7 @@ router.get('/por-usuario/:email', verifyToken, async (req, res) => {
   try {
     const { email } = req.params;
     console.log('[BACKEND-REPORTES] Obteniendo reportes para usuario:', email);
-    
+
     const [reportes] = await pool.query(`
       SELECT *
       FROM reportes
@@ -594,7 +638,7 @@ router.get('/todos/admin/list', verifyToken, async (req, res) => {
     }
 
     console.log('[BACKEND-REPORTES] Obteniendo TODOS los reportes (admin)');
-    
+
     const [reportes] = await pool.query(`
       SELECT *
       FROM reportes
@@ -621,7 +665,7 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
 
     const ESTADOS_PERMITIDOS = ['pendiente', 'en_proceso', 'en espera', 'terminado'];
     const key = estado.trim().toLowerCase();
-    
+
     const mapa = {
       'pendiente': 'pendiente',
       'en_proceso': 'en_proceso',
@@ -702,7 +746,7 @@ router.get('/asignados/:email', verifyToken, async (req, res) => {
   try {
     const { email } = req.params;
     console.log('[BACKEND-REPORTES] Obteniendo reportes asignados a:', email);
-    
+
     const [reportes] = await pool.query(`
       SELECT *
       FROM reportes
@@ -727,9 +771,9 @@ router.post('/:id/cotizacion', verifyToken, async (req, res) => {
     const { empleado_nombre, analisis_general, precio_cotizacion } = req.body;
 
     if (!id || !empleado_nombre || !analisis_general || precio_cotizacion === undefined) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Faltan parámetros: id, empleado_nombre, analisis_general, precio_cotizacion' 
+      return res.status(400).json({
+        success: false,
+        error: 'Faltan parámetros: id, empleado_nombre, analisis_general, precio_cotizacion'
       });
     }
 

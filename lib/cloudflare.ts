@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://localhost:5001';
+const API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://192.168.1.148:5001';
 const CUSTOM_DOMAIN = process.env.EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN || '';
 
 export interface UploadResult {
@@ -19,10 +19,10 @@ export function getProxyUrl(cloudflareUrl: string): string {
   try {
     const url = new URL(cloudflareUrl);
     const key = url.pathname.replace(/^\//, ''); // Remover el / inicial
-    
+
     // Usar el servidor Cloudflare en puerto 5001 como proxy
     // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg
-    return `http://192.168.1.75:5001/api/get-file?key=${encodeURIComponent(key)}`;
+    return `http://192.168.1.148:5001/api/get-file?key=${encodeURIComponent(key)}`;
   } catch (error) {
     console.warn('Error al convertir URL de Cloudflare:', error);
     // Si hay error, retornar la URL original

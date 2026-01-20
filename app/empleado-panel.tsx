@@ -1,10 +1,11 @@
 // @ts-nocheck
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarEstadoTareaBackend,
-    obtenerArchivosReporteBackend,
-    obtenerReportesAsignados,
-    obtenerTareasEmpleadoBackend
+  actualizarEstadoReporteAsignado,
+  actualizarEstadoTareaBackend,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesAsignados,
+  obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,22 +16,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Empleado = {
+  id?: number;
   nombre?: string;
   email?: string;
+  rol?: string;
 };
 
 function EmpleadoPanelContent() {
@@ -41,6 +44,7 @@ function EmpleadoPanelContent() {
   const [usuario, setUsuario] = useState<Empleado | null>(null);
   const [tareas, setTareas] = useState(0);
   const [reportes, setReportes] = useState(0);
+  const [herramientas, setHerramientas] = useState(0);
   const [reportesTerminados, setReportesTerminados] = useState(0);
   const [tareasTerminadas, setTareasTerminadas] = useState(0);
   const [showLogout, setShowLogout] = useState(false);
@@ -63,6 +67,9 @@ function EmpleadoPanelContent() {
   const [showHistorialReportesModal, setShowHistorialReportesModal] = useState(false);
   const [listaReportesTerminados, setListaReportesTerminados] = useState<any[]>([]);
   const [loadingHistorialReportes, setLoadingHistorialReportes] = useState(false);
+  const [showInventarioModal, setShowInventarioModal] = useState(false);
+  const [listaHerramientas, setListaHerramientas] = useState<any[]>([]);
+  const [loadingHerramientas, setLoadingHerramientas] = useState(false);
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [showArchivoModal, setShowArchivoModal] = useState(false);
@@ -71,7 +78,7 @@ function EmpleadoPanelContent() {
   const [descripcionTrabajo, setDescripcionTrabajo] = useState('');
   const [precioCotizacion, setPrecioCotizacion] = useState('');
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
-  
+
   // Estados para Fase 2 (ejecución del trabajo)
   const [revision, setRevision] = useState('');
   const [recomendaciones, setRecomendaciones] = useState('');
@@ -123,8 +130,9 @@ function EmpleadoPanelContent() {
       if (usuario?.email) {
         cargarTareas();
         cargarReportes();
+        cargarHerramientas();
       }
-      
+
       // Cerrar todos los modales si viene el parámetro closeModals
       if (params?.closeModals === 'true') {
         setShowTareasModal(false);
@@ -133,12 +141,29 @@ function EmpleadoPanelContent() {
         setShowReportesModal(false);
         setShowReporteDetalle(false);
         setShowHistorialReportesModal(false);
+        setShowInventarioModal(false);
         setShowArchivoModal(false);
         setShowCotizarModal(false);
         setShowLogout(false);
       }
     }, [usuario?.email, params?.closeModals])
   );
+
+  const cargarHerramientas = async () => {
+    if (!usuario?.id) return;
+    setLoadingHerramientas(true);
+    try {
+      const { success, data } = await obtenerInventarioEmpleadoBackend(usuario.id.toString());
+      if (success) {
+        setListaHerramientas(data || []);
+        setHerramientas(data?.length || 0);
+      }
+    } catch (error) {
+      console.error('Error cargando herramientas:', error);
+    } finally {
+      setLoadingHerramientas(false);
+    }
+  };
 
   const cargarTareas = async () => {
     if (!usuario?.email) return;
@@ -163,7 +188,7 @@ function EmpleadoPanelContent() {
 
   const marcarComoCompletada = async () => {
     if (!tareaSeleccionada?.id) return;
-    
+
     setActualizandoTarea(true);
     try {
       const { success } = await actualizarEstadoTareaBackend(tareaSeleccionada.id, 'completada');
@@ -173,13 +198,13 @@ function EmpleadoPanelContent() {
           t.id === tareaSeleccionada.id ? { ...t, estado: 'completada' } : t
         );
         setListaTareas(tareasActualizadas);
-        
+
         // Actualizar stats
         const pendientes = tareasActualizadas.filter((t: any) => t.estado === 'pendiente').length;
         const terminadas = tareasActualizadas.filter((t: any) => t.estado === 'completada').length;
         setTareas(pendientes);
         setTareasTerminadas(terminadas);
-        
+
         // Cerrar modales
         setShowTareaDetalle(false);
         setTareaSeleccionada(null);
@@ -289,7 +314,7 @@ function EmpleadoPanelContent() {
 
   const actualizarEstadoReporte = async (nuevoEstado: string) => {
     if (!reporteSeleccionado?.id) return;
-    
+
     setActualizandoReporte(true);
     try {
       const { success } = await actualizarEstadoReporteAsignado(reporteSeleccionado.id, nuevoEstado);
@@ -298,12 +323,12 @@ function EmpleadoPanelContent() {
           r.id === reporteSeleccionado.id ? { ...r, estado: nuevoEstado } : r
         );
         setListaReportes(reportesActualizados);
-        
+
         const pendientes = reportesActualizados.filter((r: any) => r.estado === 'en_proceso').length;
         const terminados = reportesActualizados.filter((r: any) => r.estado === 'terminado').length;
         setReportes(pendientes);
         setReportesTerminados(terminados);
-        
+
         setShowReporteDetalle(false);
         setReporteSeleccionado(null);
         setArchivosReporte([]);
@@ -323,12 +348,12 @@ function EmpleadoPanelContent() {
 
   const guardarCotizacion = async () => {
     if (!reporteSeleccionado?.id) return;
-    
+
     if (!descripcionTrabajo.trim()) {
       showToast('Por favor ingresa un análisis general', 'warning');
       return;
     }
-    
+
     if (!precioCotizacion.trim()) {
       showToast('Por favor ingresa el precio de la cotización', 'warning');
       return;
@@ -343,7 +368,7 @@ function EmpleadoPanelContent() {
     setGuardandoCotizacion(true);
     try {
       const precioNumerico = parseFloat(precioCotizacion);
-      
+
       // Actualizar el estado del reporte a 'cotizado' con la descripción y precio
       const { success } = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
@@ -351,14 +376,14 @@ function EmpleadoPanelContent() {
         descripcionTrabajo.trim(),
         precioNumerico
       );
-      
+
       if (success) {
         // Actualizar lista de reportes localmente - cambiar estado a cotizado
         const reportesActualizados = listaReportes.map((r: any) =>
           r.id === reporteSeleccionado.id ? { ...r, estado: 'cotizado', analisis_general: descripcionTrabajo.trim(), precio_cotizacion: precioNumerico } : r
         );
         setListaReportes(reportesActualizados);
-        
+
         // Actualizar también el reporte seleccionado
         if (reporteSeleccionado) {
           setReporteSeleccionado({
@@ -368,15 +393,15 @@ function EmpleadoPanelContent() {
             precio_cotizacion: precioNumerico
           });
         }
-        
+
         const pendientes = reportesActualizados.filter((r: any) => r.estado === 'pendiente').length;
         setReportes(pendientes);
-        
+
         // Limpiar estados
         setShowCotizarModal(false);
         setDescripcionTrabajo('');
         setPrecioCotizacion('');
-        
+
         showToast('Cotización guardada exitosamente', 'success');
       } else {
         showToast('Error al guardar la cotización', 'error');
@@ -428,6 +453,13 @@ function EmpleadoPanelContent() {
       iconName: 'star-outline' as const,
       accent: '#3b82f6',
     },
+    {
+      label: 'Herramientas',
+      value: herramientas,
+      iconBg: '#be185d',
+      iconName: 'construct-outline' as const,
+      accent: '#ec4899',
+    },
   ];
 
   const menuOptions = [
@@ -459,6 +491,13 @@ function EmpleadoPanelContent() {
       gradientEnd: '#059669',
       iconName: 'archive' as const,
     },
+    {
+      title: 'Inventario',
+      description: 'Ver mis herramientas asignadas',
+      gradientStart: '#be185d',
+      gradientEnd: '#db2777',
+      iconName: 'construct' as const,
+    },
   ];
 
   const handleMenuPress = (title: string) => {
@@ -473,6 +512,9 @@ function EmpleadoPanelContent() {
     } else if (title === 'Historial de Reportes') {
       cargarReportesTerminados();
       setShowHistorialReportesModal(true);
+    } else if (title === 'Inventario') {
+      cargarHerramientas();
+      setShowInventarioModal(true);
     } else {
       console.log('Pressed:', title);
     }
@@ -744,7 +786,7 @@ function EmpleadoPanelContent() {
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Estado</Text>
                     <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {tareaSeleccionada.estado === 'pendiente' 
+                        {tareaSeleccionada.estado === 'pendiente'
                           ? 'Pendiente'
                           : tareaSeleccionada.estado === 'en_proceso'
                             ? 'En Proceso'
@@ -764,7 +806,7 @@ function EmpleadoPanelContent() {
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
-              
+
               {tareaSeleccionada.estado !== 'completada' && (
                 <LinearGradient
                   colors={['#047857', '#10b981']}
@@ -938,13 +980,13 @@ function EmpleadoPanelContent() {
                         <Text style={[styles.cardDate, { fontFamily }]}>
                           {new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </Text>
-                        <View style={[styles.statusBadge, { 
-                          backgroundColor: reporte.estado === 'pendiente' ? '#fbbf2425' : reporte.estado === 'cotizado' ? '#f59e0b25' : '#d9770625', 
-                          borderColor: reporte.estado === 'pendiente' ? '#fbbf2450' : reporte.estado === 'cotizado' ? '#f59e0b50' : '#d9770650' 
+                        <View style={[styles.statusBadge, {
+                          backgroundColor: reporte.estado === 'pendiente' ? '#fbbf2425' : reporte.estado === 'cotizado' ? '#f59e0b25' : '#d9770625',
+                          borderColor: reporte.estado === 'pendiente' ? '#fbbf2450' : reporte.estado === 'cotizado' ? '#f59e0b50' : '#d9770650'
                         }]}>
-                          <Text style={[styles.statusBadgeText, { 
-                            color: reporte.estado === 'pendiente' ? '#fbbf24' : reporte.estado === 'cotizado' ? '#f59e0b' : '#d97706', 
-                            fontFamily 
+                          <Text style={[styles.statusBadgeText, {
+                            color: reporte.estado === 'pendiente' ? '#fbbf24' : reporte.estado === 'cotizado' ? '#f59e0b' : '#d97706',
+                            fontFamily
                           }]}>
                             {reporte.estado === 'pendiente' ? 'Pendiente Cotización' : reporte.estado === 'cotizado' ? 'En Espera de Respuesta' : 'En Proceso'}
                           </Text>
@@ -1030,7 +1072,7 @@ function EmpleadoPanelContent() {
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Estado</Text>
                     <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {reporteSeleccionado.estado === 'en_proceso' 
+                        {reporteSeleccionado.estado === 'en_proceso'
                           ? 'En Proceso'
                           : reporteSeleccionado.estado === 'cotizado'
                             ? 'En Espera de Respuesta'
@@ -1056,8 +1098,8 @@ function EmpleadoPanelContent() {
                       {archivosReporte.map((archivo, idx) => {
                         const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                         return (
-                          <TouchableOpacity 
-                            key={idx} 
+                          <TouchableOpacity
+                            key={idx}
                             style={styles.archivoItem}
                             onPress={() => {
                               setArchivoVisualizando({
@@ -1096,7 +1138,7 @@ function EmpleadoPanelContent() {
                 {reporteSeleccionado.estado === 'en_proceso' && (
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
-                    
+
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Revisión</Text>
                       <TextInput
@@ -1179,7 +1221,7 @@ function EmpleadoPanelContent() {
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
-              
+
               {reporteSeleccionado.estado === 'pendiente' && (
                 <LinearGradient
                   colors={['#d97706', '#f59e0b']}
@@ -1239,11 +1281,11 @@ function EmpleadoPanelContent() {
 
                       // Éxito: mostrar mensaje y recargar
                       showToast('Trabajo finalizado. El cliente debe revisar y confirmar la finalización.', 'success');
-                      
+
                       // Limpiar y cerrar modal
                       setShowReporteDetalle(false);
                       setReporteSeleccionado(null);
-                      
+
                       // Recargar lista de reportes
                       cargarReportes();
                     }}
@@ -1348,6 +1390,70 @@ function EmpleadoPanelContent() {
         </View>
       )}
 
+      {showInventarioModal && (
+        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1 }}>
+                <View style={{ backgroundColor: '#be185d', borderRadius: 12, padding: isMobile ? 8 : 10 }}>
+                  <Ionicons name="construct-outline" size={isMobile ? 20 : 24} color="#ec4899" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]} numberOfLines={1}>Mis Herramientas</Text>
+                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Herramientas asignadas a tu cargo</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TouchableOpacity onPress={cargarHerramientas} style={styles.refreshButton} activeOpacity={0.7}>
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowInventarioModal(false)} activeOpacity={0.7}>
+                  <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingHerramientas ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando herramientas...</Text>
+              </View>
+            ) : listaHerramientas.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                <Ionicons name="construct" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
+                <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
+                  No tienes herramientas asignadas
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
+                {listaHerramientas.map((herramienta: any, index: number) => (
+                  <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
+                    <View style={[styles.cardAccentLeft, { backgroundColor: '#ec4899' }]} />
+                    <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
+                      <View style={styles.cardHeader}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{herramienta.herramienta_nombre || herramienta.nombre}</Text>
+                          <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Categoría: {herramienta.categoria || 'General'}</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{herramienta.observaciones || 'Sin observaciones'}</Text>
+                      <View style={styles.cardFooter}>
+                        <Text style={[styles.cardDate, { fontFamily }]}>
+                          Asignada: {herramienta.created_at ? new Date(herramienta.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Fecha desconocida'}
+                        </Text>
+                        <View style={[styles.statusBadge, { backgroundColor: '#be185d25', borderColor: '#be185d50' }]}>
+                          <Text style={[styles.statusBadgeText, { color: '#ec4899', fontFamily }]}>Asignada</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      )}
+
       {showCotizarModal && reporteSeleccionado && (
         <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
           <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
@@ -1356,8 +1462,8 @@ function EmpleadoPanelContent() {
                 <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Cotizar Reporte</Text>
                 <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Ingresa los detalles de la cotización</Text>
               </View>
-              <TouchableOpacity onPress={() => { 
-                setShowCotizarModal(false); 
+              <TouchableOpacity onPress={() => {
+                setShowCotizarModal(false);
                 setDescripcionTrabajo('');
                 setPrecioCotizacion('');
               }} activeOpacity={0.7}>
@@ -1428,8 +1534,8 @@ function EmpleadoPanelContent() {
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
                 style={styles.detailCloseButton}
-                onPress={() => { 
-                  setShowCotizarModal(false); 
+                onPress={() => {
+                  setShowCotizarModal(false);
                   setDescripcionTrabajo('');
                   setPrecioCotizacion('');
                 }}
@@ -1437,7 +1543,7 @@ function EmpleadoPanelContent() {
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cancelar</Text>
               </TouchableOpacity>
-              
+
               <LinearGradient
                 colors={['#d97706', '#f59e0b']}
                 start={{ x: 0, y: 0 }}
@@ -1463,7 +1569,7 @@ function EmpleadoPanelContent() {
       {showArchivoModal && archivoVisualizando && (
         <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
           <View style={[styles.archivoModalContent, isMobile && styles.archivoModalContentMobile, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
               onPress={() => {
                 setShowArchivoModal(false);
@@ -1517,10 +1623,10 @@ function EmpleadoPanelContent() {
               toastType === 'success'
                 ? ['#10b981', '#059669']
                 : toastType === 'error'
-                ? ['#ef4444', '#dc2626']
-                : toastType === 'warning'
-                ? ['#f59e0b', '#d97706']
-                : ['#06b6d4', '#0891b2']
+                  ? ['#ef4444', '#dc2626']
+                  : toastType === 'warning'
+                    ? ['#f59e0b', '#d97706']
+                    : ['#06b6d4', '#0891b2']
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -1537,10 +1643,10 @@ function EmpleadoPanelContent() {
                 toastType === 'success'
                   ? 'checkmark-circle'
                   : toastType === 'error'
-                  ? 'alert-circle'
-                  : toastType === 'warning'
-                  ? 'warning'
-                  : 'information-circle'
+                    ? 'alert-circle'
+                    : toastType === 'warning'
+                      ? 'warning'
+                      : 'information-circle'
               }
               size={24}
               color="white"
@@ -1767,11 +1873,11 @@ const styles = StyleSheet.create({
     rowGap: 10,
     marginBottom: 8,
   },
-  optionTouchable: { 
+  optionTouchable: {
     flexBasis: 'calc(50% - 10px)',
     minWidth: 280,
   },
-  optionTouchableMobile: { 
+  optionTouchableMobile: {
     flexBasis: '100%',
     minWidth: 'auto',
   },
@@ -2129,16 +2235,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  largeModalTitle: { 
-    color: '#fff', 
-    fontSize: 18, 
+  largeModalTitle: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '800',
   },
   largeModalTitleMobile: {
     fontSize: 16,
   },
-  largeModalSubtitle: { 
-    color: '#94a3b8', 
+  largeModalSubtitle: {
+    color: '#94a3b8',
     fontSize: 12,
     marginTop: 2,
   },
@@ -2367,10 +2473,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
-  refreshText: { 
-    color: '#67e8f9', 
-    fontSize: 12, 
-    fontWeight: '700' 
+  refreshText: {
+    color: '#67e8f9',
+    fontSize: 12,
+    fontWeight: '700'
   },
   detailCloseButton: {
     flex: 1,

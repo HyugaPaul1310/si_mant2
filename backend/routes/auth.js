@@ -14,7 +14,7 @@ router.post('/register', async (req, res) => {
     }
 
     const emailLowercase = email.toLowerCase().trim();
-    
+
     // Verificar si el email ya existe
     const [existing] = await pool.query(
       'SELECT id FROM usuarios WHERE email = ?',
@@ -30,12 +30,12 @@ router.post('/register', async (req, res) => {
 
     // Insertar usuario
     const [result] = await pool.query(
-      'INSERT INTO usuarios (nombre, apellido, email, contraseña, telefono, ciudad, empresa, empresa_id, rol, estado, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
-      [nombre, apellido || '', emailLowercase, hashedPassword, telefono || '', ciudad || '', empresa || '', empresa_id || null, 'cliente', 'activo']
+      'INSERT INTO usuarios (nombre, apellido, email, contraseña, telefono, ciudad, empresa_id, rol, estado, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+      [nombre, apellido || '', emailLowercase, hashedPassword, telefono || '', ciudad || '', empresa_id || null, 'cliente', 'activo']
     );
 
-    return res.status(201).json({ 
-      success: true, 
+    return res.status(201).json({
+      success: true,
       message: 'Usuario registrado exitosamente',
       userId: result.insertId
     });
@@ -145,8 +145,8 @@ router.get('/me', require('../middleware/auth').verifyToken, async (req, res) =>
       empresaNombre = empresas.length > 0 ? empresas[0].nombre : '';
     }
 
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       user: {
         ...usuario,
         empresa: empresaNombre
