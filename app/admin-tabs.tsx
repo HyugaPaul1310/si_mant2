@@ -1,7 +1,16 @@
 // @ts-nocheck
 // ARCHIVO DE REFERENCIA - Sistema de Admin con Tabs
 // Este archivo muestra la estructura propuesta para reorganizar admin.tsx
+import { Text, View } from 'react-native';
 
+// Componente dummy para que no dé error de export default
+export default function AdminTabsReference() {
+  return (
+    <View>
+      <Text>Este es un archivo de referencia - consulta admin.tsx para la implementación actual</Text>
+    </View>
+  );
+}
 
 /**
  * ESTRUCTURA PROPUESTA PARA ADMIN CON TABS

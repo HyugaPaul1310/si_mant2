@@ -12,20 +12,17 @@ export interface UploadResult {
 }
 
 /**
- * Convierte una URL de Cloudflare R2 a una URL del proxy del backend
- * Para cargar imágenes/videos con CORS habilitado
+ * Retorna la URL del proxy del servidor Cloudflare
+ * El servidor Cloudflare (puerto 5001) actúa como proxy con CORS habilitado
  */
 export function getProxyUrl(cloudflareUrl: string): string {
-  // Extraer la key de la URL de Cloudflare
-  // URL: https://pub-e8c25e8.r2.dev/reportes/fotos/xxx.jpg
-  // Key: reportes/fotos/xxx.jpg
-  
   try {
     const url = new URL(cloudflareUrl);
     const key = url.pathname.replace(/^\//, ''); // Remover el / inicial
     
-    // Retornar URL del proxy
-    return `${API_URL}/api/get-file?key=${encodeURIComponent(key)}`;
+    // Usar el servidor Cloudflare en puerto 5001 como proxy
+    // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg
+    return `http://192.168.1.75:5001/api/get-file?key=${encodeURIComponent(key)}`;
   } catch (error) {
     console.warn('Error al convertir URL de Cloudflare:', error);
     // Si hay error, retornar la URL original

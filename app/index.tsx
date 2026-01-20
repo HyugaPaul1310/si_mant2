@@ -1,19 +1,18 @@
-import { loginUsuario } from '@/lib/auth';
+import { loginBackend } from '@/lib/api-backend';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -40,14 +39,12 @@ export default function Login() {
     setErrorMessage('');
 
     try {
-      const resultado = await loginUsuario(email, password);
+      const resultado = await loginBackend(email, password);
 
       if (!resultado?.success || !resultado.user) {
         setErrorMessage(resultado?.error || 'Error al iniciar sesión');
         return;
       }
-
-      await AsyncStorage.setItem('user', JSON.stringify(resultado.user));
 
       switch (resultado.user.rol) {
         case 'admin':

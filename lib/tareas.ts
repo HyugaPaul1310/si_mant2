@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { apiCall } from './api-backend';
 
 interface TareaData {
   admin_email: string;
@@ -12,27 +12,27 @@ export type EstadoTarea = 'pendiente' | 'en_proceso' | 'completada' | 'rechazada
 // Crear una nueva tarea
 export async function crearTarea(datos: TareaData) {
   try {
-    const { data, error } = await supabase
-      .from('tareas')
-      .insert([
-        {
-          admin_email: datos.admin_email,
-          admin_nombre: datos.admin_nombre,
-          empleado_email: datos.empleado_email,
-          descripcion: datos.descripcion,
-          estado: 'pendiente',
-        },
-      ])
-      .select();
+    console.log('[LIB-TAREAS] Creando tarea para:', datos.empleado_email);
+    
+    const result = await apiCall('/tareas/crear', {
+      method: 'POST',
+      body: JSON.stringify({
+        admin_email: datos.admin_email,
+        admin_nombre: datos.admin_nombre,
+        empleado_email: datos.empleado_email,
+        descripcion: datos.descripcion,
+      }),
+    });
 
-    if (error) {
-      console.error('Error al crear tarea:', error);
-      return { success: false, error: error.message || 'Error al crear tarea' };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error || 'Error al crear tarea' };
     }
 
-    return { success: true, data: data?.[0] };
+    console.log('[LIB-TAREAS] Tarea creada exitosamente');
+    return { success: true, data: result.data };
   } catch (error: any) {
-    console.error('Exception en crearTarea:', error);
+    console.error('[LIB-TAREAS] Exception en crearTarea:', error);
     return { success: false, error: error.message || 'Error desconocido' };
   }
 }
@@ -40,16 +40,21 @@ export async function crearTarea(datos: TareaData) {
 // Obtener todas las tareas de un empleado
 export async function obtenerTareasEmpleado(empleadoEmail: string) {
   try {
-    const { data, error } = await supabase
-      .from('tareas')
-      .select('*')
-      .eq('empleado_email', empleadoEmail)
-      .order('created_at', { ascending: false });
+    console.log('[LIB-TAREAS] Obteniendo tareas del empleado:', empleadoEmail);
+    
+    const result = await apiCall(`/tareas/empleado-email/${empleadoEmail}`, {
+      method: 'GET',
+    });
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('[LIB-TAREAS] Tareas obtenidas:', result.data?.length || 0);
+    return { success: true, data: result.data || [] };
   } catch (error: any) {
-    console.error('Error al obtener tareas:', error);
+    console.error('[LIB-TAREAS] Error al obtener tareas:', error);
     return { success: false, error: error.message };
   }
 }
@@ -57,15 +62,21 @@ export async function obtenerTareasEmpleado(empleadoEmail: string) {
 // Obtener todas las tareas (para admin)
 export async function obtenerTodasLasTareas() {
   try {
-    const { data, error } = await supabase
-      .from('tareas')
-      .select('*')
-      .order('created_at', { ascending: false });
+    console.log('[LIB-TAREAS] Obteniendo TODAS las tareas (admin)');
+    
+    const result = await apiCall('/tareas/todas', {
+      method: 'GET',
+    });
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('[LIB-TAREAS] Total de tareas:', result.data?.length || 0);
+    return { success: true, data: result.data || [] };
   } catch (error: any) {
-    console.error('Error al obtener tareas:', error);
+    console.error('[LIB-TAREAS] Error al obtener tareas:', error);
     return { success: false, error: error.message };
   }
 }
@@ -73,16 +84,21 @@ export async function obtenerTodasLasTareas() {
 // Obtener todos los empleados
 export async function obtenerEmpleados() {
   try {
-    const { data, error } = await supabase
-      .from('usuarios')
-      .select('id, email, nombre, apellido, rol')
-      .eq('rol', 'empleado')
-      .order('nombre', { ascending: true });
+    console.log('[LIB-TAREAS] Obteniendo lista de empleados');
+    
+    const result = await apiCall('/tareas/empleados/lista', {
+      method: 'GET',
+    });
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('[LIB-TAREAS] Empleados obtenidos:', result.data?.length || 0);
+    return { success: true, data: result.data || [] };
   } catch (error: any) {
-    console.error('Error al obtener empleados:', error);
+    console.error('[LIB-TAREAS] Error al obtener empleados:', error);
     return { success: false, error: error.message };
   }
 }
@@ -90,19 +106,22 @@ export async function obtenerEmpleados() {
 // Actualizar estado de una tarea
 export async function actualizarEstadoTarea(id: string, estado: EstadoTarea) {
   try {
-    const { data, error } = await supabase
-      .from('tareas')
-      .update({ 
-        estado,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select();
+    console.log('[LIB-TAREAS] Actualizando tarea', id, 'a estado:', estado);
+    
+    const result = await apiCall(`/tareas/${id}/estado`, {
+      method: 'PUT',
+      body: JSON.stringify({ estado }),
+    });
 
-    if (error) throw error;
-    return { success: true, data: data?.[0] };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('[LIB-TAREAS] Tarea actualizada exitosamente');
+    return { success: true, data: result.data };
   } catch (error: any) {
-    console.error('Error al actualizar estado:', error);
+    console.error('[LIB-TAREAS] Error al actualizar estado:', error);
     return { success: false, error: error.message };
   }
 }
@@ -110,16 +129,21 @@ export async function actualizarEstadoTarea(id: string, estado: EstadoTarea) {
 // Obtener una tarea por ID
 export async function obtenerTareaPorId(id: string) {
   try {
-    const { data, error } = await supabase
-      .from('tareas')
-      .select('*')
-      .eq('id', id)
-      .single();
+    console.log('[LIB-TAREAS] Obteniendo tarea:', id);
+    
+    const result = await apiCall(`/tareas/${id}`, {
+      method: 'GET',
+    });
 
-    if (error) throw error;
-    return { success: true, data };
+    if (!result.success) {
+      console.error('[LIB-TAREAS] Error:', result.error);
+      return { success: false, error: result.error };
+    }
+
+    console.log('[LIB-TAREAS] Tarea obtenida:', id);
+    return { success: true, data: result.data };
   } catch (error: any) {
-    console.error('Error al obtener tarea:', error);
+    console.error('[LIB-TAREAS] Error al obtener tarea:', error);
     return { success: false, error: error.message };
   }
 }

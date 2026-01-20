@@ -1,7 +1,12 @@
 // @ts-nocheck
+import {
+    actualizarEstadoReporteAsignado,
+    actualizarEstadoTareaBackend,
+    obtenerArchivosReporteBackend,
+    obtenerReportesAsignados,
+    obtenerTareasEmpleadoBackend
+} from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
-import { actualizarEstadoReporteAsignado, guardarCotizacion as guardarCotizacionDB, obtenerArchivosReporte, obtenerReportesAsignados } from '@/lib/reportes';
-import { actualizarEstadoTarea, obtenerTareasEmpleado } from '@/lib/tareas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Image,
     Platform,
     ScrollView,
@@ -83,6 +89,22 @@ function EmpleadoPanelContent() {
         const user = await AsyncStorage.getItem('user');
         if (user) {
           const userData = JSON.parse(user);
+          // Validación: solo empleados pueden acceder a este panel
+          if (userData.rol !== 'empleado') {
+            console.warn(`[SEGURIDAD] Usuario ${userData.email} con rol ${userData.rol} intentó acceder a /empleado-panel. Redirigiendo...`);
+            // Redirigir según su rol
+            switch (userData.rol) {
+              case 'admin':
+                router.replace('/admin');
+                break;
+              case 'cliente':
+                router.replace('/cliente-panel');
+                break;
+              default:
+                router.replace('/');
+            }
+            return;
+          }
           setUsuario(userData);
         } else {
           router.replace('/');
@@ -122,7 +144,7 @@ function EmpleadoPanelContent() {
     if (!usuario?.email) return;
     setLoadingTareas(true);
     try {
-      const { success, data } = await obtenerTareasEmpleado(usuario.email);
+      const { success, data } = await obtenerTareasEmpleadoBackend(usuario.email);
       if (success) {
         // Solo mostrar tareas pendientes, no las completadas
         const tareasActivas = data?.filter((t: any) => t.estado === 'pendiente') || [];
@@ -144,7 +166,7 @@ function EmpleadoPanelContent() {
     
     setActualizandoTarea(true);
     try {
-      const { success } = await actualizarEstadoTarea(tareaSeleccionada.id, 'completada');
+      const { success } = await actualizarEstadoTareaBackend(tareaSeleccionada.id, 'completada');
       if (success) {
         // Actualizar la tarea en la lista local
         const tareasActualizadas = listaTareas.map((t: any) =>
@@ -173,7 +195,7 @@ function EmpleadoPanelContent() {
     if (!usuario?.email) return;
     setLoadingHistorialTareas(true);
     try {
-      const { success, data } = await obtenerTareasEmpleado(usuario.email);
+      const { success, data } = await obtenerTareasEmpleadoBackend(usuario.email);
       if (success) {
         const terminadas = data?.filter((t: any) => t.estado === 'completada') || [];
         setListaTareasTerminadas(terminadas);
@@ -191,11 +213,32 @@ function EmpleadoPanelContent() {
     try {
       const { success, data } = await obtenerReportesAsignados(usuario.email);
       if (success) {
+        // Mapear los datos para extraer equipo_descripcion y comentario
+        const reportesMapeados = (data || []).map((r: any) => {
+          // El titulo tiene formato: "equipo_descripcion - sucursal"
+          const partes = (r.titulo || '').split(' - ');
+          const equipo_descripcion = partes[0] ? partes[0].trim() : 'Equipo / servicio';
+          const sucursal = partes.length > 1 ? partes[1].trim() : '';
+
+          // La descripcion tiene formato: "Modelo: xxx\nSerie: yyy\nSucursal: zzz\nComentario: aaa\nPrioridad: bbb"
+          let comentario = '';
+          const desc = r.descripcion || '';
+          const comentarioMatch = desc.match(/Comentario:\s*([^\n]+)/i);
+          if (comentarioMatch) comentario = comentarioMatch[1].trim();
+
+          return {
+            ...r,
+            equipo_descripcion,
+            sucursal,
+            comentario: comentario || 'Sin comentarios'
+          };
+        });
+
         // Mostrar reportes pendientes, cotizados y en_proceso (excluir terminados)
-        const reportesActivos = data?.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso') || [];
+        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso') || [];
         setListaReportes(reportesActivos);
         const pendientes = reportesActivos.length;
-        const terminados = data?.filter((r: any) => r.estado === 'terminado').length || 0;
+        const terminados = reportesMapeados.filter((r: any) => r.estado === 'terminado').length || 0;
         setReportes(pendientes);
         setReportesTerminados(terminados);
       }
@@ -212,8 +255,29 @@ function EmpleadoPanelContent() {
     try {
       const { success, data } = await obtenerReportesAsignados(usuario.email);
       if (success) {
+        // Mapear los datos para extraer equipo_descripcion y comentario
+        const reportesMapeados = (data || []).map((r: any) => {
+          // El titulo tiene formato: "equipo_descripcion - sucursal"
+          const partes = (r.titulo || '').split(' - ');
+          const equipo_descripcion = partes[0] ? partes[0].trim() : 'Equipo / servicio';
+          const sucursal = partes.length > 1 ? partes[1].trim() : '';
+
+          // La descripcion tiene formato: "Modelo: xxx\nSerie: yyy\nSucursal: zzz\nComentario: aaa\nPrioridad: bbb"
+          let comentario = '';
+          const desc = r.descripcion || '';
+          const comentarioMatch = desc.match(/Comentario:\s*([^\n]+)/i);
+          if (comentarioMatch) comentario = comentarioMatch[1].trim();
+
+          return {
+            ...r,
+            equipo_descripcion,
+            sucursal,
+            comentario: comentario || 'Sin comentarios'
+          };
+        });
+
         // Mostrar solo reportes terminados (excluir cotizados)
-        const terminados = data?.filter((r: any) => r.estado === 'terminado') || [];
+        const terminados = reportesMapeados.filter((r: any) => r.estado === 'terminado') || [];
         setListaReportesTerminados(terminados);
       }
     } catch (error) {
@@ -278,34 +342,38 @@ function EmpleadoPanelContent() {
 
     setGuardandoCotizacion(true);
     try {
-      // Obtener información del usuario (empleado)
-      const empleadoJson = await AsyncStorage.getItem('usuario_empleado');
-      const empleado = empleadoJson ? JSON.parse(empleadoJson) : { nombre: 'Empleado' };
-
-      // Guardar cotización en tabla dedicada
-      const { success } = await guardarCotizacionDB({
-        reporte_id: reporteSeleccionado.id,
-        empleado_nombre: empleado.nombre || 'Empleado',
-        analisis_general: descripcionTrabajo.trim(),
-        precio_cotizacion: precioNumerico,
-      });
+      const precioNumerico = parseFloat(precioCotizacion);
+      
+      // Actualizar el estado del reporte a 'cotizado' con la descripción y precio
+      const { success } = await actualizarEstadoReporteAsignado(
+        reporteSeleccionado.id,
+        'cotizado',
+        descripcionTrabajo.trim(),
+        precioNumerico
+      );
       
       if (success) {
-        // Actualizar el estado del reporte a 'cotizado' en la BD
-        await actualizarEstadoReporteAsignado(reporteSeleccionado.id, 'cotizado');
-        
         // Actualizar lista de reportes localmente - cambiar estado a cotizado
         const reportesActualizados = listaReportes.map((r: any) =>
-          r.id === reporteSeleccionado.id ? { ...r, estado: 'cotizado' } : r
+          r.id === reporteSeleccionado.id ? { ...r, estado: 'cotizado', analisis_general: descripcionTrabajo.trim(), precio_cotizacion: precioNumerico } : r
         );
         setListaReportes(reportesActualizados);
+        
+        // Actualizar también el reporte seleccionado
+        if (reporteSeleccionado) {
+          setReporteSeleccionado({
+            ...reporteSeleccionado,
+            estado: 'cotizado',
+            analisis_general: descripcionTrabajo.trim(),
+            precio_cotizacion: precioNumerico
+          });
+        }
         
         const pendientes = reportesActualizados.filter((r: any) => r.estado === 'pendiente').length;
         setReportes(pendientes);
         
         // Limpiar estados
         setShowCotizarModal(false);
-        setReporteSeleccionado(null);
         setDescripcionTrabajo('');
         setPrecioCotizacion('');
         
@@ -853,7 +921,7 @@ function EmpleadoPanelContent() {
                             setShowReporteDetalle(true);
                             // Cargar archivos del reporte
                             setCargandoArchivos(true);
-                            const resultado = await obtenerArchivosReporte(reporte.id);
+                            const resultado = await obtenerArchivosReporteBackend(reporte.id);
                             if (resultado.success) {
                               setArchivosReporte(resultado.data || []);
                             }
@@ -870,9 +938,15 @@ function EmpleadoPanelContent() {
                         <Text style={[styles.cardDate, { fontFamily }]}>
                           {new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: reporte.estado === 'cotizado' ? '#f59e0b25' : '#d9770625', borderColor: reporte.estado === 'cotizado' ? '#f59e0b50' : '#d9770650' }]}>
-                          <Text style={[styles.statusBadgeText, { color: reporte.estado === 'cotizado' ? '#f59e0b' : '#d97706', fontFamily }]}>
-                            {reporte.estado === 'cotizado' ? 'En Espera de Respuesta' : 'En Proceso'}
+                        <View style={[styles.statusBadge, { 
+                          backgroundColor: reporte.estado === 'pendiente' ? '#fbbf2425' : reporte.estado === 'cotizado' ? '#f59e0b25' : '#d9770625', 
+                          borderColor: reporte.estado === 'pendiente' ? '#fbbf2450' : reporte.estado === 'cotizado' ? '#f59e0b50' : '#d9770650' 
+                        }]}>
+                          <Text style={[styles.statusBadgeText, { 
+                            color: reporte.estado === 'pendiente' ? '#fbbf24' : reporte.estado === 'cotizado' ? '#f59e0b' : '#d97706', 
+                            fontFamily 
+                          }]}>
+                            {reporte.estado === 'pendiente' ? 'Pendiente Cotización' : reporte.estado === 'cotizado' ? 'En Espera de Respuesta' : 'En Proceso'}
                           </Text>
                         </View>
                       </View>
@@ -1244,7 +1318,7 @@ function EmpleadoPanelContent() {
                             setShowReporteDetalle(true);
                             // Cargar archivos del reporte
                             setCargandoArchivos(true);
-                            const resultado = await obtenerArchivosReporte(reporte.id);
+                            const resultado = await obtenerArchivosReporteBackend(reporte.id);
                             if (resultado.success) {
                               setArchivosReporte(resultado.data || []);
                             }
@@ -1490,6 +1564,55 @@ function EmpleadoPanelContent() {
 }
 
 export default function EmpleadoPanel() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const verificarAcceso = async () => {
+      try {
+        const user = await AsyncStorage.getItem('user');
+        if (!user) {
+          router.replace('/');
+          return;
+        }
+        const parsedUser = JSON.parse(user);
+        if (parsedUser.rol !== 'empleado') {
+          console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /empleado-panel`);
+          switch (parsedUser.rol) {
+            case 'admin':
+              router.replace('/admin');
+              break;
+            case 'cliente':
+              router.replace('/cliente-panel');
+              break;
+            default:
+              router.replace('/');
+          }
+          return;
+        }
+        setAuthorized(true);
+      } catch (error) {
+        router.replace('/');
+      } finally {
+        setChecking(false);
+      }
+    };
+    verificarAcceso();
+  }, [router]);
+
+  if (checking) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
   return <EmpleadoPanelContent />;
 }
 

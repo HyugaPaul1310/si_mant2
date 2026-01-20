@@ -1,14 +1,19 @@
 // @ts-nocheck
-import { actualizarEstadoCotizacion, actualizarEstadoReporte, obtenerCotizacionesCliente, obtenerReportesFinalizadosPorTecnico, obtenerReportesPorUsuario } from '@/lib/reportes';
-import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    actualizarEstadoReporteAsignado,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente
+} from '../lib/api-backend';
+import { getProxyUrl } from '../lib/cloudflare';
 
 type Cliente = {
   nombre?: string;
@@ -17,7 +22,7 @@ type Cliente = {
   empresa?: string;
 };
 
-export default function ClientePanel() {
+function ClientePanelContent() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -30,6 +35,10 @@ export default function ClientePanel() {
   const [showSeguimientoModal, setShowSeguimientoModal] = useState(false);
   const [showReporteDetail, setShowReporteDetail] = useState(false);
   const [selectedReporte, setSelectedReporte] = useState<any | null>(null);
+  const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
+  const [loadingArchivos, setLoadingArchivos] = useState(false);
+  const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
+  const [showArchivoModal, setShowArchivoModal] = useState(false);
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
@@ -59,7 +68,24 @@ export default function ClientePanel() {
       try {
         const user = await AsyncStorage.getItem('user');
         if (user) {
-          setUsuario(JSON.parse(user));
+          const parsedUser = JSON.parse(user);
+          // Validación: solo clientes pueden acceder a este panel
+          if (parsedUser.rol !== 'cliente') {
+            console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel. Redirigiendo...`);
+            // Redirigir según su rol
+            switch (parsedUser.rol) {
+              case 'admin':
+                router.replace('/admin');
+                break;
+              case 'empleado':
+                router.replace('/empleado-panel');
+                break;
+              default:
+                router.replace('/');
+            }
+            return;
+          }
+          setUsuario(parsedUser);
         } else {
           router.replace('/');
         }
@@ -89,11 +115,39 @@ export default function ClientePanel() {
       if (!email) return;
       setLoadingReportes(true);
       setErrorReportes('');
-      const { success, data, error } = await obtenerReportesPorUsuario(email);
+      const { success, data, error } = await obtenerReportesCliente(email);
+      console.log('[CLIENTE-PANEL] cargarReportes respuesta:', { success, dataLength: data?.length, firstItem: data?.[0] });
       if (!success) {
         setErrorReportes(error || 'No se pudieron cargar los reportes');
       } else {
-        setReportes(data || []);
+        // Mapear los datos para extraer equipo_descripcion y comentario
+        const reportesMapeados = (data || []).map((r: any) => {
+          // El titulo tiene formato: "equipo_descripcion - sucursal"
+          const partes = (r.titulo || '').split(' - ');
+          const equipo_descripcion = partes[0] ? partes[0].trim() : 'Equipo / servicio';
+          const sucursal = partes.length > 1 ? partes[1].trim() : '';
+
+          // La descripcion tiene formato: "Modelo: xxx\nSerie: yyy\nSucursal: zzz\nComentario: aaa\nPrioridad: bbb"
+          let comentario = '';
+          const desc = r.descripcion || '';
+          const comentarioMatch = desc.match(/Comentario:\s*([^\n]+)/i);
+          if (comentarioMatch) comentario = comentarioMatch[1].trim();
+
+          return {
+            ...r,
+            equipo_descripcion,
+            sucursal,
+            comentario: comentario || 'Sin comentarios'
+          };
+        });
+
+        // Filtrar para excluir reportes finalizados o en espera (esos van en reportesFinalizados)
+        const reportesActivos = reportesMapeados.filter((r: any) => 
+          r.estado !== 'finalizado' && r.estado !== 'en_espera'
+        );
+        console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
+        console.log('[CLIENTE-PANEL] Primer reporte activo:', reportesActivos[0]);
+        setReportes(reportesActivos);
       }
       setLoadingReportes(false);
       return data || [];
@@ -116,12 +170,17 @@ export default function ClientePanel() {
       console.log('[CLIENTE-PANEL] Cargando cotizaciones para email:', email);
       setLoadingCotizaciones(true);
       try {
-        console.log('[CLIENTE-PANEL] Llamando a obtenerCotizacionesCliente con email:', email);
-        const resultado = await obtenerCotizacionesCliente(undefined, email);
+        console.log('[CLIENTE-PANEL] Llamando a obtenerReportesCliente');
+        const resultado = await obtenerReportesCliente(email);
         console.log('[CLIENTE-PANEL] Resultado completo:', resultado);
         if (resultado.success && resultado.data) {
           console.log('[CLIENTE-PANEL] Datos cargados:', resultado.data.length);
-          setCotizaciones(resultado.data);
+          // Filtrar solo reportes que han sido cotizados (deben tener precio_cotizacion)
+          const cotizacionesFiltradas = resultado.data.filter((r: any) => 
+            r.precio_cotizacion && (r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico')
+          );
+          console.log('[CLIENTE-PANEL] Cotizaciones filtradas:', cotizacionesFiltradas.length);
+          setCotizaciones(cotizacionesFiltradas);
         } else {
           console.error('[CLIENTE-PANEL] Error en respuesta:', resultado.error);
           setCotizaciones([]);
@@ -145,10 +204,14 @@ export default function ClientePanel() {
       }
       console.log('[CLIENTE-PANEL] Cargando reportes finalizados por técnico para:', email);
       try {
-        const resultado = await obtenerReportesFinalizadosPorTecnico(email);
+        const resultado = await obtenerReportesCliente(email);
         if (resultado.success && resultado.data) {
-          console.log('[CLIENTE-PANEL] Reportes finalizados cargados:', resultado.data.length);
-          setReportesFinalizados(resultado.data);
+          // Filtrar solo reportes que estén en estado 'finalizado' o 'en_espera' (esperando confirmación del cliente)
+          const finalizados = resultado.data.filter((r: any) => 
+            r.estado === 'finalizado' || r.estado === 'en_espera'
+          );
+          console.log('[CLIENTE-PANEL] Reportes finalizados cargados:', finalizados.length);
+          setReportesFinalizados(finalizados);
         } else {
           console.error('[CLIENTE-PANEL] Error cargando reportes finalizados:', resultado.error);
           setReportesFinalizados([]);
@@ -156,6 +219,33 @@ export default function ClientePanel() {
       } catch (error) {
         console.error('[CLIENTE-PANEL] Exception cargando reportes finalizados:', error);
         setReportesFinalizados([]);
+      }
+    },
+    []
+  );
+
+  // Cargar archivos de un reporte específico
+  const cargarArchivosReporte = useCallback(
+    async (reporteId: string) => {
+      if (!reporteId) {
+        setArchivosReporte([]);
+        return;
+      }
+      setLoadingArchivos(true);
+      try {
+        const { success, data, error } = await obtenerArchivosReporteBackend(reporteId);
+        if (success && data) {
+          setArchivosReporte(data || []);
+          console.log('[CLIENTE-PANEL] Archivos cargados:', data?.length);
+        } else {
+          console.error('[CLIENTE-PANEL] Error cargando archivos:', error);
+          setArchivosReporte([]);
+        }
+      } catch (error) {
+        console.error('[CLIENTE-PANEL] Exception cargando archivos:', error);
+        setArchivosReporte([]);
+      } finally {
+        setLoadingArchivos(false);
       }
     },
     []
@@ -170,31 +260,26 @@ export default function ClientePanel() {
         // PASO 4: Cargar reportes finalizados por técnico
         cargarReportesFinalizados(usuario.email);
       }
-    }, [usuario?.email, cargarReportes, cargarCotizaciones])
+    }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados])
   );
 
   // Refrescar empresa/apellido si no están en AsyncStorage
   useEffect(() => {
     const refrescarPerfil = async () => {
-      if (!usuario?.email) return;
+      if (!usuario?.id) return;
       if (usuario?.empresa && usuario?.apellido) return; // ya lo tenemos completo
-      const { data, error } = await supabase
-        .from('usuarios')
-        .select('empresa, apellido, nombre')
-        .eq('email', usuario.email)
-        .single();
-      if (error || !data) return;
-      const actualizado = {
-        ...usuario,
-        nombre: data.nombre ?? usuario.nombre,
-        apellido: data.apellido ?? usuario.apellido,
-        empresa: data.empresa ?? usuario.empresa,
-      };
-      setUsuario(actualizado);
-      await AsyncStorage.setItem('user', JSON.stringify(actualizado));
+      // Los datos ya vienen del login, no necesitamos refrescar
+      // El usuario está completo en AsyncStorage después del login
     };
     refrescarPerfil();
-  }, [usuario?.email, usuario?.empresa, usuario?.apellido]);
+  }, [usuario?.id, usuario?.empresa, usuario?.apellido]);
+
+  // Recargar cotizaciones cuando se abre el modal
+  useEffect(() => {
+    if (showCotizacionesModal && usuario?.email) {
+      cargarCotizaciones(usuario.email);
+    }
+  }, [showCotizacionesModal, usuario?.email, cargarCotizaciones]);
 
   const finalizados = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
@@ -326,6 +411,8 @@ export default function ClientePanel() {
                 onPress={() => {
                   setSelectedReporte(rep);
                   setShowReporteDetail(true);
+                  // Cargar archivos del reporte cuando se abre el detalle
+                  cargarArchivosReporte(rep.id);
                 }}
                 style={styles.eyeButton}
               >
@@ -360,32 +447,9 @@ export default function ClientePanel() {
   const ensureDemoFinalizado = useCallback(
     async (lista: any[]) => {
       if (!usuario?.email) return;
-      const tieneFinalizados = lista.some((r) => r.estado === 'terminado' || r.estado === 'cotizado');
-      const yaExisteDemo = lista.some((r) => r.equipo_descripcion === 'Caso demo finalizado');
-      if (tieneFinalizados || yaExisteDemo) return;
-
-      const { data, error } = await supabase
-        .from('reportes')
-        .insert([
-          {
-            usuario_email: usuario.email,
-            usuario_nombre: usuario.nombre || 'Cliente',
-            usuario_apellido: usuario.apellido || null,
-            empresa: usuario.empresa || null,
-            sucursal: 'Sucursal Demo',
-            equipo_descripcion: 'Caso demo finalizado',
-            comentario: 'Ejemplo de reporte marcado como finalizado.',
-            prioridad: 'media',
-            estado: 'terminado',
-            direccion_sucursal: null,
-          },
-        ])
-        .select();
-
-      if (error) return;
-      if (data && data.length > 0) {
-        setReportes((prev) => [data[0], ...(prev || [])]);
-      }
+      // Función simplificada - no insertar datos de demo
+      // Los reportes se cargan desde la BD
+      // No es necesario crear reportes de demostración
     },
     [usuario]
   );
@@ -1056,6 +1120,60 @@ export default function ClientePanel() {
                 </View>
               )}
 
+              {/* Sección de Archivos Adjuntos - Galería */}
+              {loadingArchivos ? (
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailLabel, { fontFamily }]}>Cargando archivos...</Text>
+                </View>
+              ) : null}
+
+              {!loadingArchivos && archivosReporte && archivosReporte.length > 0 && (
+                <>
+                  <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
+                    <View style={styles.separatorLine} />
+                    <Text style={[styles.separatorText, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                    <View style={styles.separatorLine} />
+                  </View>
+                  <View style={styles.archivosContainer}>
+                    {archivosReporte.map((archivo: any, idx: number) => {
+                      const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                      return (
+                        <TouchableOpacity 
+                          key={idx} 
+                          style={styles.archivoItem}
+                          onPress={() => {
+                            setArchivoVisualizando({
+                              url: proxyUrl,
+                              tipo: archivo.tipo_archivo,
+                              nombre: archivo.nombre_original || 'Archivo'
+                            });
+                            setShowArchivoModal(true);
+                          }}
+                        >
+                          {archivo.tipo_archivo === 'foto' ? (
+                            <>
+                              <Image
+                                source={{ uri: proxyUrl }}
+                                style={styles.archivoThumb}
+                                onError={() => console.log('Error loading image:', proxyUrl)}
+                              />
+                              <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
+                            </>
+                          ) : (
+                            <>
+                              <View style={styles.videoThumb}>
+                                <Ionicons name="play-circle" size={40} color="#06b6d4" />
+                              </View>
+                              <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
+                            </>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
               {selectedReporte.estado === 'cotizado' && (
                 <>
                   <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
@@ -1211,12 +1329,12 @@ export default function ClientePanel() {
                           </View>
                           <View style={[
                             styles.estadoBadge,
-                            cot.estado === 'pendiente' && { backgroundColor: '#fbbf24', borderColor: '#f59e0b' },
-                            cot.estado === 'aceptada' && { backgroundColor: '#86efac', borderColor: '#16a34a' },
-                            cot.estado === 'rechazada' && { backgroundColor: '#fca5a5', borderColor: '#dc2626' },
+                            cot.estado === 'cotizado' && { backgroundColor: '#fbbf24', borderColor: '#f59e0b' },
+                            cot.estado === 'en_proceso' && { backgroundColor: '#86efac', borderColor: '#16a34a' },
+                            cot.estado === 'finalizado_por_tecnico' && { backgroundColor: '#93c5fd', borderColor: '#3b82f6' },
                           ]}>
                             <Text style={[styles.estadoText, { fontFamily }]}>
-                              {cot.estado === 'pendiente' ? 'Pendiente' : cot.estado === 'aceptada' ? 'Aceptada' : 'Rechazada'}
+                              {cot.estado === 'cotizado' ? 'Pendiente' : cot.estado === 'en_proceso' ? 'Aceptada' : 'En revisión'}
                             </Text>
                           </View>
                         </View>
@@ -1254,11 +1372,11 @@ export default function ClientePanel() {
                   <Text style={[styles.detailSectionTitle, { fontFamily }]}>Información del Reporte</Text>
                   <View style={styles.detailField}>
                     <Text style={[styles.detailLabel, { fontFamily }]}>Equipo/Servicio</Text>
-                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.reportes?.equipo_descripcion || 'N/A'}</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.equipo_descripcion || 'N/A'}</Text>
                   </View>
                   <View style={styles.detailField}>
                     <Text style={[styles.detailLabel, { fontFamily }]}>Comentario</Text>
-                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.reportes?.comentario || 'N/A'}</Text>
+                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.comentario || 'N/A'}</Text>
                   </View>
                 </View>
 
@@ -1284,25 +1402,24 @@ export default function ClientePanel() {
                     <Text style={[
                       styles.detailValue,
                       { fontFamily, fontWeight: 'bold' },
-                      cotizacionSeleccionada.estado === 'pendiente' && { color: '#fbbf24' },
-                      cotizacionSeleccionada.estado === 'aceptada' && { color: '#86efac' },
-                      cotizacionSeleccionada.estado === 'rechazada' && { color: '#fca5a5' },
+                      cotizacionSeleccionada.estado === 'cotizado' && { color: '#fbbf24' },
+                      cotizacionSeleccionada.estado === 'en_proceso' && { color: '#86efac' },
+                      cotizacionSeleccionada.estado === 'finalizado_por_tecnico' && { color: '#93c5fd' },
                     ]}>
-                      {cotizacionSeleccionada.estado === 'pendiente' ? 'Pendiente' : cotizacionSeleccionada.estado === 'aceptada' ? 'Aceptada' : 'Rechazada'}
+                      {cotizacionSeleccionada.estado === 'cotizado' ? 'Pendiente de aceptación' : cotizacionSeleccionada.estado === 'en_proceso' ? 'Aceptada' : 'En revisión'}
                     </Text>
                   </View>
                 </View>
 
                 {/* Acciones */}
-                {cotizacionSeleccionada.estado === 'pendiente' && (
+                {cotizacionSeleccionada.estado === 'cotizado' && (
                   <View style={styles.detailActions}>
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#10b981' }]}
                       onPress={async () => {
-                        const resultado = await actualizarEstadoCotizacion(cotizacionSeleccionada.id, 'aceptada');
+                        // Actualizar el estado del reporte a "en_proceso" (aceptada la cotización)
+                        const resultado = await actualizarEstadoReporteAsignado(cotizacionSeleccionada.id, 'en_proceso');
                         if (resultado.success) {
-                          // También cambiar el estado del reporte a "en_proceso"
-                          await actualizarEstadoReporte(cotizacionSeleccionada.reporte_id, 'en_proceso');
                           showToast('Cotización aceptada. El reporte está listo para trabajar.', 'success');
                           cargarCotizaciones(usuario?.email);
                           setShowCotizacionDetalleModal(false);
@@ -1315,12 +1432,43 @@ export default function ClientePanel() {
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
                       onPress={async () => {
-                        const resultado = await actualizarEstadoCotizacion(cotizacionSeleccionada.id, 'rechazada');
-                        if (resultado.success) {
-                          Alert.alert('Rechazada', 'Cotización rechazada');
-                          cargarCotizaciones(usuario?.email);
-                          setShowCotizacionDetalleModal(false);
-                        }
+                        // Simplemente cerrar el modal (no hay rechazo en backend actualmente)
+                        showToast('Cotización no aceptada', 'info');
+                        cargarCotizaciones(usuario?.email);
+                        setShowCotizacionDetalleModal(false);
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={20} color="white" />
+                      <Text style={[styles.actionButtonText, { fontFamily }]}>Rechazar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Acciones para trabajo finalizado por técnico */}
+                {cotizacionSeleccionada.estado === 'finalizado_por_tecnico' && (
+                  <View style={styles.detailActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: '#10b981' }]}
+                      onPress={async () => {
+                        // Preparar datos del reporte para la encuesta
+                        setReporteAConfirmar({
+                          id: cotizacionSeleccionada.id,
+                          equipo_descripcion: cotizacionSeleccionada.equipo_descripcion,
+                          empleado_asignado_email: cotizacionSeleccionada.empleado_email,
+                          empleado_asignado_nombre: cotizacionSeleccionada.empleado_nombre,
+                        });
+                        setShowCotizacionDetalleModal(false);
+                        setShowConfirmarFinalizacionModal(true);
+                      }}
+                    >
+                      <Ionicons name="checkmark-circle" size={20} color="white" />
+                      <Text style={[styles.actionButtonText, { fontFamily }]}>Confirmar Finalización</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
+                      onPress={async () => {
+                        showToast('Trabajo no confirmado', 'info');
+                        setShowCotizacionDetalleModal(false);
                       }}
                     >
                       <Ionicons name="close-circle" size={20} color="white" />
@@ -1330,6 +1478,46 @@ export default function ClientePanel() {
                 )}
               </View>
             </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* Modal para visualizar archivo completo */}
+      {showArchivoModal && archivoVisualizando && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000b3', zIndex: 70, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={[styles.archivoModalContent, isMobile && styles.archivoModalContentMobile, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
+            <TouchableOpacity 
+              style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
+              onPress={() => {
+                setShowArchivoModal(false);
+                setArchivoVisualizando(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+              {archivoVisualizando.tipo === 'foto' ? (
+                <Image
+                  source={{ uri: archivoVisualizando.url }}
+                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Video
+                  source={{ uri: archivoVisualizando.url }}
+                  style={{ width: '100%', height: '100%' }}
+                  useNativeControls
+                  resizeMode="contain"
+                  isLooping
+                />
+              )}
+            </View>
+
+            <Text style={[styles.archivoModalName, isMobile && styles.archivoModalNameMobile, { fontFamily }]}>
+              {archivoVisualizando.nombre}
+            </Text>
           </View>
         </View>
       )}
@@ -1835,7 +2023,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#000000b3',
-    zIndex: 30,
+    zIndex: 50,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2041,7 +2229,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: '#000000b3',
-    zIndex: 40,
+    zIndex: 60,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2432,4 +2620,155 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#34d399',
   },
+  archivosContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
+  archivoItem: {
+    width: '48%',
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivoThumb: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  videoThumb: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#0f172a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  archivoLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  archivoModalContent: {
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 20,
+    maxWidth: '90%',
+    maxHeight: '90%',
+    width: '85%',
+    height: '85%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    flexDirection: 'column',
+  },
+  archivoModalContentMobile: {
+    borderRadius: 12,
+    padding: 16,
+    width: '90%',
+    height: '80%',
+  },
+  archivoModalClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 50,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivoModalCloseMobile: {
+    width: 40,
+    height: 40,
+  },
+  archivoModalName: {
+    color: '#f1f5f9',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  archivoModalNameMobile: {
+    fontSize: 12,
+  },
 });
+
+// Estilo especial para el overlay del modal de archivo (debe estar por encima)
+const archivoOverlayStyle = {
+  position: 'absolute' as const,
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: '#000000b3',
+  zIndex: 50, // Mayor que detailOverlay (40)
+  paddingHorizontal: 16,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
+export default function ClientePanel() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const verificarAcceso = async () => {
+      try {
+        const user = await AsyncStorage.getItem('user');
+        if (!user) {
+          router.replace('/');
+          return;
+        }
+        const parsedUser = JSON.parse(user);
+        if (parsedUser.rol !== 'cliente') {
+          console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel`);
+          switch (parsedUser.rol) {
+            case 'admin':
+              router.replace('/admin');
+              break;
+            case 'empleado':
+              router.replace('/empleado-panel');
+              break;
+            default:
+              router.replace('/');
+          }
+          return;
+        }
+        setAuthorized(true);
+      } catch (error) {
+        router.replace('/');
+      } finally {
+        setChecking(false);
+      }
+    };
+    verificarAcceso();
+  }, [router]);
+
+  if (checking) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
+  return <ClientePanelContent />;
+}

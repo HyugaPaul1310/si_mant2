@@ -1,4 +1,7 @@
-import { supabase } from './supabase';
+import { apiCall } from './api-backend';
+
+// TODO: Archivo completamente migrado a backend (routes/empresas.js)
+// Se eliminó toda dependencia de Supabase
 
 export interface Sucursal {
   id: string;
@@ -18,44 +21,52 @@ export interface Empresa {
  * Lista todas las empresas (solo admins)
  */
 export async function obtenerEmpresas() {
-  const { data, error } = await supabase.from('empresas').select('id, nombre').order('nombre');
-  if (error) return { success: false, error: error.message, data: [] };
-  return { success: true, data: (data as Empresa[]) || [] };
+  try {
+    const data = await apiCall('/empresas', 'GET');
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener empresas:', error);
+    return { success: false, error: error.message, data: [] };
+  }
 }
 
 /**
  * Crea una empresa nueva (solo admins)
  */
 export async function crearEmpresa(nombre: string) {
-  const limpio = nombre.trim();
-  if (!limpio) return { success: false, error: 'El nombre es requerido' };
-  const { data, error } = await supabase
-    .from('empresas')
-    .insert([{ nombre: limpio }])
-    .select('id, nombre')
-    .single();
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Empresa };
+  try {
+    const limpio = nombre.trim();
+    if (!limpio) return { success: false, error: 'El nombre es requerido' };
+    
+    const data = await apiCall('/empresas', 'POST', { nombre: limpio });
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
+  } catch (error: any) {
+    console.error('Error al crear empresa:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
  * Actualiza una empresa (solo admins)
  */
 export async function actualizarEmpresa(id: string, cambios: Partial<Empresa>) {
-  const payload: any = {};
-  if (cambios.nombre !== undefined) {
-    const limpio = cambios.nombre.trim();
-    if (!limpio) return { success: false, error: 'El nombre es requerido' };
-    payload.nombre = limpio;
+  try {
+    const payload: any = {};
+    if (cambios.nombre !== undefined) {
+      const limpio = cambios.nombre.trim();
+      if (!limpio) return { success: false, error: 'El nombre es requerido' };
+      payload.nombre = limpio;
+    }
+    
+    const data = await apiCall(`/empresas/${id}`, 'PUT', payload);
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
+  } catch (error: any) {
+    console.error('Error al actualizar empresa:', error);
+    return { success: false, error: error.message };
   }
-  const { data, error } = await supabase
-    .from('empresas')
-    .update(payload)
-    .eq('id', id)
-    .select('id, nombre')
-    .single();
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Empresa };
 }
 
 /**
@@ -64,40 +75,45 @@ export async function actualizarEmpresa(id: string, cambios: Partial<Empresa>) {
 export async function crearSucursal(
   payload: Omit<Sucursal, 'id' | 'activo'> & { activo?: boolean }
 ) {
-  const { data, error } = await supabase
-    .from('sucursales')
-    .insert([{ ...payload, activo: payload.activo ?? true }])
-    .select('id, empresa_id, nombre, direccion, ciudad, activo')
-    .single();
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Sucursal };
+  try {
+    const data = await apiCall('/empresas/crear', 'POST', {
+      ...payload,
+      activo: payload.activo ?? true,
+    });
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
+  } catch (error: any) {
+    console.error('Error al crear sucursal:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
  * Lista sucursales por empresa (solo admins)
  */
 export async function obtenerSucursalesPorEmpresa(empresaId: string) {
-  const { data, error } = await supabase
-    .from('sucursales')
-    .select('id, empresa_id, nombre, direccion, ciudad, activo')
-    .eq('empresa_id', empresaId)
-    .order('nombre');
-  if (error) return { success: false, error: error.message, data: [] };
-  return { success: true, data: (data as Sucursal[]) || [] };
+  try {
+    const data = await apiCall(`/empresas/empresa/${empresaId}`, 'GET');
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener sucursales:', error);
+    return { success: false, error: error.message, data: [] };
+  }
 }
 
 /**
  * Actualiza una sucursal (solo admins)
  */
 export async function actualizarSucursal(id: string, cambios: Partial<Sucursal>) {
-  const { data, error } = await supabase
-    .from('sucursales')
-    .update({ ...cambios, updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .select('id, empresa_id, nombre, direccion, ciudad, activo')
-    .single();
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as Sucursal };
+  try {
+    const data = await apiCall(`/empresas/${id}`, 'PUT', cambios);
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
+  } catch (error: any) {
+    console.error('Error al actualizar sucursal:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -111,18 +127,28 @@ export async function desactivarSucursal(id: string) {
  * Elimina una sucursal (solo admins)
  */
 export async function eliminarSucursal(id: string) {
-  const { error } = await supabase.from('sucursales').delete().eq('id', id);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    const data = await apiCall(`/empresas/${id}`, 'DELETE');
+    if (!data.success) throw new Error(data.error);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error al eliminar sucursal:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
  * Elimina una empresa (solo admins)
  */
 export async function eliminarEmpresa(id: string) {
-  const { error } = await supabase.from('empresas').delete().eq('id', id);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    const data = await apiCall(`/empresas/${id}`, 'DELETE');
+    if (!data.success) throw new Error(data.error);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error al eliminar empresa:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -130,32 +156,25 @@ export async function eliminarEmpresa(id: string) {
  */
 export async function obtenerSucursalesPorUsuario(userEmail: string) {
   try {
-    // Primero obtener el usuario y su empresa_id
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios')
-      .select('empresa_id')
-      .eq('email', userEmail)
-      .single();
-
-    if (usuarioError || !usuarioData?.empresa_id) {
-      console.error('Error al obtener usuario:', usuarioError);
+    // Obtener usuario con su empresa_id desde el backend
+    const userData = await apiCall(`/usuarios/por-email/${userEmail}`, 'GET');
+    
+    if (!userData.success || !userData.data?.empresa_id) {
+      console.error('Error al obtener usuario:', userData.error);
       return { success: false, error: 'No se encontró la empresa del usuario', data: [] };
     }
 
     // Luego obtener las sucursales de esa empresa
-    const { data, error } = await supabase
-      .from('sucursales')
-      .select('id, empresa_id, nombre, direccion, ciudad, activo')
-      .eq('empresa_id', usuarioData.empresa_id)
-      .eq('activo', true)
-      .order('nombre');
-
-    if (error) {
-      console.error('Error al obtener sucursales:', error);
-      return { success: false, error: error.message, data: [] };
+    const sucursalesData = await apiCall(`/empresas/empresa/${userData.data.empresa_id}`, 'GET');
+    
+    if (!sucursalesData.success) {
+      console.error('Error al obtener sucursales:', sucursalesData.error);
+      return { success: false, error: sucursalesData.error, data: [] };
     }
 
-    return { success: true, data: data || [] };
+    // Filtrar solo las activas
+    const activas = sucursalesData.data.filter((s: any) => s.activo);
+    return { success: true, data: activas || [] };
   } catch (error: any) {
     console.error('Error en obtenerSucursalesPorUsuario:', error);
     return { success: false, error: error.message, data: [] };
@@ -167,18 +186,10 @@ export async function obtenerSucursalesPorUsuario(userEmail: string) {
  */
 export async function obtenerSucursalPorId(sucursalId: string) {
   try {
-    const { data, error } = await supabase
-      .from('sucursales')
-      .select('*')
-      .eq('id', sucursalId)
-      .single();
-
-    if (error) {
-      console.error('Error al obtener sucursal:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, data };
+    // No hay endpoint específico para una sucursal por ID
+    // Podrías crear uno en el backend si lo necesitas
+    console.warn('obtenerSucursalPorId: Función no migrada completamente. Considera añadir endpoint en backend.');
+    return { success: false, error: 'Función no implementada' };
   } catch (error: any) {
     console.error('Error en obtenerSucursalPorId:', error);
     return { success: false, error: error.message };

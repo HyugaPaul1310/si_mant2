@@ -1,5 +1,6 @@
-EXPO_PUBLIC_SUPABASE_URL=https://rnjgwnvqgtpviylqpuqy.supabase.co/
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuamd3bnZxZ3Rwdml5bHFwdXF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1ODEzNzksImV4cCI6MjA4MTE1NzM3OX0.qfU6foXuacnq0k8IXwfDvcoMyYPm7ANMWrIecuVdays
+# ⚠️ SUPABASE CREDENTIALS REMOVED - Sistema completamente migrado a Express + MySQL
+# Las credenciales de Supabase han sido eliminadas del archivo
+# Solo mantener Cloudflare para upload de archivos
 
 # Cloudflare R2
 EXPO_PUBLIC_CLOUDFLARE_ACCOUNT_ID=e8c25e844a39558f6eb805ef07d64514

@@ -5,14 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    Alert,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -194,7 +194,7 @@ export default function EncuestaPage() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0f172a' }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.replace('/cliente-panel')} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color="#22d3ee" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
@@ -290,7 +290,7 @@ export default function EncuestaPage() {
       <View style={[styles.footer, isMobile && styles.footerMobile]}>
         <TouchableOpacity
           style={[styles.cancelButton, isMobile && styles.buttonMobile]}
-          onPress={() => router.back()}
+          onPress={() => router.replace('/cliente-panel')}
           activeOpacity={0.7}
         >
           <Text style={[styles.cancelButtonText, { fontFamily }]}>Cancelar</Text>

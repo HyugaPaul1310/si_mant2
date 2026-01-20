@@ -148,6 +148,16 @@ export default function GestionEmpresasScreen() {
       setError('Nombre y dirección de sucursal son obligatorios');
       return;
     }
+
+    // Validar que no exista una sucursal con el mismo nombre
+    const sucursalExistente = sucursales.some(
+      (s) => s.nombre.toLowerCase() === n.toLowerCase()
+    );
+    if (sucursalExistente) {
+      setError(`Ya existe una sucursal llamada "${n}" en esta empresa`);
+      return;
+    }
+
     setConfirm({
       title: 'Crear sucursal',
       message: `¿Crear "${n}"?`,

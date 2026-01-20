@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiCall } from './api-backend';
 import { uploadToCloudflare } from './cloudflare';
 import { supabase } from './supabase';
 
@@ -35,33 +37,46 @@ interface Cotizacion {
 
 export async function crearReporte(datos: ReporteData) {
   try {
-    const { data, error } = await supabase
-      .from('reportes')
-      .insert([
-        {
-          usuario_email: datos.usuario_email,
-          usuario_nombre: datos.usuario_nombre,
-          usuario_apellido: datos.usuario_apellido || null,
-          empresa: datos.empresa || null,
-          sucursal: datos.sucursal || null,
-          sucursal_id: datos.sucursal_id || null,
-          equipo_descripcion: datos.equipo_descripcion,
-          equipo_modelo: datos.equipo_modelo || null,
-          equipo_serie: datos.equipo_serie || null,
-          comentario: datos.comentario,
-          prioridad: datos.prioridad,
-          direccion_sucursal: datos.direccion_sucursal || null,
-          estado: 'pendiente',
-        },
-      ])
-      .select();
-
-    if (error) {
-      console.error('Error al crear reporte:', error);
-      return { success: false, error: error.message };
+    const token = await AsyncStorage.getItem('token');
+    
+    if (!token) {
+      console.error('No hay token de autenticación');
+      return { success: false, error: 'No autenticado' };
     }
 
-    return { success: true, data: data[0] };
+    // Mapear datos del frontend a los campos que espera el backend
+    const titulo = `${datos.equipo_descripcion || 'Reporte'} - ${datos.sucursal || 'Sin sucursal'}`;
+    const descripcion = `
+Modelo: ${datos.equipo_modelo || 'N/A'}
+Serie: ${datos.equipo_serie || 'N/A'}
+Sucursal: ${datos.sucursal || 'N/A'}
+Comentario: ${datos.comentario || 'N/A'}
+Prioridad: ${datos.prioridad || 'media'}
+    `.trim();
+
+    const response = await fetch('http://192.168.1.75:3001/api/reportes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        titulo,
+        descripcion,
+        estado: 'pendiente',
+        prioridad: datos.prioridad || 'media',
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('Error al crear reporte:', error);
+      return { success: false, error: error.message || 'Error en el servidor' };
+    }
+
+    const response_data = await response.json();
+    // El backend ya retorna { success: true, data: {...} }, no necesitamos envolverlo de nuevo
+    return response_data;
   } catch (error: any) {
     console.error('Exception en crearReporte:', error);
     return { success: false, error: error.message || 'Error desconocido' };
@@ -70,13 +85,8 @@ export async function crearReporte(datos: ReporteData) {
 
 export async function obtenerReportesPorUsuario(email: string) {
   try {
-    const { data, error } = await supabase
-      .from('reportes')
-      .select('*')
-      .eq('usuario_email', email)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
+    const data = await apiCall(`/reportes/por-usuario/${email}`, 'GET');
+    if (!data.success) throw new Error(data.error);
     return { success: true, data };
   } catch (error: any) {
     console.error('Error al obtener reportes:', error);
@@ -86,12 +96,8 @@ export async function obtenerReportesPorUsuario(email: string) {
 
 export async function obtenerTodosLosReportes() {
   try {
-    const { data, error } = await supabase
-      .from('reportes')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
+    const data = await apiCall('/reportes/todos/admin/list', 'GET');
+    if (!data.success) throw new Error(data.error);
     return { success: true, data };
   } catch (error: any) {
     console.error('Error al obtener reportes:', error);
@@ -107,36 +113,13 @@ type EstadoEntrada = EstadoReporte | 'en_espera' | 'en proceso' | 'finalizado' |
 export async function actualizarEstadoReporte(id: string, estado: EstadoEntrada) {
   if (!id) return { success: false, error: 'ID inválido' };
 
-  const key = estado.trim().toLowerCase();
-  const mapa: Record<string, EstadoReporte> = {
-    pendiente: 'pendiente',
-    en_proceso: 'en_proceso',
-    'en proceso': 'en_proceso',
-    'en_espera': 'en espera',
-    'en espera': 'en espera',
-    terminado: 'terminado',
-    finalizado: 'terminado',
-    resuelto: 'terminado',
-  };
-
-  const normalized = mapa[key];
-  console.log(`[actualizarEstadoReporte] estado entrada: "${estado}" -> key: "${key}" -> normalized: "${normalized}"`);
-
-  if (!normalized || !ESTADOS_PERMITIDOS.includes(normalized)) {
-    console.error(`[actualizarEstadoReporte] Estado no permitido: "${normalized}". Válidos: ${ESTADOS_PERMITIDOS.join(', ')}`);
-    return { success: false, error: 'Estado no permitido' };
-  }
   try {
-    console.log(`[actualizarEstadoReporte] Actualizando reporte ${id} con estado: "${normalized}"`);
-    const { data, error } = await supabase
-      .from('reportes')
-      .update({ estado: normalized })
-      .eq('id', id)
-      .select();
-
-    if (error) throw error;
-    console.log(`[actualizarEstadoReporte] Actualización exitosa:`, data?.[0]);
-    return { success: true, data: data?.[0] };
+    console.log(`[actualizarEstadoReporte] Actualizando reporte ${id} con estado: "${estado}"`);
+    const data = await apiCall(`/reportes/${id}/estado`, 'PUT', { estado });
+    
+    if (!data.success) throw new Error(data.error);
+    console.log(`[actualizarEstadoReporte] Actualización exitosa:`, data.data);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al actualizar estado:', error);
     return { success: false, error: error.message };
@@ -146,18 +129,14 @@ export async function actualizarEstadoReporte(id: string, estado: EstadoEntrada)
 // Asignar reporte a un empleado
 export async function asignarReporteAEmpleado(reporteId: string, empleadoEmail: string, empleadoNombre: string) {
   try {
-    const { data, error } = await supabase
-      .from('reportes')
-      .update({ 
-        empleado_asignado_email: empleadoEmail,
-        empleado_asignado_nombre: empleadoNombre,
-        estado: 'pendiente'
-      })
-      .eq('id', reporteId)
-      .select();
+    console.log(`[asignarReporteAEmpleado] Asignando reporte ${reporteId} a ${empleadoEmail}`);
+    const data = await apiCall(`/reportes/${reporteId}/asignar`, 'PUT', {
+      empleadoEmail,
+      empleadoNombre
+    });
 
-    if (error) throw error;
-    return { success: true, data: data?.[0] };
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al asignar reporte:', error);
     return { success: false, error: error.message };
@@ -167,14 +146,9 @@ export async function asignarReporteAEmpleado(reporteId: string, empleadoEmail: 
 // Obtener reportes asignados a un empleado
 export async function obtenerReportesAsignados(empleadoEmail: string) {
   try {
-    const { data, error } = await supabase
-      .from('reportes')
-      .select('*')
-      .eq('empleado_asignado_email', empleadoEmail)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    const data = await apiCall(`/reportes/asignados/${empleadoEmail}`, 'GET');
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
   } catch (error: any) {
     console.error('Error al obtener reportes asignados:', error);
     return { success: false, error: error.message };
@@ -286,19 +260,15 @@ export async function actualizarEstadoCerradoPorCliente(reporteId: string) {
   try {
     console.log(`[REPORTES] Marcando reporte ${reporteId} como "cerrado_por_cliente"`);
     
-    const { data, error } = await supabase
-      .from('reportes')
-      .update({
-        estado: 'cerrado_por_cliente',
-        cerrado_por_cliente_at: new Date().toISOString(),
-      })
-      .eq('id', reporteId)
-      .select();
+    const data = await apiCall(`/reportes/${reporteId}/estado`, 'PUT', {
+      estado: 'cerrado_por_cliente',
+      cerrado_por_cliente_at: new Date().toISOString(),
+    });
 
-    if (error) throw error;
+    if (!data.success) throw new Error(data.error);
     
-    console.log(`[REPORTES] ✓ Reporte cerrado por cliente:`, data?.[0]);
-    return { success: true, data: data?.[0] };
+    console.log(`[REPORTES] ✓ Reporte cerrado por cliente:`, data.data);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al marcar como cerrado por cliente:', error);
     return { success: false, error: error.message };
@@ -354,7 +324,7 @@ export async function obtenerReportesCerradosPorCliente(clienteEmail: string) {
 }
 
 /**
- * Guardar archivo subido a Cloudflare en la base de datos
+ * Guardar archivo subido a Cloudflare en la base de datos MySQL
  */
 export async function guardarArchivoReporte(archivo: ReporteArchivo) {
   try {
@@ -364,27 +334,35 @@ export async function guardarArchivoReporte(archivo: ReporteArchivo) {
       cloudflare_url: archivo.cloudflare_url,
     });
     
-    const { data, error } = await supabase
-      .from('reporte_archivos')
-      .insert([
-        {
-          reporte_id: archivo.reporte_id,
-          tipo_archivo: archivo.tipo_archivo,
-          cloudflare_url: archivo.cloudflare_url,
-          cloudflare_key: archivo.cloudflare_key,
-          nombre_original: archivo.nombre_original || null,
-          tamaño: archivo.tamaño || null,
-        },
-      ])
-      .select();
-
-    if (error) {
-      console.error(`[REPORTES.TS] Error al insertar archivo en BD:`, error);
-      throw error;
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      throw new Error('Token no disponible');
     }
-    
-    console.log(`[REPORTES.TS] Archivo guardado exitosamente:`, data?.[0]);
-    return { success: true, data: data?.[0] };
+
+    const response = await fetch('http://192.168.1.75:3001/api/reportes/archivos', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        reporte_id: archivo.reporte_id,
+        tipo_archivo: archivo.tipo_archivo,
+        cloudflare_url: archivo.cloudflare_url,
+        cloudflare_key: archivo.cloudflare_key,
+        nombre_original: archivo.nombre_original || null,
+        tamaño: archivo.tamaño || null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al guardar archivo');
+    }
+
+    const data = await response.json();
+    console.log(`[REPORTES.TS] Archivo guardado exitosamente:`, data);
+    return { success: true, data };
   } catch (error: any) {
     console.error(`[REPORTES.TS] Exception en guardarArchivoReporte:`, error);
     return { success: false, error: error.message };
@@ -489,18 +467,28 @@ export async function subirArchivosReporte(
   videoUri?: string
 ) {
   try {
+    console.log(`[SUBIR-ARCHIVOS] Iniciando subida para reporte: ${reporteId}`);
+    console.log(`[SUBIR-ARCHIVOS] Imágenes: ${imagenesUris?.length || 0}, Video: ${videoUri ? 'Sí' : 'No'}`);
+    
     const archivosGuardados = [];
 
     // Subir imágenes
     if (imagenesUris && imagenesUris.length > 0) {
+      console.log(`[SUBIR-ARCHIVOS] Subiendo ${imagenesUris.length} imágenes...`);
       for (let i = 0; i < imagenesUris.length; i++) {
         const uri = imagenesUris[i];
         const nombreArchivo = `foto-${Date.now()}-${i}.jpg`;
 
+        console.log(`[SUBIR-ARCHIVOS] Imagen ${i + 1}/${imagenesUris.length}: ${nombreArchivo}`);
+        
         // Subir a Cloudflare
         const resultado = await uploadToCloudflare(uri, nombreArchivo, 'foto');
+        
+        console.log(`[SUBIR-ARCHIVOS] Resultado upload imagen ${i + 1}:`, resultado);
 
         if (resultado.success && resultado.url && resultado.key) {
+          console.log(`[SUBIR-ARCHIVOS] Guardando en BD: ${resultado.url}`);
+          
           // Guardar en BD
           const guardado = await guardarArchivoReporte({
             reporte_id: reporteId,
@@ -510,6 +498,8 @@ export async function subirArchivosReporte(
             nombre_original: nombreArchivo,
           });
 
+          console.log(`[SUBIR-ARCHIVOS] Resultado guardado en BD:`, guardado);
+
           if (guardado.success) {
             archivosGuardados.push({
               tipo: 'foto',
@@ -517,6 +507,8 @@ export async function subirArchivosReporte(
               id: guardado.data?.id,
             });
           }
+        } else {
+          console.error(`[SUBIR-ARCHIVOS] Error en upload imagen ${i + 1}:`, resultado.error);
         }
       }
     }
@@ -525,10 +517,16 @@ export async function subirArchivosReporte(
     if (videoUri) {
       const nombreArchivo = `video-${Date.now()}.mp4`;
 
+      console.log(`[SUBIR-ARCHIVOS] Subiendo video: ${nombreArchivo}`);
+      
       // Subir a Cloudflare
       const resultado = await uploadToCloudflare(videoUri, nombreArchivo, 'video');
+      
+      console.log(`[SUBIR-ARCHIVOS] Resultado upload video:`, resultado);
 
       if (resultado.success && resultado.url && resultado.key) {
+        console.log(`[SUBIR-ARCHIVOS] Guardando video en BD: ${resultado.url}`);
+        
         // Guardar en BD
         const guardado = await guardarArchivoReporte({
           reporte_id: reporteId,
@@ -537,6 +535,8 @@ export async function subirArchivosReporte(
           cloudflare_key: resultado.key,
           nombre_original: nombreArchivo,
         });
+        
+        console.log(`[SUBIR-ARCHIVOS] Resultado guardado video en BD:`, guardado);
 
         if (guardado.success) {
           archivosGuardados.push({
@@ -562,27 +562,15 @@ export async function guardarCotizacion(cotizacion: Cotizacion) {
   try {
     console.log('[GUARDAR-COTIZACIÓN] Guardando cotización:', cotizacion);
     
-    const { data, error } = await supabase
-      .from('cotizaciones')
-      .insert([
-        {
-          reporte_id: cotizacion.reporte_id,
-          empleado_nombre: cotizacion.empleado_nombre,
-          analisis_general: cotizacion.analisis_general,
-          precio_cotizacion: cotizacion.precio_cotizacion,
-          estado: 'pendiente',
-          created_at: new Date().toISOString(),
-        },
-      ])
-      .select();
+    const data = await apiCall(`/reportes/${cotizacion.reporte_id}/cotizacion`, 'POST', {
+      empleado_nombre: cotizacion.empleado_nombre,
+      analisis_general: cotizacion.analisis_general,
+      precio_cotizacion: cotizacion.precio_cotizacion
+    });
 
-    if (error) {
-      console.error('[GUARDAR-COTIZACIÓN] Error al guardar:', error);
-      throw error;
-    }
-    
-    console.log('[GUARDAR-COTIZACIÓN] Cotización guardada exitosamente:', data?.[0]);
-    return { success: true, data: data?.[0] };
+    if (!data.success) throw new Error(data.error);
+    console.log('[GUARDAR-COTIZACIÓN] Cotización guardada exitosamente:', data.data);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al guardar cotización:', error);
     return { success: false, error: error.message };
@@ -591,82 +579,32 @@ export async function guardarCotizacion(cotizacion: Cotizacion) {
 
 /**
  * Obtener todas las cotizaciones de una empresa (cliente)
- * Solución robusta para Expo/React Native
+ * Solución migrada a backend
  */
 export async function obtenerCotizacionesCliente(empresaId?: string, userEmail?: string) {
   try {
     console.log('[COTIZACIONES] Iniciando obtenerCotizacionesCliente con:', { empresaId, userEmail });
     
-    // Paso 1: Obtener cotizaciones con join a reportes
-    const { data: cotizacionesConReportes, error: errorCotizaciones } = await supabase
-      .from('cotizaciones')
-      .select(`
-        id,
-        reporte_id,
-        empleado_nombre,
-        analisis_general,
-        precio_cotizacion,
-        estado,
-        created_at,
-        reportes (
-          id,
-          usuario_email,
-          usuario_nombre,
-          equipo_descripcion,
-          comentario,
-          prioridad,
-          empresa,
-          sucursal
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (errorCotizaciones) {
-      console.error('[COTIZACIONES] Error en query principal:', errorCotizaciones);
-      throw errorCotizaciones;
-    }
-
-    console.log('[COTIZACIONES] Cotizaciones obtenidas (con join):', cotizacionesConReportes?.length || 0);
-    
-    if (!cotizacionesConReportes || cotizacionesConReportes.length === 0) {
-      console.log('[COTIZACIONES] No hay cotizaciones en la BD');
+    if (!userEmail) {
       return { success: true, data: [] };
     }
 
-    // Paso 2: Log detallado de cada cotización para debuggear
-    cotizacionesConReportes.forEach((cot: any, idx: number) => {
-      console.log(`[COTIZACIONES] [${idx}] ID: ${cot.id}, Reporte: ${cot.reporte_id}, Usuario en relación: ${cot.reportes?.usuario_email || 'null'}`);
-    });
+    const data = await apiCall(`/reportes/cotizaciones/cliente/${userEmail}`, 'GET');
+    if (!data.success) throw new Error(data.error);
 
-    // Paso 3: Aplicar filtros si es necesario
-    let resultado = cotizacionesConReportes;
+    let resultado = data.data || [];
 
-    if (userEmail) {
-      console.log(`[COTIZACIONES] Filtrando por usuario: "${userEmail}"`);
-      resultado = cotizacionesConReportes.filter((cot: any) => {
-        const usuarioEmail = cot.reportes?.usuario_email;
-        const coincide = usuarioEmail === userEmail;
-        if (!coincide) {
-          console.log(`[COTIZACIONES] No coincide: "${usuarioEmail}" !== "${userEmail}"`);
-        } else {
-          console.log(`[COTIZACIONES] ✓ Coincide: "${usuarioEmail}" === "${userEmail}"`);
-        }
-        return coincide;
-      });
-      console.log('[COTIZACIONES] Después de filtro por usuario:', resultado.length);
-    }
-
+    // Filtro adicional por empresa si es necesario (el backend ya filtra por usuario)
     if (empresaId) {
       console.log(`[COTIZACIONES] Filtrando por empresa: "${empresaId}"`);
-      resultado = resultado.filter((cot: any) => cot.reportes?.empresa === empresaId);
-      console.log('[COTIZACIONES] Después de filtro por empresa:', resultado.length);
+      resultado = resultado.filter((cot: any) => cot.empresa === empresaId);
     }
 
-    console.log('[COTIZACIONES] Resultado final:', JSON.stringify(resultado, null, 2));
+    console.log('[COTIZACIONES] Resultado final:', resultado.length, 'cotizaciones');
     return { success: true, data: resultado };
 
   } catch (error: any) {
-    console.error('[COTIZACIONES] Exception en obtenerCotizacionesCliente:', error);
+    console.error('[COTIZACIONES] Error en obtenerCotizacionesCliente:', error);
     return { success: false, error: error.message };
   }
 }
@@ -713,14 +651,10 @@ export async function actualizarFase2Reporte(
     if (datos.materiales_refacciones !== undefined) updateData.materiales_refacciones = datos.materiales_refacciones;
     if (datos.trabajo_completado !== undefined) updateData.trabajo_completado = datos.trabajo_completado;
 
-    const { data, error } = await supabase
-      .from('reportes')
-      .update(updateData)
-      .eq('id', reporteId)
-      .select();
+    const data = await apiCall(`/reportes/${reporteId}/estado`, 'PUT', updateData);
 
-    if (error) throw error;
-    return { success: true, data: data?.[0] };
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al actualizar fase 2:', error);
     return { success: false, error: error.message };
@@ -795,39 +729,18 @@ export async function guardarEncuestaSatisfaccion(encuesta: {
   try {
     console.log('Guardando encuesta:', encuesta.reporte_id);
     
-    // Construir objeto limpio para insertar
-    const datosEncuesta = {
-      reporte_id: encuesta.reporte_id,
-      cliente_email: encuesta.cliente_email,
-      cliente_nombre: encuesta.cliente_nombre,
-      empleado_email: encuesta.empleado_email,
-      empleado_nombre: encuesta.empleado_nombre,
-      empresa: encuesta.empresa || null,
-      trato_equipo: encuesta.trato_equipo,
-      equipo_tecnico: encuesta.equipo_tecnico,
-      personal_administrativo: encuesta.personal_administrativo,
-      rapidez: encuesta.rapidez,
-      costo_calidad: encuesta.costo_calidad,
-      recomendacion: encuesta.recomendacion,
-      satisfaccion: encuesta.satisfaccion,
-    };
-    
-    // INSERT directo
-    const { data, error } = await supabase
-      .from('encuestas_satisfaccion')
-      .insert([datosEncuesta])
-      .select();
+    // Usar el backend en lugar de Supabase
+    const data = await apiCall('/reportes/encuestas/guardar', 'POST', encuesta);
 
-    if (error) {
-      console.error('Error de Supabase:', error.message);
-      throw error;
+    if (!data.success) {
+      throw new Error(data.error || 'Error al guardar la encuesta');
     }
-    
-    console.log('Encuesta guardada:', data?.[0]?.id);
-    return { success: true, data: data?.[0], error: null };
+
+    console.log('Encuesta guardada:', data.data?.id);
+    return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al guardar encuesta:', error.message);
-    return { success: false, data: null, error: error.message };
+    return { success: false, error: error.message };
   }
 }
 
@@ -854,14 +767,10 @@ export async function obtenerEncuestasPorReporte(reporteId: string) {
  */
 export async function obtenerEncuestasCliente(clienteEmail: string) {
   try {
-    const { data, error } = await supabase
-      .from('encuestas_satisfaccion')
-      .select('*')
-      .eq('cliente_email', clienteEmail)
-      .order('created_at', { ascending: false });
+    const data = await apiCall(`/reportes/encuestas/cliente/${clienteEmail}`, 'GET');
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
   } catch (error: any) {
     console.error('Error al obtener encuestas del cliente:', error);
     return { success: false, data: [], error: error.message };
@@ -873,14 +782,10 @@ export async function obtenerEncuestasCliente(clienteEmail: string) {
  */
 export async function obtenerEncuestasEmpleado(empleadoEmail: string) {
   try {
-    const { data, error } = await supabase
-      .from('encuestas_satisfaccion')
-      .select('*')
-      .eq('empleado_email', empleadoEmail)
-      .order('created_at', { ascending: false });
+    const data = await apiCall(`/reportes/encuestas/empleado/${empleadoEmail}`, 'GET');
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
   } catch (error: any) {
     console.error('Error al obtener encuestas del empleado:', error);
     return { success: false, data: [], error: error.message };
@@ -892,13 +797,10 @@ export async function obtenerEncuestasEmpleado(empleadoEmail: string) {
  */
 export async function obtenerTodasLasEncuestas() {
   try {
-    const { data, error } = await supabase
-      .from('encuestas_satisfaccion')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const data = await apiCall('/reportes/encuestas/todas', 'GET');
 
-    if (error) throw error;
-    return { success: true, data: data || [] };
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
   } catch (error: any) {
     console.error('Error al obtener todas las encuestas:', error);
     return { success: false, data: [], error: error.message };

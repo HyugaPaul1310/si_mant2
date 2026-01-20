@@ -1,10 +1,8 @@
 // @ts-nocheck
-import { actualizarRolUsuario, actualizarUsuario, eliminarUsuario, eliminarUsuarioPermanente, obtenerTodosLosUsuarios } from '@/lib/auth';
+import { actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
-import { asignarHerramientaAEmpleadoManual, crearHerramienta, marcarHerramientaComoDevuelta, marcarHerramientaComoPerdida, obtenerInventarioEmpleado, obtenerResumenInventario } from '@/lib/inventario';
-import { actualizarEstadoReporte, asignarReporteAEmpleado, obtenerArchivosReporte, obtenerTodasLasEncuestas, obtenerTodosLosReportes, type EstadoReporte } from '@/lib/reportes';
-import { crearTarea, obtenerEmpleados, obtenerTodasLasTareas } from '@/lib/tareas';
+import { obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video } from 'expo-av';
@@ -12,13 +10,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+    ActivityIndicator,
     Image,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     useWindowDimensions,
     View
 } from 'react-native';
@@ -185,7 +186,21 @@ function AdminPanelContent() {
       try {
         const user = await AsyncStorage.getItem('user');
         if (user) {
-          setUsuario(JSON.parse(user));
+          const parsedUser = JSON.parse(user);
+          // Validación: solo admins pueden acceder a este panel
+          if (parsedUser.rol !== 'admin') {
+            console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /admin. Redirigiendo...`);
+            // Redirigir según su rol
+            switch (parsedUser.rol) {
+              case 'empleado':
+                router.replace('/empleado-panel');
+                break;
+              default:
+                router.replace('/cliente-panel');
+            }
+            return;
+          }
+          setUsuario(parsedUser);
         } else {
           router.replace('/');
         }
@@ -208,7 +223,7 @@ function AdminPanelContent() {
     const cargar = async () => {
       setLoadingReportes(true);
       setErrorReportes('');
-      const { success, data, error } = await obtenerTodosLosReportes();
+      const { success, data, error } = await obtenerReportesBackend();
       if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
       else setReportes(data || []);
       setLoadingReportes(false);
@@ -216,13 +231,28 @@ function AdminPanelContent() {
     cargar();
   }, []);
 
+  // Recargar reportes cuando se abre el modal historial
+  useEffect(() => {
+    if (showHistorialModal) {
+      const cargar = async () => {
+        setLoadingReportes(true);
+        setErrorReportes('');
+        const { success, data, error } = await obtenerReportesBackend();
+        if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+        else setReportes(data || []);
+        setLoadingReportes(false);
+      };
+      cargar();
+    }
+  }, [showHistorialModal]);
+
   // PASO 6: Cargar reportes finalizados por técnico
   useEffect(() => {
     const cargarFinalizados = async () => {
       setLoadingFinalizados(true);
       try {
         // Filtrar reportes con estado "finalizado_por_tecnico"
-        const { success, data } = await obtenerTodosLosReportes();
+        const { success, data } = await obtenerReportesBackend();
         if (success && data) {
           const finalizados = data.filter((r: any) => r.estado === 'finalizado_por_tecnico');
           setReportesFinalizados(finalizados);
@@ -245,7 +275,7 @@ function AdminPanelContent() {
       setLoadingCerrados(true);
       try {
         // Filtrar reportes con estado "cerrado_por_cliente"
-        const { success, data } = await obtenerTodosLosReportes();
+        const { success, data } = await obtenerReportesBackend();
         if (success && data) {
           const cerrados = data.filter((r: any) => r.estado === 'cerrado_por_cliente');
           setReportesCerrados(cerrados);
@@ -262,15 +292,24 @@ function AdminPanelContent() {
     cargarCerrados();
   }, []);
 
-  // Cargar encuestas
+  // Cargar encuestas - TEMPORALMENTE DESHABILITADO
   useEffect(() => {
     const cargarEncuestasData = async () => {
       setLoadingEncuestas(true);
       setErrorEncuestas('');
-      const { success, data, error } = await obtenerTodasLasEncuestas();
-      if (!success) setErrorEncuestas(error || 'No se pudieron cargar las encuestas');
-      else setEncuestas(data || []);
-      setLoadingEncuestas(false);
+      try {
+        const resultado = await obtenerTodasLasEncuestas();
+        if (resultado.success && resultado.data) {
+          setEncuestas(resultado.data);
+        } else {
+          setErrorEncuestas(resultado.error || 'Error al cargar encuestas');
+        }
+      } catch (error: any) {
+        console.error('Error cargando encuestas:', error);
+        setErrorEncuestas(error.message || 'Error desconocido');
+      } finally {
+        setLoadingEncuestas(false);
+      }
     };
     cargarEncuestasData();
   }, []);
@@ -278,14 +317,21 @@ function AdminPanelContent() {
   useEffect(() => {
     const cargarEmpleados = async () => {
       try {
-        const { success, data } = await obtenerEmpleados();
+        const { success, data } = await obtenerUsuariosBackend();
         if (success && data) {
-          setEmpleados(data);
+          // Cargar lista completa de usuarios
+          setUsuarios(data);
+          // Filtrar solo empleados
+          const empleadosFiltrados = data.filter((user: any) => user.rol === 'empleado');
+          setEmpleados(empleadosFiltrados);
         } else {
-          console.error('Error cargando empleados');
+          setUsuarios([]);
+          setEmpleados([]);
         }
       } catch (error) {
         console.error('Error en cargarEmpleados:', error);
+        setUsuarios([]);
+        setEmpleados([]);
       }
     };
     cargarEmpleados();
@@ -295,7 +341,7 @@ function AdminPanelContent() {
     const cargarTareasData = async () => {
       setLoadingTareas(true);
       setErrorTareas('');
-      const { success, data, error } = await obtenerTodasLasTareas();
+      const { success, data, error } = await obtenerTareasBackend();
       if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
       else setTareas(data || []);
       setLoadingTareas(false);
@@ -306,11 +352,18 @@ function AdminPanelContent() {
   useEffect(() => {
     const cargarInventario = async () => {
       setLoadingEmpleadosInventario(true);
-      const { success, data, error } = await obtenerResumenInventario();
-      if (!success) {
-        console.error('Error cargando inventario:', error);
-      } else {
-        setEmpleadosInventario(data || []);
+      try {
+        const { success, data } = await obtenerUsuariosBackend();
+        if (success && data) {
+          // Filtrar solo empleados
+          const empleadosFiltrados = data.filter((user: any) => user.rol === 'empleado');
+          setEmpleadosInventario(empleadosFiltrados);
+        } else {
+          setEmpleadosInventario([]);
+        }
+      } catch (error) {
+        console.error('Error cargando empleados inventario:', error);
+        setEmpleadosInventario([]);
       }
       setLoadingEmpleadosInventario(false);
     };
@@ -416,11 +469,11 @@ function AdminPanelContent() {
 
   const handleCambiarEstado = async (id: string, nuevoEstado: EstadoReporte) => {
     setUpdatingId(id);
-    const { success, data, error } = await actualizarEstadoReporte(id, nuevoEstado);
+    const { success, error } = await actualizarReporteBackend(id, { estado: nuevoEstado });
     if (!success) {
       setErrorReportes(error || 'No se pudo actualizar el estado');
-    } else if (data) {
-      setReportes((prev) => prev.map((r) => (r.id === id ? { ...r, estado: data.estado } : r)));
+    } else {
+      setReportes((prev) => prev.map((r) => (r.id === id ? { ...r, estado: nuevoEstado } : r)));
     }
     setUpdatingId(null);
   };
@@ -531,7 +584,7 @@ function AdminPanelContent() {
 
   const cargarUsuarios = async () => {
     setLoadingUsuarios(true);
-    const resultado = await obtenerTodosLosUsuarios();
+    const resultado = await obtenerUsuariosBackend();
     if (resultado.success && resultado.data) {
       setUsuarios(resultado.data);
     }
@@ -561,7 +614,7 @@ function AdminPanelContent() {
     setExitoUsuario(false);
 
     // Actualizar datos del usuario
-    const resultadoDatos = await actualizarUsuario(usuarioEditando.id, {
+    const resultadoDatos = await actualizarUsuarioBackend(usuarioEditando.id, {
       nombre: editNombre,
       apellido: editApellido,
       email: editEmail,
@@ -578,7 +631,7 @@ function AdminPanelContent() {
 
     // Actualizar rol si cambió
     if (editRol !== usuarioEditando.rol) {
-      const resultadoRol = await actualizarRolUsuario(usuarioEditando.id, editRol);
+      const resultadoRol = await cambiarRolUsuarioBackend(usuarioEditando.id, editRol);
       if (!resultadoRol.success) {
         setErrorUsuario(resultadoRol.error || 'Error al actualizar rol');
         setActualizandoUsuario(false);
@@ -589,7 +642,7 @@ function AdminPanelContent() {
     // Actualizar estado si cambió
     if (editEstado !== usuarioEditando.estado) {
       if (editEstado === 'inactivo') {
-        const resultadoEstado = await eliminarUsuario(usuarioEditando.id);
+        const resultadoEstado = await eliminarUsuarioBackend(usuarioEditando.id);
         if (!resultadoEstado.success) {
           setErrorUsuario(resultadoEstado.error || 'Error al actualizar estado');
           setActualizandoUsuario(false);
@@ -608,9 +661,9 @@ function AdminPanelContent() {
   };
 
   const handleEliminarUsuario = async (userId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este usuario? Esta acción no se puede deshacer y también eliminará su cuenta de correo.')) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este usuario? Esta acción no se puede deshacer.')) return;
     
-    const resultado = await eliminarUsuarioPermanente(userId);
+    const resultado = await eliminarUsuarioBackend(userId);
     if (resultado.success) {
       cargarUsuarios(); // Recargar lista
     }
@@ -661,15 +714,35 @@ function AdminPanelContent() {
 
     try {
       const empleadoData = empleados.find(e => e.email === selectedEmpleado);
-      const result = await crearTarea({
+      
+      // Obtener ID del empleado
+      const [empleado] = await Promise.all([
+        obtenerUsuariosBackend()
+      ]);
+      
+      let empleadoId = null;
+      if (empleado.success && empleado.data) {
+        const emp = empleado.data.find((e: any) => e.email === selectedEmpleado);
+        empleadoId = emp?.id;
+      }
+      
+      const result = await crearTareaBackend({
+        titulo: 'Tarea del administrador',
+        descripcion: tareasDescripcion.trim(),
+        usuario_id: empleadoId,
         admin_email: usuario?.email || '',
         admin_nombre: usuario?.nombre || '',
         empleado_email: selectedEmpleado,
-        descripcion: tareasDescripcion.trim(),
       });
 
       if (result.success) {
         setTareasExito(true);
+        // Recargar tareas
+        const tareasActualizadas = await obtenerTareasBackend();
+        if (tareasActualizadas.success) {
+          setTareas(tareasActualizadas.data || []);
+        }
+        
         setTimeout(() => {
           setShowTareasModal(false);
           setSelectedEmpleado('');
@@ -688,7 +761,12 @@ function AdminPanelContent() {
   };
 
   const handleAsignarReporte = async () => {
-    if (!selectedEmpleadoReporte || !reporteAAsignar?.id) {
+    console.log('[ADMIN] handleAsignarReporte - selectedEmpleadoReporte:', selectedEmpleadoReporte);
+    console.log('[ADMIN] handleAsignarReporte - reporteAAsignar:', reporteAAsignar?.id);
+    
+    // Validar que selectedEmpleadoReporte no esté vacío y que reporteAAsignar tenga un id válido (puede ser 0)
+    if (!selectedEmpleadoReporte || reporteAAsignar?.id === null || reporteAAsignar?.id === undefined) {
+      console.error('[ADMIN] Error: selectedEmpleadoReporte es vacío o reporteAAsignar sin id');
       setAsignarError('Por favor selecciona un empleado');
       return;
     }
@@ -697,21 +775,35 @@ function AdminPanelContent() {
     setAsignarError(null);
 
     try {
-      const empleadoData = empleados.find(e => e.email === selectedEmpleadoReporte);
-      const result = await asignarReporteAEmpleado(
-        reporteAAsignar.id,
-        selectedEmpleadoReporte,
-        empleadoData?.nombre || 'Empleado'
-      );
+      // Obtener ID del empleado
+      console.log('[ADMIN] Obteniendo usuarios...');
+      const usuariosResult = await obtenerUsuariosBackend();
+      console.log('[ADMIN] usuariosResult:', usuariosResult);
+      let empleadoId = null;
+      if (usuariosResult.success && usuariosResult.data) {
+        const emp = usuariosResult.data.find((e: any) => e.email === selectedEmpleadoReporte);
+        console.log('[ADMIN] Empleado encontrado:', emp);
+        empleadoId = emp?.id;
+      }
+
+      if (!empleadoId) {
+        console.error('[ADMIN] Empleado no encontrado para:', selectedEmpleadoReporte);
+        setAsignarError('Empleado no encontrado');
+        setAsignandoReporte(false);
+        return;
+      }
+
+      console.log('[ADMIN] Asignando reporte', reporteAAsignar.id, 'a empleado', empleadoId);
+      const result = await asignarReporteAEmpleadoBackend(reporteAAsignar.id, empleadoId);
+      console.log('[ADMIN] Resultado de asignación:', result);
 
       if (result.success) {
+        console.log('[ADMIN] ✓ Reporte asignado exitosamente');
         // Actualizar la lista de reportes
-        const reportesActualizados = reportes.map((r: any) =>
-          r.id === reporteAAsignar.id 
-            ? { ...r, empleado_asignado_email: selectedEmpleadoReporte, empleado_asignado_nombre: empleadoData?.nombre, estado: 'pendiente' }
-            : r
-        );
-        setReportes(reportesActualizados);
+        const reportesActualizados = await obtenerReportesBackend();
+        if (reportesActualizados.success) {
+          setReportes(reportesActualizados.data || []);
+        }
         
         // Cerrar ambos modales para volver al panel principal
         setShowAsignarEmpleadoModal(false);
@@ -719,6 +811,7 @@ function AdminPanelContent() {
         setReporteAAsignar(null);
         setSelectedEmpleadoReporte('');
       } else {
+        console.error('[ADMIN] Error en asignación:', result.error);
         setAsignarError(result.error || 'Error al asignar reporte');
       }
     } catch (error) {
@@ -1167,6 +1260,63 @@ function AdminPanelContent() {
                       <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
                     </View>
 
+                    {/* BOTONES DE ACCIÓN DE INVENTARIO */}
+                    <View style={{ gap: 12, marginBottom: 24 }}>
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setShowCrearHerramientaModal(true);
+                        }}
+                        style={{
+                          backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                          borderWidth: 1,
+                          borderColor: '#8b5cf6',
+                          borderRadius: 12,
+                          padding: 16,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                      >
+                        <Ionicons name="add-circle-outline" size={24} color="#8b5cf6" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Crear Nueva Herramienta</Text>
+                          <Text style={[{ color: '#d8b4fe', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Agregar herramienta al inventario</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        onPress={() => {
+                          if (empleadosInventario.length === 0) {
+                            alert('No hay empleados disponibles para asignar herramientas');
+                            return;
+                          }
+                          if (empleadosInventario.length === 1) {
+                            setEmpleadoSelectedInventario(empleadosInventario[0]);
+                            setShowAsignarHerramientaModal(true);
+                          } else {
+                            // Si hay múltiples empleados, mostrar lista de selección
+                            alert('Por favor selecciona un empleado primero desde la lista inferior');
+                          }
+                        }}
+                        style={{
+                          backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                          borderWidth: 1,
+                          borderColor: '#22c55e',
+                          borderRadius: 12,
+                          padding: 16,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12
+                        }}
+                      >
+                        <Ionicons name="link-outline" size={24} color="#22c55e" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Asignar Herramienta</Text>
+                          <Text style={[{ color: '#86efac', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Asignar herramienta a empleado</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+
                     {loadingEmpleadosInventario ? (
                       <View style={styles.infoBox}>
                         <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
@@ -1199,7 +1349,7 @@ function AdminPanelContent() {
                             onPress={async () => {
                               setEmpleadoSelectedInventario(empleado);
                               setLoadingInventarioEmpleado(true);
-                              const { success, data } = await obtenerInventarioEmpleado(empleado.email);
+                              const { success, data } = await obtenerInventarioEmpleadoBackend(empleado.id);
                               if (success) {
                                 setInventarioEmpleado(data || []);
                               }
@@ -1604,8 +1754,7 @@ function AdminPanelContent() {
                       }
                       setCreatingUser(true);
                       try {
-                        const { registrarUsuario } = await import('../lib/auth');
-                        const res = await registrarUsuario({
+                        const res = await registerBackend({
                           nombre: name,
                           apellido: newUserLastName.trim() || undefined,
                           email,
@@ -1722,7 +1871,9 @@ function AdminPanelContent() {
                                 selectedEmpleadoReporte === empleado.email && { backgroundColor: 'rgba(59, 130, 246, 0.2)' }
                               ]}
                               onPress={() => {
+                                console.log('[ADMIN] Seleccionando empleado:', empleado.email);
                                 setSelectedEmpleadoReporte(empleado.email);
+                                console.log('[ADMIN] selectedEmpleadoReporte establecido a:', empleado.email);
                                 setShowEmpleadoDropdownReporte(false);
                               }}
                             >
@@ -1783,7 +1934,7 @@ function AdminPanelContent() {
                   <TouchableOpacity
                     onPress={async () => {
                       setLoadingReportes(true);
-                      const { success, data, error } = await obtenerTodosLosReportes();
+                      const { success, data, error } = await obtenerReportesBackend();
                       if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
                       else setReportes(data || []);
                       setLoadingReportes(false);
@@ -1979,7 +2130,7 @@ function AdminPanelContent() {
                                   setShowReporteDetailModal(true);
                                   setCargandoArchivos(true);
                                   console.log(`[ADMIN] Cargando archivos para reporte: ${rep.id}`);
-                                  const resultado = await obtenerArchivosReporte(rep.id);
+                                  const resultado = await obtenerArchivosReporteBackend(rep.id);
                                   console.log(`[ADMIN] Resultado obtenerArchivosReporte:`, resultado);
                                   if (resultado.success) {
                                     console.log(`[ADMIN] Archivos encontrados: ${resultado.data?.length || 0}`);
@@ -2076,7 +2227,7 @@ function AdminPanelContent() {
                   <TouchableOpacity
                     onPress={async () => {
                       setLoadingReportes(true);
-                      const { success, data, error } = await obtenerTodosLosReportes();
+                      const { success, data, error } = await obtenerReportesBackend();
                       if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
                       else setReportes(data || []);
                       setLoadingReportes(false);
@@ -2132,7 +2283,7 @@ function AdminPanelContent() {
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
                               console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
-                              const resultado = await obtenerArchivosReporte(rep.id);
+                              const resultado = await obtenerArchivosReporteBackend(rep.id);
                               console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
                               if (resultado.success) {
                                 console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
@@ -2215,7 +2366,7 @@ function AdminPanelContent() {
                               setSelectedReporteDetail(rep);
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
-                              const resultado = await obtenerArchivosReporte(rep.id);
+                              const resultado = await obtenerArchivosReporteBackend(rep.id);
                               if (resultado.success) {
                                 setArchivosReporte(resultado.data || []);
                               }
@@ -2296,7 +2447,7 @@ function AdminPanelContent() {
                               setSelectedReporteDetail(rep);
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
-                              const resultado = await obtenerArchivosReporte(rep.id);
+                              const resultado = await obtenerArchivosReporteBackend(rep.id);
                               if (resultado.success) {
                                 setArchivosReporte(resultado.data || []);
                               }
@@ -2814,8 +2965,9 @@ function AdminPanelContent() {
         )}
 
         {showTareasModal && (
-          <View style={styles.overlay}>
-            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+          <Pressable style={styles.overlay} onPress={() => setShowTareasModal(false)}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
               <View style={styles.modalHeaderRow}>
                 <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(249, 115, 22, 0.2)', borderColor: 'rgba(249, 115, 22, 0.5)' }]}>
                   <Ionicons name="create-outline" size={22} color="#fb923c" />
@@ -2935,7 +3087,8 @@ function AdminPanelContent() {
                 </LinearGradient>
               </View>
             </View>
-          </View>
+            </TouchableWithoutFeedback>
+          </Pressable>
         )}
 
         {/* Modal de Gestión de Usuarios */}
@@ -3640,9 +3793,9 @@ function AdminPanelContent() {
                                 <TouchableOpacity
                                   style={{ flex: 1, backgroundColor: '#10b98133', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#10b98166' }}
                                   onPress={async () => {
-                                    const { success } = await marcarHerramientaComoDevuelta(herramienta.id);
+                                    const { success } = await marcarHerramientaComoDevueltaBackend(herramienta.id);
                                     if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
                                       if (s2) setInventarioEmpleado(data || []);
                                     }
                                   }}
@@ -3652,9 +3805,9 @@ function AdminPanelContent() {
                                 <TouchableOpacity
                                   style={{ flex: 1, backgroundColor: '#ef444433', borderRadius: 8, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#ef444466' }}
                                   onPress={async () => {
-                                    const { success } = await marcarHerramientaComoPerdida(herramienta.id);
+                                    const { success } = await marcarHerramientaComoPerdidaBackend(herramienta.id);
                                     if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
                                       if (s2) setInventarioEmpleado(data || []);
                                     }
                                   }}
@@ -3697,8 +3850,8 @@ function AdminPanelContent() {
           <View style={styles.overlayHeavy}>
             <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
               <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
-                  <Ionicons name="add-circle-outline" size={22} color="#c4b5fd" />
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.5)' }]}>
+                  <Ionicons name="add-circle-outline" size={22} color="#86efac" />
                 </View>
                 <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Herramienta</Text>
               </View>
@@ -3776,7 +3929,7 @@ function AdminPanelContent() {
                   <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
                 </TouchableOpacity>
                 <LinearGradient
-                  colors={['#7c3aed', '#8b5cf6']}
+                  colors={['#22c55e', '#86efac']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.modalPrimary}
@@ -3789,18 +3942,15 @@ function AdminPanelContent() {
                       }
 
                       setAsignandoHerramienta(true);
-                      const { success, error } = await asignarHerramientaAEmpleadoManual(
-                        herramientaNombreInput.trim(),
-                        empleadoSelectedInventario.email,
-                        empleadoSelectedInventario.nombre,
-                        parseInt(cantidadHerramienta) || 1,
-                        usuario?.email || '',
-                        usuario?.nombre || '',
-                        observacionesHerramienta || undefined
-                      );
+                      const { success, error } = await asignarHerramientaAEmpleadoManualBackend({
+                        herramienta_nombre: herramientaNombreInput.trim(),
+                        usuario_id: empleadoSelectedInventario.id,
+                        cantidad: parseInt(cantidadHerramienta) || 1,
+                        observaciones: observacionesHerramienta || null
+                      });
 
                       if (success) {
-                        const { success: s2, data } = await obtenerInventarioEmpleado(empleadoSelectedInventario.email);
+                        const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
                         if (s2) setInventarioEmpleado(data || []);
                         setShowAsignarHerramientaModal(false);
                         setHerramientaNombreInput('');
@@ -3827,43 +3977,42 @@ function AdminPanelContent() {
 
         {/* Modal para crear nueva herramienta */}
         {showCrearHerramientaModal && (
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalContainer, isMobile && styles.modalContainerMobile]}>
-              <LinearGradient colors={['#667eea', '#764ba2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeaderGradient}>
-                <View style={styles.modalHeader}>
-                  <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Crear Nueva Herramienta</Text>
-                  <TouchableOpacity onPress={() => setShowCrearHerramientaModal(false)}>
-                    <Ionicons name="close" size={24} color="white" />
-                  </TouchableOpacity>
+          <View style={styles.overlay}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
+                  <Ionicons name="hammer-outline" size={22} color="#c4b5fd" />
                 </View>
-              </LinearGradient>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Crear Herramienta</Text>
+              </View>
 
-              <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-                {crearHerramientaError && (
-                  <View style={[styles.errorBox, isMobile && styles.errorBoxMobile]}>
-                    <Ionicons name="alert-circle" size={20} color="#ef4444" />
-                    <Text style={[styles.errorText, { fontFamily }]}>{crearHerramientaError}</Text>
-                  </View>
-                )}
+              {crearHerramientaError && (
+                <View style={styles.errorBox}>
+                  <Text style={[styles.errorText, { fontFamily }]}>{crearHerramientaError}</Text>
+                </View>
+              )}
 
+              <View style={styles.modalForm}>
+                {/* Campo Nombre */}
                 <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre *</Text>
+                  <Text style={[styles.formLabel, { fontFamily }]}>Nombre de la Herramienta *</Text>
                   <TextInput
-                    style={[styles.textInput, isMobile && styles.textInputMobile]}
+                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
                     placeholder="Ej: Martillo, Taladro..."
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#6b7280"
                     value={nuevaHerramientaNombre}
                     onChangeText={setNuevaHerramientaNombre}
                     editable={!crearHerramientaLoading}
                   />
                 </View>
 
+                {/* Campo Descripción */}
                 <View style={styles.formGroup}>
                   <Text style={[styles.formLabel, { fontFamily }]}>Descripción</Text>
                   <TextInput
-                    style={[styles.textInput, styles.textInputMultiline, isMobile && styles.textInputMobile]}
-                    placeholder="Ej: Herramienta de mano para clavar..."
-                    placeholderTextColor="#9ca3af"
+                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
+                    placeholder="Ej: Herramienta de mano para clavar, perforar..."
+                    placeholderTextColor="#6b7280"
                     value={nuevaHerramientaDescripcion}
                     onChangeText={setNuevaHerramientaDescripcion}
                     multiline
@@ -3872,32 +4021,35 @@ function AdminPanelContent() {
                   />
                 </View>
 
+                {/* Campo Categoría */}
                 <View style={styles.formGroup}>
                   <Text style={[styles.formLabel, { fontFamily }]}>Categoría</Text>
                   <TextInput
-                    style={[styles.textInput, isMobile && styles.textInputMobile]}
+                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
                     placeholder="Ej: Herramientas de Mano, Eléctricas..."
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#6b7280"
                     value={nuevaHerramientaCategoria}
                     onChangeText={setNuevaHerramientaCategoria}
                     editable={!crearHerramientaLoading}
                   />
                 </View>
-              </ScrollView>
+              </View>
 
-              <LinearGradient colors={['#667eea', '#764ba2']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalFooterGradient}>
-                <View style={styles.modalFooter}>
-                  <TouchableOpacity
-                    style={[styles.modalSecondaryButton, isMobile && styles.modalSecondaryButtonMobile]}
-                    onPress={() => setShowCrearHerramientaModal(false)}
-                    disabled={crearHerramientaLoading}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.modalPrimaryButton, isMobile && styles.modalPrimaryButtonMobile]}
+              <View style={styles.modalActions}>
+                <TouchableOpacity 
+                  style={styles.modalSecondary} 
+                  onPress={() => setShowCrearHerramientaModal(false)}
+                  disabled={crearHerramientaLoading}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#8b5cf6', '#a78bfa']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity 
                     onPress={async () => {
                       if (!nuevaHerramientaNombre.trim()) {
                         setCrearHerramientaError('El nombre es requerido');
@@ -3907,11 +4059,12 @@ function AdminPanelContent() {
                       setCrearHerramientaLoading(true);
                       setCrearHerramientaError(null);
 
-                      const { success, error } = await crearHerramienta(
-                        nuevaHerramientaNombre,
-                        nuevaHerramientaDescripcion || undefined,
-                        nuevaHerramientaCategoria || undefined
-                      );
+                      const { success, error } = await crearHerramientaBackend({
+                        nombre: nuevaHerramientaNombre,
+                        descripcion: nuevaHerramientaDescripcion || null,
+                        categoria: nuevaHerramientaCategoria || null,
+                        estado: 'disponible'
+                      });
 
                       if (success) {
                         setNuevaHerramientaNombre('');
@@ -3927,11 +4080,11 @@ function AdminPanelContent() {
                     activeOpacity={0.85}
                   >
                     <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                      {crearHerramientaLoading ? 'Creando...' : 'Crear'}
+                      {crearHerramientaLoading ? 'Creando...' : 'Crear Herramienta'}
                     </Text>
                   </TouchableOpacity>
-                </View>
-              </LinearGradient>
+                </LinearGradient>
+              </View>
             </View>
           </View>
         )}
@@ -3940,6 +4093,52 @@ function AdminPanelContent() {
 }
 
 export default function AdminPanel() {
+  const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const verificarAcceso = async () => {
+      try {
+        const user = await AsyncStorage.getItem('user');
+        if (!user) {
+          router.replace('/');
+          return;
+        }
+        const parsedUser = JSON.parse(user);
+        if (parsedUser.rol !== 'admin') {
+          console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /admin`);
+          switch (parsedUser.rol) {
+            case 'empleado':
+              router.replace('/empleado-panel');
+              break;
+            default:
+              router.replace('/cliente-panel');
+          }
+          return;
+        }
+        setAuthorized(true);
+      } catch (error) {
+        router.replace('/');
+      } finally {
+        setChecking(false);
+      }
+    };
+    verificarAcceso();
+  }, [router]);
+
+  if (checking) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#3b82f6" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
+
   return <AdminPanelContent />;
 }
 
@@ -4967,6 +5166,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     maxHeight: 250,
     overflow: 'hidden',
+    zIndex: 1000,
+    elevation: 1000,
   },
   dropdownItem: {
     paddingHorizontal: 12,

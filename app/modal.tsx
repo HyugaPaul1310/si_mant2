@@ -1,4 +1,4 @@
-import { obtenerSucursalesPorUsuario, type Sucursal } from '@/lib/empresas';
+import { obtenerSucursalesCliente } from '@/lib/api-backend';
 import { crearReporte, subirArchivosReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,17 @@ type Usuario = {
   nombre: string;
   apellido?: string;
   empresa?: string;
+};
+
+type Sucursal = {
+  id: number;
+  empresa_id: number;
+  nombre: string;
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+  email?: string;
+  activo: boolean;
 };
 
 export default function GenerarReporteScreen() {
@@ -48,7 +59,7 @@ export default function GenerarReporteScreen() {
 
           // Cargar sucursales de la empresa del usuario
           if (userData.email) {
-            const resultado = await obtenerSucursalesPorUsuario(userData.email);
+            const resultado = await obtenerSucursalesCliente(userData.email);
             if (resultado.success && resultado.data) {
               setSucursales(resultado.data);
             } else {
@@ -184,10 +195,24 @@ export default function GenerarReporteScreen() {
         return;
       }
 
-      const reporteId = resultado.data?.id;
+      console.log('[MODAL] Respuesta de crearReporte:', resultado);
+      console.log('[MODAL] resultado.data:', resultado.data);
+      console.log('[MODAL] resultado.data tipo:', typeof resultado.data);
+      console.log('[MODAL] resultado.data keys:', Object.keys(resultado.data || {}));
+      console.log('[MODAL] resultado.data.id:', resultado.data?.id);
+      console.log('[MODAL] resultado.data.reporteId:', resultado.data?.reporteId);
       
-      // Paso 2: Subir archivos a Cloudflare (si existen)
-      if ((imagenes.length > 0 || video) && reporteId) {
+      // El backend puede retornar data.id o data.reporteId
+      // Usar directamente resultado.data.id si existe, incluso si es 0 (válido en SQL)
+      const reporteId = resultado.data?.id !== undefined ? resultado.data.id : (resultado.data?.reporteId || null);
+      
+      console.log('[MODAL] reporteId extraído:', reporteId);
+      console.log('[MODAL] Imágenes:', imagenes.length, 'Video:', !!video);
+      console.log('[MODAL] reporteId es válido?:', reporteId !== null && reporteId !== undefined);
+      
+      // Paso 2: Subir archivos a Cloudflare (si existen y tenemos un ID válido)
+      if ((imagenes.length > 0 || video) && reporteId !== null && reporteId !== undefined) {
+        console.log('[MODAL] ✓ Iniciando subida de archivos para reporteId:', reporteId);
         const uploadResult = await subirArchivosReporte(
           reporteId,
           imagenes.length > 0 ? imagenes : undefined,
@@ -198,6 +223,8 @@ export default function GenerarReporteScreen() {
           console.warn('Advertencia al subir archivos:', uploadResult.error);
           // No cancelamos el flujo, el reporte se creó exitosamente
         }
+      } else if (imagenes.length > 0 || video) {
+        console.warn('[MODAL] ⚠️ No se pudo extraer reporteId válido, saltando subida de archivos');
       }
 
       // Reporte creado exitosamente: marca bandera, muestra banner y redirige
@@ -232,7 +259,7 @@ export default function GenerarReporteScreen() {
         <View style={isMobile ? styles.contentMobile : styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity onPress={() => router.replace('/cliente-panel')} style={styles.backButton}>
               <Ionicons name="arrow-back" size={20} color="#06b6d4" />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
