@@ -35,13 +35,23 @@ if (!ACCOUNT_ID || !CUSTOM_DOMAIN || !ACCESS_KEY || !SECRET_KEY) {
   process.exit(1);
 }
 
+console.log('✓ Configuración de Cloudflare R2:');
+console.log(`  Account ID: ${ACCOUNT_ID}`);
+console.log(`  Bucket: ${BUCKET_NAME}`);
+console.log(`  Endpoint: https://ddc1aee3af7bfaabdbb36c24a8a9b2d9.r2.cloudflarestorage.com`);
+console.log(`  Custom Domain: ${CUSTOM_DOMAIN}`);
+
 // Configurar S3 Client para Cloudflare R2
 const s3Client = new S3Client({
   region: 'auto',
-  endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  endpoint: 'https://ddc1aee3af7bfaabdbb36c24a8a9b2d9.r2.cloudflarestorage.com',
   credentials: {
     accessKeyId: ACCESS_KEY,
     secretAccessKey: SECRET_KEY,
+  },
+  httpOptions: {
+    connectTimeout: 5000,
+    requestTimeout: 5000,
   },
 });
 

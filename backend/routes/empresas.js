@@ -46,12 +46,63 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
-// PUT actualizar empresa
+// PUT actualizar empresa o sucursal
+// PUT actualizar empresa o sucursal
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre } = req.body;
+    const { nombre, direccion, ciudad, activo } = req.body;
 
+    // Si tiene campos de sucursal (direccion, ciudad, activo), intentar actualizar como sucursal primero
+    if (direccion !== undefined || ciudad !== undefined || activo !== undefined) {
+      const [sucursal] = await pool.query(
+        'SELECT id FROM sucursales WHERE id = ?',
+        [id]
+      );
+
+      if (sucursal.length > 0) {
+        // Es una sucursal, actualizarla
+        const updates = [];
+        const values = [];
+
+        if (nombre !== undefined) {
+          updates.push('nombre = ?');
+          values.push(nombre.trim());
+        }
+        if (direccion !== undefined) {
+          updates.push('direccion = ?');
+          values.push(direccion.trim());
+        }
+        if (ciudad !== undefined) {
+          updates.push('ciudad = ?');
+          values.push(ciudad);
+        }
+        if (activo !== undefined) {
+          updates.push('activo = ?');
+          values.push(activo ? 1 : 0);
+        }
+
+        if (updates.length === 0) {
+          return res.status(400).json({ success: false, error: 'No hay campos para actualizar' });
+        }
+
+        values.push(id);
+        await pool.query(
+          `UPDATE sucursales SET ${updates.join(', ')} WHERE id = ?`,
+          values
+        );
+
+        const [sucursalActualizada] = await pool.query(
+          'SELECT id, empresa_id, nombre, direccion, ciudad, activo, created_at, updated_at FROM sucursales WHERE id = ?',
+          [id]
+        );
+
+        console.log('[BACKEND-SUCURSALES] Sucursal actualizada:', id);
+        return res.json({ success: true, data: sucursalActualizada[0] });
+      }
+    }
+
+    // Si no es sucursal o no tiene campos de sucursal, actualizar como empresa
     if (!nombre || !nombre.trim()) {
       return res.status(400).json({ success: false, error: 'El nombre es requerido' });
     }
@@ -67,13 +118,13 @@ router.put('/:id', verifyToken, async (req, res) => {
     );
 
     if (empresa.length === 0) {
-      return res.status(404).json({ success: false, error: 'Empresa no encontrada' });
+      return res.status(404).json({ success: false, error: 'Empresa o sucursal no encontrada' });
     }
 
     console.log('[BACKEND-EMPRESAS] Empresa actualizada:', id);
     return res.json({ success: true, data: empresa[0] });
   } catch (error) {
-    console.error('[BACKEND-EMPRESAS] Error al actualizar empresa:', error);
+    console.error('[BACKEND-EMPRESAS] Error al actualizar:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -83,32 +134,55 @@ router.delete('/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Verificar si hay sucursales asociadas
-    const [sucursales] = await pool.query(
+    // Primero intentar eliminar como sucursal
+    const [sucursal] = await pool.query(
+      'SELECT id FROM sucursales WHERE id = ?',
+      [id]
+    );
+
+    if (sucursal.length > 0) {
+      // Es una sucursal, eliminarla
+      const [result] = await pool.query(
+        'DELETE FROM sucursales WHERE id = ?',
+        [id]
+      );
+      console.log('[BACKEND-SUCURSALES] Sucursal eliminada:', id);
+      return res.json({ success: true, message: 'Sucursal eliminada' });
+    }
+
+    // Si no es sucursal, intentar como empresa
+    const [empresa] = await pool.query(
+      'SELECT id FROM empresas WHERE id = ?',
+      [id]
+    );
+
+    if (empresa.length === 0) {
+      return res.status(404).json({ success: false, error: 'Empresa o sucursal no encontrada' });
+    }
+
+    // Verificar si la empresa tiene sucursales asociadas
+    const [sucursalesAsociadas] = await pool.query(
       'SELECT COUNT(*) as count FROM sucursales WHERE empresa_id = ?',
       [id]
     );
 
-    if (sucursales[0].count > 0) {
+    if (sucursalesAsociadas[0].count > 0) {
       return res.status(400).json({ 
         success: false, 
         error: 'No se puede eliminar la empresa. Tiene sucursales asociadas. Elimina las sucursales primero.' 
       });
     }
 
+    // Eliminar empresa
     const [result] = await pool.query(
       'DELETE FROM empresas WHERE id = ?',
       [id]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Empresa no encontrada' });
-    }
-
     console.log('[BACKEND-EMPRESAS] Empresa eliminada:', id);
     return res.json({ success: true, message: 'Empresa eliminada' });
   } catch (error) {
-    console.error('[BACKEND-EMPRESAS] Error al eliminar empresa:', error);
+    console.error('[BACKEND-EMPRESAS] Error al eliminar:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -173,61 +247,8 @@ router.post('/crear', verifyToken, async (req, res) => {
   }
 });
 
-// PUT actualizar sucursal
-router.put('/:id', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nombre, direccion, ciudad, activo } = req.body;
-
-    const updates = [];
-    const values = [];
-
-    if (nombre !== undefined) {
-      updates.push('nombre = ?');
-      values.push(nombre.trim());
-    }
-    if (direccion !== undefined) {
-      updates.push('direccion = ?');
-      values.push(direccion.trim());
-    }
-    if (ciudad !== undefined) {
-      updates.push('ciudad = ?');
-      values.push(ciudad);
-    }
-    if (activo !== undefined) {
-      updates.push('activo = ?');
-      values.push(activo ? 1 : 0);
-    }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ success: false, error: 'No hay campos para actualizar' });
-    }
-
-    values.push(id);
-    await pool.query(
-      `UPDATE sucursales SET ${updates.join(', ')} WHERE id = ?`,
-      values
-    );
-
-    const [sucursal] = await pool.query(
-      'SELECT id, empresa_id, nombre, direccion, ciudad, activo, created_at, updated_at FROM sucursales WHERE id = ?',
-      [id]
-    );
-
-    if (sucursal.length === 0) {
-      return res.status(404).json({ success: false, error: 'Sucursal no encontrada' });
-    }
-
-    console.log('[BACKEND-SUCURSALES] Sucursal actualizada:', id);
-    return res.json({ success: true, data: sucursal[0] });
-  } catch (error) {
-    console.error('[BACKEND-SUCURSALES] Error al actualizar sucursal:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // DELETE eliminar sucursal
-router.delete('/:id', verifyToken, async (req, res) => {
+router.delete('/sucursal/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -10,18 +10,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Image,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -2523,6 +2523,7 @@ function AdminPanelContent() {
 
             <ScrollView showsVerticalScrollIndicator={false} style={[styles.detailScroll, isMobile && styles.detailScrollMobile]}>
               <View style={styles.detailContent}>
+                {/* Equipo / Servicio */}
                 <View style={styles.detailField}>
                   <Text style={[styles.detailFieldLabel, { fontFamily }]}>Equipo / Servicio</Text>
                   <View style={styles.detailValueBox}>
@@ -2532,124 +2533,119 @@ function AdminPanelContent() {
                   </View>
                 </View>
 
-                {selectedReporteDetail.modelo ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Modelo</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.modelo}</Text>
-                    </View>
+                {/* Modelo */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Modelo</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {(() => {
+                        const desc = selectedReporteDetail.descripcion || '';
+                        const modeloMatch = desc.match(/Modelo:\s*([^\n]+)/i);
+                        return modeloMatch ? modeloMatch[1].trim() : 'N/A';
+                      })()}
+                    </Text>
                   </View>
-                ) : null}
-
-                {selectedReporteDetail.serie ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Serie</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.serie}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {selectedReporteDetail.usuario_nombre || selectedReporteDetail.usuario_email ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Solicitante</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {selectedReporteDetail.usuario_nombre} {selectedReporteDetail.usuario_apellido}
-                      </Text>
-                      <Text style={[styles.detailSubValue, { fontFamily }]}>{selectedReporteDetail.usuario_email}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {selectedReporteDetail.empresa ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Empresa</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.empresa}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {selectedReporteDetail.sucursal ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Sucursal</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.sucursal}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {selectedReporteDetail.direccion ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Dirección</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.direccion}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                {selectedReporteDetail.comentario ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Comentario / Problema</Text>
-                    <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.comentario}</Text>
-                    </View>
-                  </View>
-                ) : null}
-
-                <View style={styles.detailRow}>
-                  {selectedReporteDetail.prioridad ? (
-                    <View style={[styles.detailField, styles.detailFieldHalf]}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Prioridad</Text>
-                      <View style={styles.detailValueBox}>
-                        <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.prioridad}</Text>
-                      </View>
-                    </View>
-                  ) : null}
-
-                  {selectedReporteDetail.estado ? (
-                    <View style={[styles.detailField, styles.detailFieldHalf]}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
-                      <View
-                        style={[
-                          styles.detailValueBox,
-                          styles.detailPillBox,
-                          {
-                            backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
-                            borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.detailPillText,
-                            { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
-                          ]}
-                        >
-                          {estadoDisplay(selectedReporteDetail.estado)}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : null}
                 </View>
 
-                {selectedReporteDetail.created_at ? (
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Fecha de creación</Text>
+                {/* Serie */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Serie</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {(() => {
+                        const desc = selectedReporteDetail.descripcion || '';
+                        const serieMatch = desc.match(/Serie:\s*([^\n]+)/i);
+                        return serieMatch ? serieMatch[1].trim() : 'N/A';
+                      })()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Sucursal */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Sucursal</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {selectedReporteDetail.sucursal || 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Comentario */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Comentario</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {(() => {
+                        // Extract only the comment part from the combined comentario field
+                        const fullComentario = selectedReporteDetail.comentario || '';
+                        const comentarioMatch = fullComentario.match(/Comentario:\s*(.+?)(?:\n|$)/);
+                        return comentarioMatch ? comentarioMatch[1].trim() : (fullComentario || 'Sin comentarios');
+                      })()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Prioridad and Estado Row */}
+                <View style={styles.detailRow}>
+                  <View style={[styles.detailField, styles.detailFieldHalf]}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Prioridad</Text>
                     <View style={styles.detailValueBox}>
-                      <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
+                      <Text style={[styles.detailValueText, { fontFamily }]}>{selectedReporteDetail.prioridad || 'media'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.detailField, styles.detailFieldHalf]}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
+                    <View
+                      style={[
+                        styles.detailValueBox,
+                        styles.detailPillBox,
+                        {
+                          backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
+                          borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.detailPillText,
+                          { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
+                        ]}
+                      >
+                        {estadoDisplay(selectedReporteDetail.estado)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Empresa */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Empresa</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {selectedReporteDetail.empresa || 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Fecha de creación */}
+                <View style={styles.detailField}>
+                  <Text style={[styles.detailFieldLabel, { fontFamily }]}>Fecha de creación</Text>
+                  <View style={styles.detailValueBox}>
+                    <Text style={[styles.detailValueText, { fontFamily }]}>
+                      {selectedReporteDetail.created_at
+                        ? new Date(selectedReporteDetail.created_at).toLocaleDateString('es-MX', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit',
-                        })}
-                      </Text>
-                    </View>
+                        })
+                        : 'N/A'}
+                    </Text>
                   </View>
-                ) : null}
+                </View>
 
                 {/* Fotos y Videos */}
                 {cargandoArchivos ? (
@@ -5190,7 +5186,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
-  detailValueText: { color: '#e5e7eb', fontSize: 15, lineHeight: 20 },
+  detailValueText: { color: '#e5e7eb', fontSize: 15, lineHeight: 20, flexWrap: 'wrap', flexShrink: 1 },
   detailSubValue: { color: '#9ca3af', fontSize: 13, marginTop: 4 },
   detailPillBox: { paddingVertical: 10, paddingHorizontal: 12 },
   detailPillText: { fontSize: 13, fontWeight: '800' },
