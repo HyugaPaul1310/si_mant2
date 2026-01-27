@@ -5,8 +5,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   actualizarEstadoReporteAsignado,
@@ -281,6 +281,31 @@ function ClientePanelContent() {
     }
   }, [showCotizacionesModal, usuario?.email, cargarCotizaciones]);
 
+  // Animation for refresh
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (loadingCotizaciones) {
+      spinValue.setValue(0);
+      Animated.loop(
+        Animated.timing(spinValue, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      ).start();
+    } else {
+      spinValue.stopAnimation();
+      spinValue.setValue(0);
+    }
+  }, [loadingCotizaciones]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   const finalizados = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
     [reportes]
@@ -531,8 +556,10 @@ function ClientePanelContent() {
       const urlWeb = `https://wa.me/${phone}`;
       const supported = await Linking.canOpenURL(urlApp);
       const target = supported ? urlApp : urlWeb;
+      console.log('[WhatsApp] Intentando abrir:', target);
       await Linking.openURL(target);
     } catch (e) {
+      console.error('[WhatsApp] Error:', e);
       Alert.alert('Soporte', 'No se pudo abrir WhatsApp.');
     }
   };
@@ -1210,31 +1237,7 @@ function ClientePanelContent() {
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-              {selectedReporte.estado === 'cotizado' && (
-                <TouchableOpacity
-                  onPress={() => {
-                    Alert.alert(
-                      'Confirmar Cotización',
-                      `¿Deseas confirmar esta cotización por $${parseFloat(selectedReporte.precio_cotizacion).toFixed(2)}?`,
-                      [
-                        { text: 'Cancelar', style: 'cancel' },
-                        {
-                          text: 'Confirmar',
-                          onPress: () => {
-                            // Aquí irá la lógica para confirmar la cotización
-                            Alert.alert('Cotización confirmada', 'El trabajo será procesado');
-                            setShowReporteDetail(false);
-                            setSelectedReporte(null);
-                          }
-                        }
-                      ]
-                    );
-                  }}
-                  style={styles.detailConfirmButton}
-                >
-                  <Text style={[styles.detailConfirmButtonText, { fontFamily }]}>Confirmar Cotización</Text>
-                </TouchableOpacity>
-              )}
+
             </View>
           </View>
         </View>
@@ -1272,12 +1275,25 @@ function ClientePanelContent() {
                 <Text style={[styles.largeModalTitle, { fontFamily }]}>Cotizaciones</Text>
                 <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Cotizaciones de tus reportes</Text>
               </View>
-              <TouchableOpacity onPress={() => {
-                setShowCotizacionesModal(false);
-                setCotizaciones([]);
-              }} style={styles.closeButton}>
-                <Ionicons name="close" size={20} color="#cbd5e1" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => cargarCotizaciones(usuario?.email)}
+                  style={[styles.refreshButton, loadingCotizaciones && styles.refreshButtonDisabled, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                  disabled={loadingCotizaciones}
+                >
+                  <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                    <Ionicons name="refresh" size={14} color="#67e8f9" />
+                  </Animated.View>
+                  <Text style={[styles.refreshButtonText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => {
+                  setShowCotizacionesModal(false);
+                  setCotizaciones([]);
+                }} style={styles.closeButton}>
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {loadingCotizaciones && (
@@ -1294,9 +1310,13 @@ function ClientePanelContent() {
 
             {!loadingCotizaciones && cotizaciones.length > 0 && (
               <View style={{ flex: 1, width: '100%' }}>
-                <Text style={[styles.infoText, { fontFamily, color: '#10b981', paddingHorizontal: 16, marginBottom: 8 }]}>
-                  ✓ Mostrando {cotizaciones.length} cotizaciones
-                </Text>
+                <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                  <View style={{ backgroundColor: '#10b98120', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 }}>
+                    <Text style={[styles.infoText, { fontFamily, color: '#10b981', fontSize: 13, fontWeight: '600' }]}>
+                      Mostrando {cotizaciones.length} cotizacion{cotizaciones.length !== 1 ? 'es' : ''}
+                    </Text>
+                  </View>
+                </View>
                 <ScrollView
                   style={{ flex: 1 }}
                   showsVerticalScrollIndicator={false}
@@ -1305,39 +1325,83 @@ function ClientePanelContent() {
                   {cotizaciones.map((cot: any) => {
                     console.log('[RENDER] Renderizando cotización:', cot.id, cot.estado);
                     return (
-                      <TouchableOpacity
+                      <View
                         key={cot.id}
                         style={styles.reportCard}
-                        onPress={() => {
-                          console.log('[UI] Presionando cotización:', cot.id);
-                          setCotizacionSeleccionada(cot);
-                          setShowCotizacionDetalleModal(true);
-                        }}
                       >
                         <View style={styles.reportHeader}>
-                          <View style={styles.reportHeaderText}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
-                              ${parseFloat(cot.precio_cotizacion).toFixed(2)}
+                          <View style={[styles.reportHeaderText, { gap: 6 }]}>
+                            {/* 1. Nombre del Equipo */}
+                            <Text style={[styles.reportTitle, { fontFamily, fontSize: 16 }]} numberOfLines={1}>
+                              {cot.reportes?.equipo_descripcion || 'Equipo'}
                             </Text>
-                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
-                              {cot.empleado_nombre || 'Empleado'} • {cot.reportes?.equipo_descripcion || 'Equipo'}
+
+                            {/* 2. Modelo y Serie (extraídos del comentario) */}
+                            {(() => {
+                              const desc = cot.comentario || '';
+                              const modeloMatch = desc.match(/Modelo:\s*([^\n]+)/i);
+                              const serieMatch = desc.match(/Serie:\s*([^\n]+)/i);
+                              const modelo = modeloMatch ? modeloMatch[1].trim() : '';
+                              const serie = serieMatch ? serieMatch[1].trim() : '';
+
+                              if (modelo || serie) {
+                                return (
+                                  <View style={{ gap: 2 }}>
+                                    {modelo && (
+                                      <Text style={[styles.reportSubtitle, { fontFamily, color: '#94a3b8' }]} numberOfLines={1}>
+                                        Modelo: {modelo}
+                                      </Text>
+                                    )}
+                                    {serie && (
+                                      <Text style={[styles.reportSubtitle, { fontFamily, color: '#94a3b8' }]} numberOfLines={1}>
+                                        Serie: {serie}
+                                      </Text>
+                                    )}
+                                  </View>
+                                );
+                              }
+                              return null;
+                            })()}
+
+                            {/* 3. Quién cotizó (solo primer nombre) */}
+                            <Text style={[styles.reportSubtitle, { fontFamily, color: '#64748b' }]} numberOfLines={1}>
+                              Cotizado por: {cot.empleado_nombre ? cot.empleado_nombre.split(' ')[0] : 'Técnico'}
                             </Text>
+
+                            {/* Fecha */}
                             <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
                               {new Date(cot.created_at).toLocaleDateString('es-ES')}
                             </Text>
-                          </View>
-                          <View style={[
-                            styles.estadoBadge,
-                            cot.estado === 'cotizado' && { backgroundColor: '#fbbf24', borderColor: '#f59e0b' },
-                            cot.estado === 'en_proceso' && { backgroundColor: '#86efac', borderColor: '#16a34a' },
-                            cot.estado === 'finalizado_por_tecnico' && { backgroundColor: '#93c5fd', borderColor: '#3b82f6' },
-                          ]}>
-                            <Text style={[styles.estadoText, { fontFamily }]}>
-                              {cot.estado === 'cotizado' ? 'Pendiente' : cot.estado === 'en_proceso' ? 'Aceptada' : 'En revisión'}
+
+                            {/* 4. Precio al final */}
+                            <Text style={[styles.reportTitle, { fontFamily, color: '#f59e0b', marginTop: 4, fontSize: 18 }]}>
+                              ${parseFloat(cot.precio_cotizacion).toFixed(2)}
                             </Text>
                           </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={[
+                              styles.estadoBadge,
+                              cot.estado === 'cotizado' && { backgroundColor: '#fbbf24', borderColor: '#f59e0b' },
+                              cot.estado === 'en_proceso' && { backgroundColor: '#86efac', borderColor: '#16a34a' },
+                              cot.estado === 'finalizado_por_tecnico' && { backgroundColor: '#93c5fd', borderColor: '#3b82f6' },
+                            ]}>
+                              <Text style={[styles.estadoText, { fontFamily }]}>
+                                {cot.estado === 'cotizado' ? 'Pendiente' : cot.estado === 'en_proceso' ? 'Aceptada' : 'En revisión'}
+                              </Text>
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => {
+                                console.log('[UI] Presionando ojo de cotización:', cot.id);
+                                setCotizacionSeleccionada(cot);
+                                setShowCotizacionDetalleModal(true);
+                              }}
+                              style={styles.eyeButton}
+                            >
+                              <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </TouchableOpacity>
+                      </View>
                     );
                   })}
                 </ScrollView>
@@ -1373,10 +1437,56 @@ function ClientePanelContent() {
                     <Text style={[styles.detailLabel, { fontFamily }]}>Equipo/Servicio</Text>
                     <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.equipo_descripcion || 'N/A'}</Text>
                   </View>
-                  <View style={styles.detailField}>
-                    <Text style={[styles.detailLabel, { fontFamily }]}>Comentario</Text>
-                    <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.comentario || 'N/A'}</Text>
-                  </View>
+
+                  {/* Parsear comentario para obtener Modelo, Serie, Sucursal, Prioridad */}
+                  {(() => {
+                    const desc = cotizacionSeleccionada.comentario || '';
+                    const modeloMatch = desc.match(/Modelo:\s*([^\n]+)/i);
+                    const serieMatch = desc.match(/Serie:\s*([^\n]+)/i);
+                    const sucursalMatch = desc.match(/Sucursal:\s*([^\n]+)/i);
+                    const prioridadMatch = desc.match(/Prioridad:\s*([^\n]+)/i);
+                    // El comentario real suele estar después de "Comentario:"
+                    const comentarioRealMatch = desc.match(/Comentario:\s*([^\n]+)/i);
+
+                    const modelo = modeloMatch ? modeloMatch[1].trim() : null;
+                    const serie = serieMatch ? serieMatch[1].trim() : null;
+                    const sucursal = sucursalMatch ? sucursalMatch[1].trim() : null;
+                    const prioridad = prioridadMatch ? prioridadMatch[1].trim() : null;
+                    const comentarioReal = comentarioRealMatch ? comentarioRealMatch[1].trim() : desc;
+
+                    return (
+                      <>
+                        {modelo && (
+                          <View style={styles.detailField}>
+                            <Text style={[styles.detailLabel, { fontFamily }]}>Modelo</Text>
+                            <Text style={[styles.detailValue, { fontFamily }]}>{modelo}</Text>
+                          </View>
+                        )}
+                        {serie && (
+                          <View style={styles.detailField}>
+                            <Text style={[styles.detailLabel, { fontFamily }]}>Serie</Text>
+                            <Text style={[styles.detailValue, { fontFamily }]}>{serie}</Text>
+                          </View>
+                        )}
+                        {sucursal && (
+                          <View style={styles.detailField}>
+                            <Text style={[styles.detailLabel, { fontFamily }]}>Sucursal</Text>
+                            <Text style={[styles.detailValue, { fontFamily }]}>{sucursal}</Text>
+                          </View>
+                        )}
+                        <View style={styles.detailField}>
+                          <Text style={[styles.detailLabel, { fontFamily }]}>Comentario</Text>
+                          <Text style={[styles.detailValue, { fontFamily }]}>{comentarioReal || 'N/A'}</Text>
+                        </View>
+                        {prioridad && (
+                          <View style={styles.detailField}>
+                            <Text style={[styles.detailLabel, { fontFamily }]}>Prioridad</Text>
+                            <Text style={[styles.detailValue, { fontFamily }]}>{prioridad}</Text>
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </View>
 
                 {/* Información de la cotización */}
