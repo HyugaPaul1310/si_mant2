@@ -9,9 +9,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    actualizarEstadoReporteAsignado,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente
+  actualizarEstadoReporteAsignado,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 

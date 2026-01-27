@@ -347,7 +347,11 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
     if (cerrado_por_cliente_at) {
       console.log('[BACKEND-ESTADO] Marcando como cerrado por cliente');
       setClauses.push('cerrado_por_cliente_at = ?');
-      params.push(cerrado_por_cliente_at);
+      // MySQL no acepta ISO string con T y Z directamente en DATETIME
+      const cleanDate = cerrado_por_cliente_at.includes('T')
+        ? new Date(cerrado_por_cliente_at)
+        : cerrado_por_cliente_at;
+      params.push(cleanDate);
     }
 
     if (revision !== undefined) {
@@ -382,7 +386,11 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
 
     if (req.body.finalizado_por_tecnico_at) {
       setClauses.push('finalizado_por_tecnico_at = ?');
-      params.push(req.body.finalizado_por_tecnico_at);
+      const finalizadoAt = req.body.finalizado_por_tecnico_at;
+      const cleanDate = finalizadoAt.includes('T')
+        ? new Date(finalizadoAt)
+        : finalizadoAt;
+      params.push(cleanDate);
     }
 
     // Validar que al menos un campo se intente actualizar

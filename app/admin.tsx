@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
+import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,18 +11,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -293,27 +294,35 @@ function AdminPanelContent() {
     cargarCerrados();
   }, []);
 
-  // Cargar encuestas - TEMPORALMENTE DESHABILITADO
-  useEffect(() => {
-    const cargarEncuestasData = async () => {
-      setLoadingEncuestas(true);
-      setErrorEncuestas('');
-      try {
-        const resultado = await obtenerTodasLasEncuestas();
-        if (resultado.success && resultado.data) {
-          setEncuestas(resultado.data);
-        } else {
-          setErrorEncuestas(resultado.error || 'Error al cargar encuestas');
-        }
-      } catch (error: any) {
-        console.error('Error cargando encuestas:', error);
-        setErrorEncuestas(error.message || 'Error desconocido');
-      } finally {
-        setLoadingEncuestas(false);
+  const cargarEncuestasData = async () => {
+    setLoadingEncuestas(true);
+    setErrorEncuestas('');
+    try {
+      const resultado = await obtenerTodasLasEncuestas();
+      if (resultado.success && resultado.data) {
+        setEncuestas(resultado.data);
+      } else {
+        setErrorEncuestas(resultado.error || 'Error al cargar encuestas');
       }
-    };
+    } catch (error: any) {
+      console.error('Error cargando encuestas:', error);
+      setErrorEncuestas(error.message || 'Error desconocido');
+    } finally {
+      setLoadingEncuestas(false);
+    }
+  };
+
+  // Cargar encuestas al montar
+  useEffect(() => {
     cargarEncuestasData();
   }, []);
+
+  // Recargar encuestas al cambiar de pestaña
+  useEffect(() => {
+    if (activeTab === 'encuestas') {
+      cargarEncuestasData();
+    }
+  }, [activeTab]);
 
   // Cargar empleados para inventario cuando se activa la tab
   useEffect(() => {
@@ -603,7 +612,10 @@ function AdminPanelContent() {
     const key = (estado || '').toLowerCase();
     if (key === 'en_proceso') return 'en proceso';
     if (key === 'en_espera') return 'en espera';
-    return estado || '';
+    if (key === 'cerrado_por_cliente') return 'cerrado por cliente';
+    if (key === 'finalizado_por_tecnico') return 'finalizado por técnico';
+    // Reemplazar guiones bajos por espacios en general
+    return (estado || '').replace(/_/g, ' ');
   };
 
   const cargarUsuarios = async () => {
@@ -1084,8 +1096,23 @@ function AdminPanelContent() {
           {activeTab === 'encuestas' && (
             <View style={styles.tabContent}>
               <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
-                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Estadísticas de satisfacción</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
+                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Estadísticas de satisfacción</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={cargarEncuestasData}
+                  style={{
+                    backgroundColor: '#1e293b',
+                    padding: 10,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: '#334155'
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#22d3ee" />
+                </TouchableOpacity>
               </View>
 
               {loadingEncuestas && (
@@ -1130,7 +1157,7 @@ function AdminPanelContent() {
                             <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
                               <View style={styles.reportHeaderText}>
                                 <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
-                                  {encuesta.titulo || 'Encuesta de Satisfacción'}
+                                  {encuesta.reporte_titulo || encuesta.titulo || 'Encuesta de Satisfacción'}
                                 </Text>
                                 <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
                                   {encuesta.cliente_email || 'Sin cliente'} · {encuesta.empresa || 'Sin empresa'}
@@ -1168,7 +1195,7 @@ function AdminPanelContent() {
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                 <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
                                 <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
-                                  {new Date(encuesta.created_at).toLocaleDateString('es-ES')}
+                                  {formatDateToLocal(encuesta.created_at)}
                                 </Text>
                               </View>
                             </View>
@@ -1202,7 +1229,7 @@ function AdminPanelContent() {
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                   <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
                                   <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]}>
-                                    {new Date(encuesta.created_at).toLocaleDateString('es-ES')}
+                                    {formatDateToLocal(encuesta.created_at)}
                                   </Text>
                                 </View>
                               </View>
@@ -2939,12 +2966,15 @@ function AdminPanelContent() {
                 {selectedEncuesta.recomendacion ? (
                   <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                     <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
-                      ¿Recomienda nuestros servicios?
+                      ¿Recomendaría nuestros servicios a otros clientes?
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View style={{ backgroundColor: selectedEncuesta.recomendacion === 'Sí' ? '#06b6d4' : '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
-                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
-                          {selectedEncuesta.recomendacion === 'Sí' ? '✓ Sí' : '✗ No'}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        {selectedEncuesta.recomendacion}
+                      </Text>
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                          ★ {selectedEncuesta.recomendacion}
                         </Text>
                       </View>
                     </View>

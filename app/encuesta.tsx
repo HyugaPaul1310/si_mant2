@@ -5,14 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -91,7 +91,7 @@ export default function EncuestaPage() {
     try {
       const reporteId = params.reporteId as string;
       let fase2Data = {};
-      
+
       // Parsear fase2Data solo si existe
       if (params.fase2Data) {
         try {
@@ -101,7 +101,7 @@ export default function EncuestaPage() {
           fase2Data = {};
         }
       }
-      
+
       // Obtener datos del cliente y empleado desde los params
       const clienteEmail = params.clienteEmail as string || '';
       const clienteNombre = params.clienteNombre as string || '';
@@ -138,44 +138,44 @@ export default function EncuestaPage() {
         ...fase2Data,
         trabajo_completado: true,
       });
-      
+
       if (!resultadoFase2.success) {
         throw new Error(resultadoFase2.error || 'No se pudo guardar Fase 2');
       }
-      
+
       console.log('Fase 2 actualizada');
 
       // Guardar encuesta en tabla separada
       console.log('Guardando encuesta en BD...');
       const resultadoEncuesta = await guardarEncuestaSatisfaccion(encuestaData);
-      
+
       if (!resultadoEncuesta.success) {
         console.error('Fallo al guardar encuesta:', resultadoEncuesta.error);
         throw new Error(resultadoEncuesta.error || 'No se pudo guardar la encuesta');
       }
-      
+
       console.log('Encuesta guardada correctamente');
 
       // PASO 5: Cambiar estado a "cerrado_por_cliente" (cierre definitivo)
       console.log('Cambiando estado a cerrado_por_cliente...');
       const resultadoEstado = await actualizarEstadoCerradoPorCliente(reporteId);
-      
+
       if (!resultadoEstado.success) {
         throw new Error(resultadoEstado.error || 'No se pudo marcar el reporte como cerrado');
       }
-      
+
       console.log('Reporte cerrado por cliente - CIERRE DEFINITIVO');
       console.log('Encuesta finalizada correctamente');
 
       setGuardando(false);
-      
+
       // Navegar al panel del cliente con modales cerrados
       console.log('Navegando a cliente-panel en 1 segundo...');
       setTimeout(() => {
         console.log('Ejecutando navegación a panel del cliente...');
         router.push('/cliente-panel?closeModals=true');
       }, 1000);
-      
+
     } catch (error: any) {
       console.error('Error al guardar encuesta:', error);
       console.error('Error details:', error.message);
@@ -206,13 +206,13 @@ export default function EncuestaPage() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={[styles.content, isMobile && styles.contentMobile]}>
           {/* PASO 5: Mensaje introductorio */}
-          <View style={{ 
-            backgroundColor: '#06b6d415', 
-            borderRadius: 12, 
-            padding: 16, 
-            marginBottom: 24, 
-            borderLeftWidth: 4, 
-            borderLeftColor: '#06b6d4' 
+          <View style={{
+            backgroundColor: '#06b6d415',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 24,
+            borderLeftWidth: 4,
+            borderLeftColor: '#06b6d4'
           }}>
             <Text style={[styles.headerSubtitle, { fontFamily, color: '#22d3ee', marginBottom: 8 }]}>
               ✓ Trabajo completado

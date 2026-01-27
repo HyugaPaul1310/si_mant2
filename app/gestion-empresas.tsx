@@ -1,14 +1,14 @@
 import {
-    actualizarEmpresa,
-    actualizarSucursal,
-    crearEmpresa,
-    crearSucursal,
-    eliminarEmpresa,
-    eliminarSucursal,
-    obtenerEmpresas,
-    obtenerSucursalesPorEmpresa,
-    type Empresa,
-    type Sucursal,
+  actualizarEmpresa,
+  actualizarSucursal,
+  crearEmpresa,
+  crearSucursal,
+  eliminarEmpresa,
+  eliminarSucursal,
+  obtenerEmpresas,
+  obtenerSucursalesPorEmpresa,
+  type Empresa,
+  type Sucursal,
 } from '@/lib/empresas';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
