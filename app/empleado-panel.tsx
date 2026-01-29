@@ -1,11 +1,11 @@
 // @ts-nocheck
 import {
-  actualizarEstadoReporteAsignado,
-  actualizarEstadoTareaBackend,
-  obtenerArchivosReporteBackend,
-  obtenerInventarioEmpleadoBackend,
-  obtenerReportesAsignados,
-  obtenerTareasEmpleadoBackend
+    actualizarEstadoReporteAsignado,
+    actualizarEstadoTareaBackend,
+    obtenerArchivosReporteBackend,
+    obtenerInventarioEmpleadoBackend,
+    obtenerReportesAsignados,
+    obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,16 +16,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -354,33 +354,28 @@ function EmpleadoPanelContent() {
       return;
     }
 
-    if (!precioCotizacion.trim()) {
-      showToast('Por favor ingresa el precio de la cotización', 'warning');
-      return;
-    }
-
-    const precioNumerico = parseFloat(precioCotizacion);
-    if (isNaN(precioNumerico) || precioNumerico <= 0) {
-      showToast('Por favor ingresa un precio válido', 'warning');
-      return;
-    }
-
     setGuardandoCotizacion(true);
     try {
-      const precioNumerico = parseFloat(precioCotizacion);
+      console.log('[EMPLEADO-ANALISIS] Enviando análisis:', {
+        reporteId: reporteSeleccionado.id,
+        estado: 'en_proceso',
+        analisis: descripcionTrabajo.trim()
+      });
 
-      // Actualizar el estado del reporte a 'cotizado' con la descripción y precio
-      const { success } = await actualizarEstadoReporteAsignado(
+      // Actualizar el estado del reporte a 'en_proceso' solo con el análisis (SIN PRECIO)
+      // El precio lo agregará el admin después en "Cotizaciones Pendientes"
+      const respuesta = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
-        'cotizado',
-        descripcionTrabajo.trim(),
-        precioNumerico
+        'en_proceso',
+        descripcionTrabajo.trim()
       );
 
-      if (success) {
-        // Actualizar lista de reportes localmente - cambiar estado a cotizado
+      console.log('[EMPLEADO-ANALISIS] Respuesta del servidor:', respuesta);
+
+      if (respuesta.success) {
+        // Actualizar lista de reportes localmente
         const reportesActualizados = listaReportes.map((r: any) =>
-          r.id === reporteSeleccionado.id ? { ...r, estado: 'cotizado', analisis_general: descripcionTrabajo.trim(), precio_cotizacion: precioNumerico } : r
+          r.id === reporteSeleccionado.id ? { ...r, estado: 'en_proceso', analisis_general: descripcionTrabajo.trim() } : r
         );
         setListaReportes(reportesActualizados);
 
@@ -388,9 +383,8 @@ function EmpleadoPanelContent() {
         if (reporteSeleccionado) {
           setReporteSeleccionado({
             ...reporteSeleccionado,
-            estado: 'cotizado',
-            analisis_general: descripcionTrabajo.trim(),
-            precio_cotizacion: precioNumerico
+            estado: 'en_proceso',
+            analisis_general: descripcionTrabajo.trim()
           });
         }
 
@@ -400,14 +394,14 @@ function EmpleadoPanelContent() {
         // Limpiar estados
         setShowCotizarModal(false);
         setDescripcionTrabajo('');
-        setPrecioCotizacion('');
 
-        showToast('Cotización guardada exitosamente', 'success');
+        showToast('Análisis enviado exitosamente. El admin realizará la cotización.', 'success');
       } else {
-        showToast('Error al guardar la cotización', 'error');
+        console.error('[EMPLEADO-ANALISIS] Error en respuesta:', respuesta);
+        showToast('Error al enviar análisis', 'error');
       }
     } catch (error) {
-      console.error('Error al guardar cotización:', error);
+      console.error('Error al guardar análisis:', error);
       showToast('Error al guardar la cotización', 'error');
     } finally {
       setGuardandoCotizacion(false);
@@ -1134,8 +1128,8 @@ function EmpleadoPanelContent() {
                   </View>
                 )}
 
-                {/* Campos Fase 2 (cuando está en_proceso) */}
-                {reporteSeleccionado.estado === 'en_proceso' && (
+                {/* Campos Fase 2 (cuando está cotizado) */}
+                {reporteSeleccionado.estado === 'cotizado' && (
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
 
@@ -1238,13 +1232,35 @@ function EmpleadoPanelContent() {
                     style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      Cotizar
+                      Enviar Análisis
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
               )}
 
-              {reporteSeleccionado.estado === 'en_proceso' && (
+              {reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general && (
+                <LinearGradient
+                  colors={['#d97706', '#f59e0b']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.detailActionButton}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowReporteDetalle(false);
+                      setShowCotizarModal(true);
+                    }}
+                    activeOpacity={0.85}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                      Enviar Análisis
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              )}
+
+              {reporteSeleccionado.estado === 'cotizado' && (
                 <LinearGradient
                   colors={['#10b981', '#06b6d4']}
                   start={{ x: 0, y: 0 }}
@@ -1459,13 +1475,12 @@ function EmpleadoPanelContent() {
           <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
             <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Cotizar Reporte</Text>
-                <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Ingresa los detalles de la cotización</Text>
+                <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Enviar Análisis</Text>
+                <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Completa el análisis del reporte</Text>
               </View>
               <TouchableOpacity onPress={() => {
                 setShowCotizarModal(false);
                 setDescripcionTrabajo('');
-                setPrecioCotizacion('');
               }} activeOpacity={0.7}>
                 <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
               </TouchableOpacity>
@@ -1514,20 +1529,6 @@ function EmpleadoPanelContent() {
                     textAlignVertical="top"
                   />
                 </View>
-
-                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>
-                    Precio del arreglo *
-                  </Text>
-                  <TextInput
-                    style={[styles.textInputPrice, { fontFamily }]}
-                    value={precioCotizacion}
-                    onChangeText={setPrecioCotizacion}
-                    placeholder="0.00"
-                    placeholderTextColor="#64748b"
-                    keyboardType="decimal-pad"
-                  />
-                </View>
               </View>
             </ScrollView>
 
@@ -1537,7 +1538,6 @@ function EmpleadoPanelContent() {
                 onPress={() => {
                   setShowCotizarModal(false);
                   setDescripcionTrabajo('');
-                  setPrecioCotizacion('');
                 }}
                 activeOpacity={0.7}
               >
@@ -1557,7 +1557,7 @@ function EmpleadoPanelContent() {
                   style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                 >
                   <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                    {guardandoCotizacion ? 'Guardando...' : 'Cotizar'}
+                    {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
                   </Text>
                 </TouchableOpacity>
               </LinearGradient>

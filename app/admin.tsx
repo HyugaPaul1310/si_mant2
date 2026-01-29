@@ -11,18 +11,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Image,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -102,6 +102,19 @@ function AdminPanelContent() {
   // Estados para historial y terminados
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
+
+  // Estados para cotizaciones pendientes
+  const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
+  const [reportesCotizaciones, setReportesCotizaciones] = useState<any[]>([]);
+  const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
+  const [errorCotizaciones, setErrorCotizaciones] = useState('');
+
+  // Estados para modal de cotización (ingresar precio)
+  const [showCotizarReporteModal, setShowCotizarReporteModal] = useState(false);
+  const [reporteACotizar, setReporteACotizar] = useState<any | null>(null);
+  const [precioCotizacion, setPrecioCotizacion] = useState('');
+  const [cotizando, setCotizando] = useState(false);
+  const [cotizarError, setCotizarError] = useState<string | null>(null);
 
   // Estados para encuestas
   const [encuestas, setEncuestas] = useState<any[]>([]);
@@ -293,6 +306,66 @@ function AdminPanelContent() {
     };
     cargarCerrados();
   }, []);
+
+  // PASO 7: Cargar reportes con análisis completado (Cotizaciones Pendientes)
+  useEffect(() => {
+    if (showCotizacionesModal) {
+      const cargarCotizaciones = async () => {
+        setLoadingCotizaciones(true);
+        setErrorCotizaciones('');
+        try {
+          console.log('[ADMIN-COTIZACIONES] Iniciando carga de cotizaciones pendientes...');
+          // Recargar todos los reportes para asegurar que tenemos los últimos cambios
+          const respuesta = await obtenerReportesBackend();
+          console.log('[ADMIN-COTIZACIONES] Respuesta del backend:', respuesta);
+          console.log('[ADMIN-COTIZACIONES] Total reportes obtenidos:', respuesta.data?.length);
+          
+          if (respuesta.success && respuesta.data) {
+            console.log('[ADMIN-COTIZACIONES] Primeros 3 reportes recibidos:', respuesta.data.slice(0, 3).map((r: any) => ({
+              id: r.id,
+              titulo: r.titulo,
+              estado: r.estado,
+              analisis: r.analisis_general ? r.analisis_general.substring(0, 30) + '...' : 'SIN ANÁLISIS',
+              precio: r.precio_cotizacion
+            })));
+
+            // Filtrar: estado = 'en_proceso' + analisis_general completo + sin precio_cotizacion
+            const cotizacionesPendientes = respuesta.data.filter((r: any) => {
+              const pasaEstado = r.estado === 'en_proceso';
+              const pasaAnalisis = r.analisis_general && r.analisis_general.trim() !== '';
+              const pasaPrecio = !r.precio_cotizacion || r.precio_cotizacion === 0;
+              
+              if (!pasaEstado) console.log(`[FILTRO] Reporte ${r.id}: falla estado (${r.estado})`);
+              if (!pasaAnalisis) console.log(`[FILTRO] Reporte ${r.id}: falla análisis (${r.analisis_general})`);
+              if (!pasaPrecio) console.log(`[FILTRO] Reporte ${r.id}: falla precio (${r.precio_cotizacion})`);
+              
+              return pasaEstado && pasaAnalisis && pasaPrecio;
+            });
+            
+            console.log('[ADMIN-COTIZACIONES] Cotizaciones pendientes encontradas:', cotizacionesPendientes.length);
+            console.log('[ADMIN-COTIZACIONES] Detalles:', cotizacionesPendientes.map((r: any) => ({
+              id: r.id,
+              titulo: r.titulo,
+              estado: r.estado,
+              analisis: r.analisis_general ? 'SÍ' : 'NO'
+            })));
+            setReportesCotizaciones(cotizacionesPendientes);
+          } else {
+            console.error('[ADMIN-COTIZACIONES] Error en respuesta:', respuesta);
+            setReportesCotizaciones([]);
+            setErrorCotizaciones(respuesta?.error || 'Error al cargar cotizaciones');
+          }
+        } catch (error) {
+          console.error('Error cargando cotizaciones pendientes:', error);
+          setReportesCotizaciones([]);
+          setErrorCotizaciones('Error al cargar las cotizaciones');
+        } finally {
+          setLoadingCotizaciones(false);
+        }
+      };
+      cargarCotizaciones();
+    }
+  }, [showCotizacionesModal]);
 
   const cargarEncuestasData = async () => {
     setLoadingEncuestas(true);
@@ -511,6 +584,48 @@ function AdminPanelContent() {
     setUpdatingId(null);
   };
 
+  const handleCotizarReporte = async () => {
+    if (!reporteACotizar) return;
+    if (!precioCotizacion.trim()) {
+      setCotizarError('Por favor ingresa el precio');
+      return;
+    }
+
+    const precioNumerico = parseFloat(precioCotizacion);
+    if (isNaN(precioNumerico) || precioNumerico <= 0) {
+      setCotizarError('Por favor ingresa un precio válido');
+      return;
+    }
+
+    setCotizando(true);
+    setCotizarError(null);
+    try {
+      const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
+        estado: 'cotizado',
+        precioCotizacion: precioNumerico,
+      });
+
+      if (!success) {
+        setCotizarError(error || 'No se pudo cotizar el reporte');
+      } else {
+        // Actualizar lista de cotizaciones
+        setReportesCotizaciones((prev) =>
+          prev.filter((r) => r.id !== reporteACotizar.id)
+        );
+        
+        // Cerrar modal
+        setShowCotizarReporteModal(false);
+        setReporteACotizar(null);
+        setPrecioCotizacion('');
+      }
+    } catch (error) {
+      console.error('Error al cotizar reporte:', error);
+      setCotizarError('Error al cotizar el reporte');
+    } finally {
+      setCotizando(false);
+    }
+  };
+
   // Mostrar el nombre del usuario junto a "Bienvenido"
 
   const stats = [
@@ -557,6 +672,12 @@ function AdminPanelContent() {
       description: 'Ver reportes',
       gradient: ['#2563eb', '#3b82f6'] as const,
       iconName: 'document-text-outline',
+    },
+    {
+      title: 'Cotizaciones Pendientes',
+      description: 'Cotizar reportes con análisis completado',
+      gradient: ['#f59e0b', '#f97316'] as const,
+      iconName: 'pricetag-outline',
     },
     {
       title: 'Reportes Terminados',
@@ -708,6 +829,8 @@ function AdminPanelContent() {
   const openEmailModalIfOption = (title: string) => {
     if (title === 'Historial de Reportes') {
       setShowHistorialModal(true);
+    } else if (title === 'Cotizaciones Pendientes') {
+      setShowCotizacionesModal(true);
     } else if (title === 'Reportes Terminados') {
       setShowTerminadosModal(true);
     } else if (title === 'Gestion de Usuarios') {
@@ -1067,6 +1190,26 @@ function AdminPanelContent() {
                 <View style={{ flex: 1 }}>
                   <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Historial de Reportes</Text>
                   <Text style={[{ color: '#93c5fd', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Ver y gestionar reportes pendientes</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowCotizacionesModal(true)}
+                style={{
+                  backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#f59e0b',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="pricetag-outline" size={24} color="#f59e0b" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Cotizaciones Pendientes</Text>
+                  <Text style={[{ color: '#fcd34d', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Cotizar reportes con análisis completado</Text>
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
@@ -2362,6 +2505,239 @@ function AdminPanelContent() {
                 </View>
               </ScrollView>
             ) : null}
+          </View>
+        </View>
+      )}
+
+      {/* Modal de Cotizaciones Pendientes */}
+      {showCotizacionesModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Cotizaciones Pendientes</Text>
+                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Reportes con análisis completado, pendientes de cotización</Text>
+              </View>
+              <View style={styles.largeModalActions}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setLoadingCotizaciones(true);
+                    const { success, data } = await obtenerReportesBackend();
+                    if (success && data) {
+                      const cotizacionesPendientes = data.filter((r: any) => 
+                        r.estado === 'en_proceso' && 
+                        r.analisis_general && 
+                        r.analisis_general.trim() !== '' &&
+                        (!r.precio_cotizacion || r.precio_cotizacion === 0)
+                      );
+                      setReportesCotizaciones(cotizacionesPendientes);
+                    }
+                    setLoadingCotizaciones(false);
+                  }}
+                  style={styles.refreshButton}
+                >
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowCotizacionesModal(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingCotizaciones && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando cotizaciones pendientes...</Text>
+              </View>
+            )}
+
+            {!loadingCotizaciones && errorCotizaciones ? (
+              <View style={styles.errorPanel}>
+                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorCotizaciones}</Text>
+              </View>
+            ) : null}
+
+            {!loadingCotizaciones && !errorCotizaciones && reportesCotizaciones.length === 0 ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No hay cotizaciones pendientes.</Text>
+              </View>
+            ) : null}
+
+            {!loadingCotizaciones && !errorCotizaciones && reportesCotizaciones.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesCotizaciones.map((rep) => (
+                    <View key={rep.id} style={styles.reportCard}>
+                      <View style={styles.reportHeader}>
+                        <View style={styles.reportHeaderText}>
+                          <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.equipo_descripcion || 'Equipo / servicio'}
+                          </Text>
+                          <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                          </Text>
+                          <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            if (resultado.success) {
+                              setArchivosReporte(resultado.data || []);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                        {rep.comentario || 'Sin comentarios'}
+                      </Text>
+
+                      <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(245, 158, 11, 0.1)', borderLeftWidth: 3, borderLeftColor: '#f59e0b', borderRadius: 6 }}>
+                        <Text style={[{ fontSize: 11, color: '#f59e0b', fontWeight: '600' }, { fontFamily }]}>ANÁLISIS DEL EMPLEADO:</Text>
+                        <Text style={[{ fontSize: 12, color: '#fbbf24', marginTop: 6, lineHeight: 18 }, { fontFamily }]} numberOfLines={3}>
+                          {rep.analisis_general || 'Sin análisis'}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={() => {
+                          setReporteACotizar(rep);
+                          setPrecioCotizacion('');
+                          setCotizarError(null);
+                          setShowCotizarReporteModal(true);
+                        }}
+                        style={{
+                          marginTop: 12,
+                          backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                          borderColor: '#f59e0b',
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'row',
+                          gap: 6,
+                        }}
+                      >
+                        <Ionicons name="pricetag-outline" size={16} color="#f59e0b" />
+                        <Text style={[{ color: '#fbbf24', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Cotizar Reporte</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
+      {/* Modal para Cotizar Reporte */}
+      {showCotizarReporteModal && reporteACotizar && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
+            <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1f2937', marginBottom: 16, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[{ color: '#fff', fontSize: isMobile ? 18 : 20, fontWeight: '800' }, { fontFamily }]}>
+                  Cotizar Reporte
+                </Text>
+                <Text style={[{ color: '#94a3b8', fontSize: isMobile ? 12 : 13, marginTop: 4 }, { fontFamily }]}>
+                  Ingresa el precio del servicio
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCotizarReporteModal(false);
+                  setReporteACotizar(null);
+                  setPrecioCotizacion('');
+                  setCotizarError(null);
+                }}
+                style={{ width: 40, height: 40, borderRadius: 8, backgroundColor: 'rgba(30, 41, 59, 0.8)', alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300, marginBottom: 20 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
+              <View style={{ gap: isMobile ? 10 : 12, marginBottom: 20 }}>
+                <View style={{ gap: 4 }}>
+                  <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>EQUIPO / SERVICIO</Text>
+                  <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
+                    {reporteACotizar.equipo_descripcion || 'N/A'}
+                  </Text>
+                </View>
+
+                <View style={{ gap: 4 }}>
+                  <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>CLIENTE</Text>
+                  <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
+                    {reporteACotizar.usuario_nombre} {reporteACotizar.usuario_apellido}
+                  </Text>
+                </View>
+
+                <View style={{ gap: 4 }}>
+                  <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>ANÁLISIS DEL EMPLEADO</Text>
+                  <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#cbd5e1', lineHeight: 18 }, { fontFamily }]}>
+                    {reporteACotizar.analisis_general || 'Sin análisis'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ gap: 16 }}>
+                <View style={{ gap: 8 }}>
+                  <Text style={[{ fontSize: 12, color: '#f59e0b', fontWeight: '700' }, { fontFamily }]}>PRECIO DEL SERVICIO *</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 8, paddingHorizontal: 12 }}>
+                    <Text style={[{ fontSize: 16, color: '#fbbf24', fontWeight: '600' }, { fontFamily }]}>$</Text>
+                    <TextInput
+                      style={[styles.textInputPrice, { fontFamily, flex: 1, marginLeft: 8 }]}
+                      value={precioCotizacion}
+                      onChangeText={setPrecioCotizacion}
+                      placeholder="0.00"
+                      placeholderTextColor="#64748b"
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                {cotizarError && (
+                  <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeftWidth: 3, borderLeftColor: '#ef4444', padding: 10, borderRadius: 6 }}>
+                    <Text style={[{ fontSize: 12, color: '#fca5a5' }, { fontFamily }]}>{cotizarError}</Text>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCotizarReporteModal(false);
+                  setReporteACotizar(null);
+                  setPrecioCotizacion('');
+                  setCotizarError(null);
+                }}
+                style={{ backgroundColor: 'rgba(107, 114, 128, 0.2)', borderColor: '#6b7280', borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={[{ color: '#d1d5db', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCotizarReporte}
+                disabled={cotizando}
+                style={{ backgroundColor: cotizando ? 'rgba(245, 158, 11, 0.5)' : 'rgba(245, 158, 11, 0.2)', borderColor: '#f59e0b', borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', opacity: cotizando ? 0.7 : 1 }}
+              >
+                <Text style={[{ color: '#fbbf24', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                  {cotizando ? 'Cotizando...' : 'Cotizar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -4289,6 +4665,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   badgeMobile: {
     width: 56,
@@ -4465,6 +4842,8 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
     shadowOffset: { width: 0, height: 10 },
   },
   modalCardMobile: {
@@ -4612,6 +4991,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
+    elevation: 15,
   },
   largeModalMobile: {
     width: '90%',

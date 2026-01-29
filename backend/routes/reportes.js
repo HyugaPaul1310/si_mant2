@@ -17,6 +17,8 @@ router.get('/', verifyToken, async (req, res) => {
         r.empresa_id,
         r.created_at,
         r.updated_at,
+        r.analisis_general,
+        r.precio_cotizacion,
         u.nombre as usuario_nombre,
         u.apellido as usuario_apellido,
         u.email as usuario_email,
@@ -41,6 +43,17 @@ router.get('/', verifyToken, async (req, res) => {
 
     query += ' ORDER BY r.created_at DESC';
     const [reportes] = await pool.query(query, params);
+
+    console.log('[GET-REPORTES] Total reportes retornados:', reportes.length);
+    if (reportes.length > 0) {
+      console.log('[GET-REPORTES] Primeros 3 reportes:', reportes.slice(0, 3).map((r) => ({
+        id: r.id,
+        titulo: r.titulo,
+        estado: r.estado,
+        analisis: r.analisis_general ? 'SÍ' : 'NO',
+        precio: r.precio_cotizacion
+      })));
+    }
 
     return res.json({ success: true, data: reportes });
   } catch (error) {
