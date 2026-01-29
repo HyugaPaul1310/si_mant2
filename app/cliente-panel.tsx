@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  actualizarEstadoReporteAsignado,
+  actualizarReporteBackend,
   obtenerArchivosReporteBackend,
   obtenerReportesCliente
 } from '../lib/api-backend';
@@ -52,6 +52,11 @@ function ClientePanelContent() {
   const [showConfirmarFinalizacionModal, setShowConfirmarFinalizacionModal] = useState(false);
   const [reporteAConfirmar, setReporteAConfirmar] = useState<any | null>(null);
   const [confirmandoFinalizacion, setConfirmandoFinalizacion] = useState(false);
+
+  // Estados para encuestas pendientes (reportes con estado 'encuesta_satisfaccion')
+  const [showEncuestasModal, setShowEncuestasModal] = useState(false);
+  const [encuestasPendientes, setEncuestasPendientes] = useState<any[]>([]);
+  const [loadingEncuestas, setLoadingEncuestas] = useState(false);
 
   // Estados para cotizaciones
   const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
@@ -143,7 +148,12 @@ function ClientePanelContent() {
 
         // Filtrar para excluir reportes finalizados o en espera (esos van en reportesFinalizados)
         const reportesActivos = reportesMapeados.filter((r: any) =>
-          r.estado !== 'finalizado' && r.estado !== 'en_espera'
+          r.estado !== 'finalizado' && 
+          r.estado !== 'en_espera' &&
+          r.estado !== 'cerrado_por_cliente' &&
+          r.estado !== 'listo_para_encuesta' &&
+          r.estado !== 'encuesta_satisfaccion' &&
+          r.estado !== 'terminado'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
         console.log('[CLIENTE-PANEL] Primer reporte activo:', reportesActivos[0]);
@@ -175,11 +185,32 @@ function ClientePanelContent() {
         console.log('[CLIENTE-PANEL] Resultado completo:', resultado);
         if (resultado.success && resultado.data) {
           console.log('[CLIENTE-PANEL] Datos cargados:', resultado.data.length);
-          // Filtrar solo reportes que han sido cotizados (deben tener precio_cotizacion)
-          const cotizacionesFiltradas = resultado.data.filter((r: any) =>
-            r.precio_cotizacion && (r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico')
-          );
+          console.log('[CLIENTE-PANEL] Primeros 3 reportes:', resultado.data.slice(0, 3).map((r: any) => ({
+            id: r.id,
+            titulo: r.titulo,
+            estado: r.estado,
+            precio: r.precio_cotizacion,
+            analisis: r.analisis_general ? 'SÍ' : 'NO'
+          })));
+
+          // Filtrar solo reportes que han sido cotizados pero aún no aceptados (estado cotizado con precio)
+          const cotizacionesFiltradas = resultado.data.filter((r: any) => {
+            const tienePrecio = r.precio_cotizacion && (r.precio_cotizacion > 0);
+            const estadoValido = r.estado === 'cotizado'; // Solo cotizado = esperando aceptación del cliente
+            
+            if (!tienePrecio) console.log(`[FILTRO] Reporte ${r.id}: falta precio (${r.precio_cotizacion})`);
+            if (!estadoValido) console.log(`[FILTRO] Reporte ${r.id}: estado inválido (${r.estado})`);
+            
+            return tienePrecio && estadoValido;
+          });
+          
           console.log('[CLIENTE-PANEL] Cotizaciones filtradas:', cotizacionesFiltradas.length);
+          console.log('[CLIENTE-PANEL] Detalle cotizaciones:', cotizacionesFiltradas.map((r: any) => ({
+            id: r.id,
+            titulo: r.titulo,
+            estado: r.estado,
+            precio: r.precio_cotizacion
+          })));
           setCotizaciones(cotizacionesFiltradas);
         } else {
           console.error('[CLIENTE-PANEL] Error en respuesta:', resultado.error);
@@ -206,9 +237,14 @@ function ClientePanelContent() {
       try {
         const resultado = await obtenerReportesCliente(email);
         if (resultado.success && resultado.data) {
-          // Filtrar solo reportes que estén en estado 'finalizado' o 'en_espera' (esperando confirmación del cliente)
+          // Filtrar solo reportes que estén en estado final (terminado, cerrado por cliente, etc)
           const finalizados = resultado.data.filter((r: any) =>
-            r.estado === 'finalizado' || r.estado === 'en_espera'
+            r.estado === 'finalizado' || 
+            r.estado === 'en_espera' ||
+            r.estado === 'cerrado_por_cliente' ||
+            r.estado === 'listo_para_encuesta' ||
+            r.estado === 'encuesta_satisfaccion' ||
+            r.estado === 'terminado'
           );
           console.log('[CLIENTE-PANEL] Reportes finalizados cargados:', finalizados.length);
           setReportesFinalizados(finalizados);
@@ -219,6 +255,38 @@ function ClientePanelContent() {
       } catch (error) {
         console.error('[CLIENTE-PANEL] Exception cargando reportes finalizados:', error);
         setReportesFinalizados([]);
+      }
+    },
+    []
+  );
+
+  // Cargar encuestas pendientes (reportes con estado 'encuesta_satisfaccion')
+  const cargarEncuestasPendientes = useCallback(
+    async (email?: string) => {
+      if (!email) {
+        console.log('[CLIENTE-PANEL] No hay email para cargar encuestas');
+        return;
+      }
+      console.log('[CLIENTE-PANEL] Cargando encuestas pendientes para:', email);
+      setLoadingEncuestas(true);
+      try {
+        const resultado = await obtenerReportesCliente(email);
+        if (resultado.success && resultado.data) {
+          // Filtrar solo reportes con estado 'listo_para_encuesta' (confirmados por cliente, listos para responder encuesta)
+          const encuestas = resultado.data.filter((r: any) =>
+            r.estado === 'listo_para_encuesta'
+          );
+          console.log('[CLIENTE-PANEL] Encuestas pendientes cargadas:', encuestas.length);
+          setEncuestasPendientes(encuestas);
+        } else {
+          console.error('[CLIENTE-PANEL] Error cargando encuestas:', resultado.error);
+          setEncuestasPendientes([]);
+        }
+      } catch (error) {
+        console.error('[CLIENTE-PANEL] Exception cargando encuestas:', error);
+        setEncuestasPendientes([]);
+      } finally {
+        setLoadingEncuestas(false);
       }
     },
     []
@@ -259,8 +327,10 @@ function ClientePanelContent() {
         cargarCotizaciones(usuario.email);
         // PASO 4: Cargar reportes finalizados por técnico
         cargarReportesFinalizados(usuario.email);
+        // Cargar encuestas pendientes
+        cargarEncuestasPendientes(usuario.email);
       }
-    }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados])
+    }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados, cargarEncuestasPendientes])
   );
 
   // Refrescar empresa/apellido si no están en AsyncStorage
@@ -574,12 +644,12 @@ function ClientePanelContent() {
     },
     {
       title: 'Ver mis reportes',
-      description: 'Consulta historial de reportes finalizados',
+      description: 'Historial de todos tus reportes',
       gradient: 'from-indigo-600 to-purple-500',
       iconName: 'folder-open-outline',
       onPress: async () => {
         setShowReportModal(true);
-        const lista = (await cargarReportes(usuario?.email)) || [];
+        const lista = (await cargarReportesFinalizados(usuario?.email)) || [];
         await ensureDemoFinalizado(lista);
       },
     },
@@ -813,7 +883,7 @@ function ClientePanelContent() {
 
             <View style={styles.infoBox}>
               <Text style={[styles.infoText, { fontFamily }]}>
-                Aquí solo ves los finalizados; los pendientes/en espera irán en Seguimiento.
+                Aquí ves todos tus reportes completados. Los en progreso están en Seguimiento.
               </Text>
             </View>
 
@@ -829,10 +899,10 @@ function ClientePanelContent() {
               </View>
             ) : null}
 
-            {!loadingReportes && !errorReportes && finalizados.length === 0 ? (
+            {!loadingReportes && !errorReportes && reportesFinalizados.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <View style={styles.reportCard}>
-                  <Text style={[styles.emptyText, { fontFamily }]}>Aún no tienes reportes finalizados.</Text>
+                  <Text style={[styles.emptyText, { fontFamily }]}>Aún no tienes reportes completados.</Text>
                 </View>
                 <View style={styles.demoBox}>
                   <Text style={[styles.demoTitle, { fontFamily }]}>Ejemplo generado (SQL)</Text>
@@ -852,10 +922,10 @@ function ClientePanelContent() {
               </View>
             ) : null}
 
-            {!loadingReportes && !errorReportes && finalizados.length > 0 ? (
+            {!loadingReportes && !errorReportes && reportesFinalizados.length > 0 ? (
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 <View style={styles.reportsContainer}>
-                  {finalizados.map((rep) => renderReporteCard(rep))}
+                  {reportesFinalizados.map((rep) => renderReporteCard(rep))}
                 </View>
               </ScrollView>
             ) : null}
@@ -1237,7 +1307,37 @@ function ClientePanelContent() {
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-
+              {selectedReporte.estado === 'listo_para_encuesta' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    // Abrir la encuesta de satisfacción con todos los datos necesarios
+                    router.push({
+                      pathname: '/encuesta',
+                      params: {
+                        reporteId: selectedReporte.id,
+                        clienteEmail: usuario?.email || '',
+                        clienteNombre: usuario?.nombre || '',
+                        empresa: usuario?.empresa || '',
+                        empleadoEmail: selectedReporte.empleado_email || '',
+                        empleadoNombre: selectedReporte.empleado_nombre || ''
+                      }
+                    });
+                    setShowReporteDetail(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#f59e0b',
+                    marginLeft: 12,
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
+                    📋 Responder Encuesta
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -1526,12 +1626,19 @@ function ClientePanelContent() {
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#10b981' }]}
                       onPress={async () => {
-                        // Actualizar el estado del reporte a "en_proceso" (aceptada la cotización)
-                        const resultado = await actualizarEstadoReporteAsignado(cotizacionSeleccionada.id, 'en_proceso');
+                        // Cuando el cliente acepta la cotización, cambiar estado a "finalizado_por_tecnico"
+                        // Esto indica que pasó a Fase 2 y el empleado puede trabajar
+                        console.log('[CLIENTE] Aceptando cotización, cambiando a finalizado_por_tecnico');
+                        const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, { estado: 'finalizado_por_tecnico' });
                         if (resultado.success) {
                           showToast('Cotización aceptada. El reporte está listo para trabajar.', 'success');
-                          cargarCotizaciones(usuario?.email);
+                          // Remover de la lista local
+                          setCotizaciones((prev) => 
+                            prev.filter((c) => c.id !== cotizacionSeleccionada.id)
+                          );
                           setShowCotizacionDetalleModal(false);
+                        } else {
+                          showToast('Error al aceptar la cotización', 'error');
                         }
                       }}
                     >
@@ -1681,6 +1788,22 @@ function ClientePanelContent() {
                 onPress={async () => {
                   setConfirmandoFinalizacion(true);
                   try {
+                    // Cambiar estado a 'listo_para_encuesta' para que aparezca en Encuestas Pendientes
+                    const { success, error } = await actualizarReporteBackend(reporteAConfirmar.id, {
+                      estado: 'listo_para_encuesta'
+                    });
+
+                    if (!success) {
+                      throw new Error(error || 'No se pudo confirmar el reporte');
+                    }
+
+                    // Actualizar las listas
+                    await cargarReportesFinalizados(usuario?.email);
+
+                    setShowConfirmarFinalizacionModal(false);
+                    setReporteAConfirmar(null);
+                    
+                    // Abrir automáticamente la encuesta
                     router.push({
                       pathname: '/encuesta',
                       params: {
@@ -1688,12 +1811,10 @@ function ClientePanelContent() {
                         clienteEmail: usuario?.email || '',
                         clienteNombre: usuario?.nombre || '',
                         empresa: usuario?.empresa || '',
-                        empleadoEmail: reporteAConfirmar.empleado_asignado_email || '',
-                        empleadoNombre: reporteAConfirmar.empleado_asignado_nombre || '',
-                      },
+                        empleadoEmail: reporteAConfirmar.empleado_email || '',
+                        empleadoNombre: reporteAConfirmar.empleado_nombre || ''
+                      }
                     });
-                    setShowConfirmarFinalizacionModal(false);
-                    setReporteAConfirmar(null);
                   } catch (error) {
                     alert('Error: ' + error);
                   } finally {
@@ -1701,7 +1822,7 @@ function ClientePanelContent() {
                   }
                 }}
               >
-                <Text style={[styles.submitButtonText, { fontFamily }]}>Aceptar y continuar</Text>
+                <Text style={[styles.submitButtonText, { fontFamily }]}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -102,6 +102,12 @@ function AdminPanelContent() {
   // Estados para historial y terminados
   const [showHistorialModal, setShowHistorialModal] = useState(false);
   const [showTerminadosModal, setShowTerminadosModal] = useState(false);
+
+  // Estados para reportes finalizados por empleado (Fase 2 completada)
+  const [showFinalizadosPorEmpleadoModal, setShowFinalizadosPorEmpleadoModal] = useState(false);
+  const [reportesFinalizadosPorEmpleado, setReportesFinalizadosPorEmpleado] = useState<any[]>([]);
+  const [loadingFinalizadosPorEmpleado, setLoadingFinalizadosPorEmpleado] = useState(false);
+  const [errorFinalizadosPorEmpleado, setErrorFinalizadosPorEmpleado] = useState('');
 
   // Estados para cotizaciones pendientes
   const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
@@ -366,6 +372,42 @@ function AdminPanelContent() {
       cargarCotizaciones();
     }
   }, [showCotizacionesModal]);
+
+  // Cargar reportes finalizados por empleado (Fase 2 completada)
+  useEffect(() => {
+    if (showFinalizadosPorEmpleadoModal) {
+      const cargarFinalizados = async () => {
+        setLoadingFinalizadosPorEmpleado(true);
+        setErrorFinalizadosPorEmpleado('');
+        try {
+          console.log('[ADMIN-FINALIZADOS] Iniciando carga de reportes finalizados por empleado...');
+          const respuesta = await obtenerReportesBackend();
+          console.log('[ADMIN-FINALIZADOS] Respuesta del backend:', respuesta);
+          
+          if (respuesta.success && respuesta.data) {
+            // Filtrar: estado = 'cerrado_por_cliente' (empleado completó Fase 2)
+            const finalizadosPorEmpleado = respuesta.data.filter((r: any) => 
+              r.estado === 'cerrado_por_cliente'
+            );
+            
+            console.log('[ADMIN-FINALIZADOS] Reportes finalizados encontrados:', finalizadosPorEmpleado.length);
+            setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
+          } else {
+            console.error('[ADMIN-FINALIZADOS] Error en respuesta:', respuesta);
+            setReportesFinalizadosPorEmpleado([]);
+            setErrorFinalizadosPorEmpleado(respuesta?.error || 'Error al cargar reportes finalizados');
+          }
+        } catch (error) {
+          console.error('Error cargando reportes finalizados por empleado:', error);
+          setReportesFinalizadosPorEmpleado([]);
+          setErrorFinalizadosPorEmpleado('Error al cargar los reportes');
+        } finally {
+          setLoadingFinalizadosPorEmpleado(false);
+        }
+      };
+      cargarFinalizados();
+    }
+  }, [showFinalizadosPorEmpleadoModal]);
 
   const cargarEncuestasData = async () => {
     setLoadingEncuestas(true);
@@ -1210,6 +1252,26 @@ function AdminPanelContent() {
                 <View style={{ flex: 1 }}>
                   <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Cotizaciones Pendientes</Text>
                   <Text style={[{ color: '#fcd34d', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Cotizar reportes con análisis completado</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowFinalizadosPorEmpleadoModal(true)}
+                style={{
+                  backgroundColor: 'rgba(34, 211, 238, 0.2)',
+                  borderWidth: 1,
+                  borderColor: '#06b6d4',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12
+                }}
+              >
+                <Ionicons name="checkmark-done-outline" size={24} color="#06b6d4" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#fff', fontSize: 16, fontWeight: '700' }, { fontFamily }]}>Reportes Finalizados por Empleado</Text>
+                  <Text style={[{ color: '#67e8f9', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Confirmar finalización de Fase 2</Text>
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
@@ -2823,6 +2885,167 @@ function AdminPanelContent() {
         </View>
       )}
 
+      {/* Modal de Reportes Finalizados por Empleado (Fase 2 Completada) */}
+      {showFinalizadosPorEmpleadoModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+            <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Reportes Finalizados por Empleado</Text>
+                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Confirmación de Fase 2 completada</Text>
+              </View>
+              <View style={styles.largeModalActions}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setLoadingFinalizadosPorEmpleado(true);
+                    const { success, data } = await obtenerReportesBackend();
+                    if (success && data) {
+                      const finalizadosPorEmpleado = data.filter((r: any) => 
+                        r.estado === 'cerrado_por_cliente'
+                      );
+                      setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
+                    }
+                    setLoadingFinalizadosPorEmpleado(false);
+                  }}
+                  style={styles.refreshButton}
+                >
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowFinalizadosPorEmpleadoModal(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {loadingFinalizadosPorEmpleado && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes finalizados...</Text>
+              </View>
+            )}
+
+            {!loadingFinalizadosPorEmpleado && errorFinalizadosPorEmpleado ? (
+              <View style={styles.errorPanel}>
+                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorFinalizadosPorEmpleado}</Text>
+              </View>
+            ) : null}
+
+            {!loadingFinalizadosPorEmpleado && !errorFinalizadosPorEmpleado && reportesFinalizadosPorEmpleado.length === 0 ? (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>No hay reportes finalizados por empleado.</Text>
+              </View>
+            ) : null}
+
+            {!loadingFinalizadosPorEmpleado && !errorFinalizadosPorEmpleado && reportesFinalizadosPorEmpleado.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {reportesFinalizadosPorEmpleado.map((rep) => (
+                    <View key={rep.id} style={styles.reportCard}>
+                      <View style={styles.reportHeader}>
+                        <View style={styles.reportHeaderText}>
+                          <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.equipo_descripcion || 'Equipo / servicio'}
+                          </Text>
+                          <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                            {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                          </Text>
+                          <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                            {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            if (resultado.success) {
+                              setArchivosReporte(resultado.data || []);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
+                      </View>
+
+                      <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                        {rep.comentario || 'Sin comentarios'}
+                      </Text>
+
+                      {rep.analisis_general && (
+                        <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(245, 158, 11, 0.1)', borderLeftWidth: 3, borderLeftColor: '#f59e0b', borderRadius: 6 }}>
+                          <Text style={[{ fontSize: 11, color: '#f59e0b', fontWeight: '600' }, { fontFamily }]}>ANÁLISIS DEL EMPLEADO (FASE 1):</Text>
+                          <Text style={[{ fontSize: 12, color: '#fbbf24', marginTop: 6, lineHeight: 18 }, { fontFamily }]} numberOfLines={3}>
+                            {rep.analisis_general}
+                          </Text>
+                        </View>
+                      )}
+
+                      <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(34, 211, 238, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', borderRadius: 6 }}>
+                        <Text style={[{ fontSize: 11, color: '#06b6d4', fontWeight: '600' }, { fontFamily }]}>TRABAJO COMPLETADO POR EMPLEADO:</Text>
+                        <Text style={[{ fontSize: 12, color: '#67e8f9', marginTop: 6, lineHeight: 18 }, { fontFamily }]} numberOfLines={3}>
+                          Revisión: {rep.revision || 'Sin datos'} • Reparación: {rep.reparacion || 'Sin datos'}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={async () => {
+                          // Confirmar finalización: cambiar estado a encuesta_satisfaccion
+                          setUpdatingId(rep.id);
+                          const { success, error } = await actualizarEstadoReporteAsignado(rep.id, 'encuesta_satisfaccion');
+                          setUpdatingId(null);
+                          
+                          if (success) {
+                            // Recargar la lista
+                            setLoadingFinalizadosPorEmpleado(true);
+                            const { success: success2, data } = await obtenerReportesBackend();
+                            if (success2 && data) {
+                              const finalizadosPorEmpleado = data.filter((r: any) => 
+                                r.estado === 'cerrado_por_cliente'
+                              );
+                              setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
+                            }
+                            setLoadingFinalizadosPorEmpleado(false);
+                          }
+                        }}
+                        style={{
+                          marginTop: 12,
+                          backgroundColor: updatingId === rep.id ? 'rgba(107, 114, 128, 0.3)' : 'rgba(34, 211, 238, 0.2)',
+                          borderColor: '#06b6d4',
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'row',
+                          gap: 6,
+                          opacity: updatingId === rep.id ? 0.6 : 1,
+                        }}
+                        disabled={updatingId === rep.id}
+                      >
+                        {updatingId === rep.id ? (
+                          <>
+                            <ActivityIndicator size="small" color="#06b6d4" />
+                            <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Confirmando...</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle-outline" size={16} color="#06b6d4" />
+                            <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Confirmar Finalización</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      )}
+
       {/* PASO 6: Modal de Reportes Cerrados por Cliente */}
       {showCerradosModal && (
         <View style={styles.overlayHeavy}>
@@ -3049,6 +3272,94 @@ function AdminPanelContent() {
                     </Text>
                   </View>
                 </View>
+
+                {/* Sección de Fase 2 - Trabajo completado por empleado */}
+                {(selectedReporteDetail.revision || selectedReporteDetail.recomendaciones || selectedReporteDetail.reparacion || selectedReporteDetail.recomendaciones_adicionales || selectedReporteDetail.materiales_refacciones) && (
+                  <>
+                    <View style={{ marginTop: 20, marginBottom: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#334155' }}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily, fontSize: 14, fontWeight: '700', color: '#06b6d4' }]}>Fase 2 - Trabajo Completado por Empleado</Text>
+                    </View>
+
+                    {selectedReporteDetail.revision && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Revisión</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>
+                            {selectedReporteDetail.revision}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {selectedReporteDetail.recomendaciones && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Recomendaciones</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>
+                            {selectedReporteDetail.recomendaciones}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {selectedReporteDetail.reparacion && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Reparación Realizada</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>
+                            {selectedReporteDetail.reparacion}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {selectedReporteDetail.recomendaciones_adicionales && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Recomendaciones Adicionales</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>
+                            {selectedReporteDetail.recomendaciones_adicionales}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {selectedReporteDetail.materiales_refacciones && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily }]}>Materiales / Refacciones Utilizadas</Text>
+                        <View style={styles.detailValueBox}>
+                          <Text style={[styles.detailValueText, { fontFamily }]}>
+                            {selectedReporteDetail.materiales_refacciones}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </>
+                )}
+
+                {/* Análisis General (Fase 1) */}
+                {selectedReporteDetail.analisis_general && (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Análisis del Empleado (Fase 1)</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>
+                        {selectedReporteDetail.analisis_general}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Precio Cotización */}
+                {selectedReporteDetail.precio_cotizacion && (
+                  <View style={styles.detailField}>
+                    <Text style={[styles.detailFieldLabel, { fontFamily }]}>Precio Cotización</Text>
+                    <View style={styles.detailValueBox}>
+                      <Text style={[styles.detailValueText, { fontFamily, color: '#10b981', fontSize: 16, fontWeight: '700' }]}>
+                        ${selectedReporteDetail.precio_cotizacion.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
                 {/* Fotos y Videos */}
                 {cargandoArchivos ? (

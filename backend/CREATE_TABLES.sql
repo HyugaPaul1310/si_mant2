@@ -38,16 +38,28 @@ CREATE TABLE IF NOT EXISTS reportes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(255) NOT NULL,
   descripcion LONGTEXT,
-  estado ENUM('pendiente', 'en_progreso', 'completado') DEFAULT 'pendiente',
+  estado ENUM('pendiente', 'en_proceso', 'cotizado', 'finalizado_por_tecnico', 'cerrado_por_cliente', 'encuesta_satisfaccion', 'terminado', 'finalizado', 'en_espera') DEFAULT 'pendiente',
   prioridad ENUM('baja', 'media', 'alta') DEFAULT 'media',
   usuario_id INT,
   empresa_id INT,
+  empleado_id INT,
+  analisis_general LONGTEXT,
+  precio_cotizacion DECIMAL(10, 2),
+  revision LONGTEXT,
+  recomendaciones LONGTEXT,
+  reparacion LONGTEXT,
+  recomendaciones_adicionales LONGTEXT,
+  materiales_refacciones LONGTEXT,
+  cerrado_por_cliente_at TIMESTAMP NULL,
+  finalizado_por_tecnico_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+  FOREIGN KEY (empleado_id) REFERENCES usuarios(id) ON DELETE SET NULL,
   INDEX idx_estado (estado),
   INDEX idx_usuario (usuario_id),
-  INDEX idx_empresa (empresa_id)
+  INDEX idx_empresa (empresa_id),
+  INDEX idx_empleado (empleado_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla tareas

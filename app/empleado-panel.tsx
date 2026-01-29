@@ -149,6 +149,19 @@ function EmpleadoPanelContent() {
     }, [usuario?.email, params?.closeModals])
   );
 
+  // Función para limpiar todos los estados de Fase 2 y cerrar modal
+  const cerrarModalReporteDetalle = () => {
+    setShowReporteDetalle(false);
+    setReporteSeleccionado(null);
+    setArchivosReporte([]);
+    // Limpiar estados de Fase 2
+    setRevision('');
+    setRecomendaciones('');
+    setReparacion('');
+    setRecomendacionesAdicionales('');
+    setMaterialesRefacciones('');
+  };
+
   const cargarHerramientas = async () => {
     if (!usuario?.id) return;
     setLoadingHerramientas(true);
@@ -259,8 +272,8 @@ function EmpleadoPanelContent() {
           };
         });
 
-        // Mostrar reportes pendientes, cotizados y en_proceso (excluir terminados)
-        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso') || [];
+        // Mostrar reportes pendientes, cotizados, en_proceso y finalizado_por_tecnico (excluir cerrados)
+        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico') || [];
         setListaReportes(reportesActivos);
         const pendientes = reportesActivos.length;
         const terminados = reportesMapeados.filter((r: any) => r.estado === 'terminado').length || 0;
@@ -329,7 +342,7 @@ function EmpleadoPanelContent() {
         setReportes(pendientes);
         setReportesTerminados(terminados);
 
-        setShowReporteDetalle(false);
+        cerrarModalReporteDetalle();
         setReporteSeleccionado(null);
         setArchivosReporte([]);
       }
@@ -1003,7 +1016,7 @@ function EmpleadoPanelContent() {
                 <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Detalles del reporte</Text>
                 <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Resumen completo del ticket</Text>
               </View>
-              <TouchableOpacity onPress={() => { setShowReporteDetalle(false); setReporteSeleccionado(null); setArchivosReporte([]); }} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => cerrarModalReporteDetalle()} activeOpacity={0.7}>
                 <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
               </TouchableOpacity>
             </View>
@@ -1128,8 +1141,8 @@ function EmpleadoPanelContent() {
                   </View>
                 )}
 
-                {/* Campos Fase 2 (cuando está cotizado) */}
-                {reporteSeleccionado.estado === 'cotizado' && (
+                {/* Campos Fase 2 (cuando está cotizado o finalizado_por_tecnico) */}
+                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
 
@@ -1210,7 +1223,7 @@ function EmpleadoPanelContent() {
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
                 style={styles.detailCloseButton}
-                onPress={() => { setShowReporteDetalle(false); setReporteSeleccionado(null); setArchivosReporte([]); }}
+                onPress={() => cerrarModalReporteDetalle()}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
@@ -1260,7 +1273,7 @@ function EmpleadoPanelContent() {
                 </LinearGradient>
               )}
 
-              {reporteSeleccionado.estado === 'cotizado' && (
+              {reporteSeleccionado.estado === 'finalizado_por_tecnico' && (
                 <LinearGradient
                   colors={['#10b981', '#06b6d4']}
                   start={{ x: 0, y: 0 }}
@@ -1283,24 +1296,30 @@ function EmpleadoPanelContent() {
                         materiales_refacciones: materialesRefacciones,
                       };
 
-                      // Actualizar el reporte con datos de Fase 2
+                      console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
+
+                      // Actualizar el reporte con datos de Fase 2 - cambiar a cerrado_por_cliente
+                      // para indicar que el empleado ya terminó y ahora espera confirmación del admin
                       const updateResult = await actualizarEstadoReporteAsignado(
                         reporteSeleccionado.id,
-                        'finalizado_por_tecnico',
-                        revision // descripcion_trabajo
+                        'cerrado_por_cliente',
+                        undefined, // descripcionTrabajo (ya fue enviado en Fase 1)
+                        undefined, // precioCotizacion
+                        fase2Data  // Datos completos de Fase 2
                       );
 
                       if (!updateResult.success) {
+                        console.error('[EMPLEADO-FASE2] Error al guardar:', updateResult.error);
                         showToast('Error al finalizar el reporte: ' + updateResult.error, 'error');
                         return;
                       }
 
                       // Éxito: mostrar mensaje y recargar
-                      showToast('Trabajo finalizado. El cliente debe revisar y confirmar la finalización.', 'success');
+                      console.log('[EMPLEADO-FASE2] ✓ Trabajo finalizado exitosamente');
+                      showToast('Trabajo finalizado. El admin debe revisar y confirmar la finalización.', 'success');
 
                       // Limpiar y cerrar modal
-                      setShowReporteDetalle(false);
-                      setReporteSeleccionado(null);
+                      cerrarModalReporteDetalle();
 
                       // Recargar lista de reportes
                       cargarReportes();
@@ -1480,6 +1499,7 @@ function EmpleadoPanelContent() {
               </View>
               <TouchableOpacity onPress={() => {
                 setShowCotizarModal(false);
+                setShowReporteDetalle(true);
                 setDescripcionTrabajo('');
               }} activeOpacity={0.7}>
                 <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
@@ -1537,6 +1557,7 @@ function EmpleadoPanelContent() {
                 style={styles.detailCloseButton}
                 onPress={() => {
                   setShowCotizarModal(false);
+                  setShowReporteDetalle(true);
                   setDescripcionTrabajo('');
                 }}
                 activeOpacity={0.7}

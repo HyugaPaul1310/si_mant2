@@ -19,6 +19,11 @@ router.get('/', verifyToken, async (req, res) => {
         r.updated_at,
         r.analisis_general,
         r.precio_cotizacion,
+        r.revision,
+        r.recomendaciones,
+        r.reparacion,
+        r.recomendaciones_adicionales,
+        r.materiales_refacciones,
         u.nombre as usuario_nombre,
         u.apellido as usuario_apellido,
         u.email as usuario_email,
@@ -103,20 +108,26 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar reporte
 router.put('/:id', verifyToken, async (req, res) => {
   try {
-    const { titulo, descripcion, estado, prioridad } = req.body;
+    const { titulo, descripcion, estado, prioridad, precioCotizacion } = req.body;
 
     const updateData = {};
     if (titulo) updateData.titulo = titulo;
     if (descripcion) updateData.descripcion = descripcion;
     if (estado) updateData.estado = estado;
     if (prioridad) updateData.prioridad = prioridad;
+    if (precioCotizacion) updateData.precio_cotizacion = precioCotizacion;
 
     const query = 'UPDATE reportes SET ' + Object.keys(updateData).map(k => `${k} = ?`).join(', ') + ' WHERE id = ?';
     const values = [...Object.values(updateData), req.params.id];
 
+    console.log('[PUT-REPORTE] Actualizando reporte:', { id: req.params.id, updateData });
     await pool.query(query, values);
 
-    return res.json({ success: true, message: 'Reporte actualizado' });
+    // Obtener el reporte actualizado
+    const [reporte] = await pool.query('SELECT * FROM reportes WHERE id = ?', [req.params.id]);
+    console.log('[PUT-REPORTE] Reporte actualizado:', reporte[0]);
+
+    return res.json({ success: true, message: 'Reporte actualizado', data: reporte[0] });
   } catch (error) {
     console.error('Error al actualizar reporte:', error);
     return res.status(500).json({ success: false, error: error.message });
