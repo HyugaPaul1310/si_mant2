@@ -8,6 +8,7 @@ import {
     obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
+import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -272,11 +273,17 @@ function EmpleadoPanelContent() {
           };
         });
 
-        // Mostrar reportes pendientes, cotizados, en_proceso y finalizado_por_tecnico (excluir cerrados)
-        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico') || [];
+        // Mostrar reportes pendientes, cotizados, en_proceso, aceptado_por_cliente y finalizado_por_tecnico (excluir cerrados)
+        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'aceptado_por_cliente' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico') || [];
         setListaReportes(reportesActivos);
         const pendientes = reportesActivos.length;
-        const terminados = reportesMapeados.filter((r: any) => r.estado === 'terminado').length || 0;
+        const terminados = reportesMapeados.filter((r: any) => 
+          r.estado === 'finalizado_por_tecnico' || 
+          r.estado === 'cerrado_por_cliente' || 
+          r.estado === 'listo_para_encuesta' || 
+          r.estado === 'encuesta_satisfaccion' || 
+          r.estado === 'terminado'
+        ).length || 0;
         setReportes(pendientes);
         setReportesTerminados(terminados);
       }
@@ -314,8 +321,14 @@ function EmpleadoPanelContent() {
           };
         });
 
-        // Mostrar solo reportes terminados (excluir cotizados)
-        const terminados = reportesMapeados.filter((r: any) => r.estado === 'terminado') || [];
+        // Mostrar reportes finalizados: finalizado_por_tecnico, cerrado_por_cliente, listo_para_encuesta, encuesta_satisfaccion, terminado
+        const terminados = reportesMapeados.filter((r: any) => 
+          r.estado === 'finalizado_por_tecnico' || 
+          r.estado === 'cerrado_por_cliente' || 
+          r.estado === 'listo_para_encuesta' || 
+          r.estado === 'encuesta_satisfaccion' || 
+          r.estado === 'terminado'
+        ) || [];
         setListaReportesTerminados(terminados);
       }
     } catch (error) {
@@ -337,8 +350,14 @@ function EmpleadoPanelContent() {
         );
         setListaReportes(reportesActualizados);
 
-        const pendientes = reportesActualizados.filter((r: any) => r.estado === 'en_proceso').length;
-        const terminados = reportesActualizados.filter((r: any) => r.estado === 'terminado').length;
+        const pendientes = reportesActualizados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico').length;
+        const terminados = reportesActualizados.filter((r: any) => 
+          r.estado === 'finalizado_por_tecnico' || 
+          r.estado === 'cerrado_por_cliente' || 
+          r.estado === 'listo_para_encuesta' || 
+          r.estado === 'encuesta_satisfaccion' || 
+          r.estado === 'terminado'
+        ).length;
         setReportes(pendientes);
         setReportesTerminados(terminados);
 
@@ -988,14 +1007,14 @@ function EmpleadoPanelContent() {
                           {new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </Text>
                         <View style={[styles.statusBadge, {
-                          backgroundColor: reporte.estado === 'pendiente' ? '#fbbf2425' : reporte.estado === 'cotizado' ? '#f59e0b25' : '#d9770625',
-                          borderColor: reporte.estado === 'pendiente' ? '#fbbf2450' : reporte.estado === 'cotizado' ? '#f59e0b50' : '#d9770650'
+                          backgroundColor: `${obtenerColorEstado(reporte.estado)}25`,
+                          borderColor: `${obtenerColorEstado(reporte.estado)}50`
                         }]}>
                           <Text style={[styles.statusBadgeText, {
-                            color: reporte.estado === 'pendiente' ? '#fbbf24' : reporte.estado === 'cotizado' ? '#f59e0b' : '#d97706',
+                            color: obtenerColorEstado(reporte.estado),
                             fontFamily
                           }]}>
-                            {reporte.estado === 'pendiente' ? 'Pendiente Cotización' : reporte.estado === 'cotizado' ? 'En Espera de Respuesta' : 'En Proceso'}
+                            {obtenerNombreEstado(reporte.estado)}
                           </Text>
                         </View>
                       </View>
@@ -1083,9 +1102,11 @@ function EmpleadoPanelContent() {
                           ? 'En Proceso'
                           : reporteSeleccionado.estado === 'cotizado'
                             ? 'En Espera de Respuesta'
-                            : reporteSeleccionado.estado === 'terminado'
-                              ? 'Terminado'
-                              : 'Pendiente'}
+                            : reporteSeleccionado.estado === 'aceptado_por_cliente'
+                              ? 'Aceptado - Listo para Trabajar'
+                              : reporteSeleccionado.estado === 'terminado'
+                                ? 'Terminado'
+                                : 'Pendiente'}
                       </Text>
                     </View>
                   </View>
@@ -1141,8 +1162,8 @@ function EmpleadoPanelContent() {
                   </View>
                 )}
 
-                {/* Campos Fase 2 (cuando está cotizado o finalizado_por_tecnico) */}
-                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
+                {/* Campos Fase 2 (cuando cliente aceptó: aceptado_por_cliente o cotizado, o cuando admin confirmó: finalizado_por_tecnico) */}
+                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
 
@@ -1217,6 +1238,25 @@ function EmpleadoPanelContent() {
                     </View>
                   </>
                 )}
+
+                {/* Mensaje cuando la cotización está pendiente de cliente (solo si NO hay campos Fase 2) */}
+                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente') && !(reporteSeleccionado.revision || reporteSeleccionado.reparacion) && (
+                  <View style={{ backgroundColor: 'rgba(34, 211, 238, 0.15)', borderLeftWidth: 4, borderLeftColor: '#06b6d4', padding: 16, borderRadius: 8, marginTop: 16 }}>
+                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+                      <Ionicons name="checkmark-circle" size={24} color="#06b6d4" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[{ fontSize: 14, fontWeight: '700', color: '#06b6d4', marginBottom: 4 }, { fontFamily }]}>
+                          ✅ Listo para trabajar
+                        </Text>
+                        <Text style={[{ fontSize: 12, color: '#67e8f9', lineHeight: 18 }, { fontFamily }]}>
+                          {reporteSeleccionado.estado === 'cotizado' 
+                            ? 'Esperando que el cliente acepte la cotización para completar la Fase 2.'
+                            : 'El cliente aceptó la cotización. Puedes completar la Fase 2 ahora.'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
               </View>
             </ScrollView>
 
@@ -1273,7 +1313,7 @@ function EmpleadoPanelContent() {
                 </LinearGradient>
               )}
 
-              {reporteSeleccionado.estado === 'finalizado_por_tecnico' && (
+              {(reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
                 <LinearGradient
                   colors={['#10b981', '#06b6d4']}
                   start={{ x: 0, y: 0 }}

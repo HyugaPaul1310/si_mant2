@@ -14,6 +14,7 @@ import {
   obtenerReportesCliente
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
+import { obtenerNombreEstado } from '../lib/estado-mapeo';
 
 type Cliente = {
   nombre?: string;
@@ -52,11 +53,6 @@ function ClientePanelContent() {
   const [showConfirmarFinalizacionModal, setShowConfirmarFinalizacionModal] = useState(false);
   const [reporteAConfirmar, setReporteAConfirmar] = useState<any | null>(null);
   const [confirmandoFinalizacion, setConfirmandoFinalizacion] = useState(false);
-
-  // Estados para encuestas pendientes (reportes con estado 'encuesta_satisfaccion')
-  const [showEncuestasModal, setShowEncuestasModal] = useState(false);
-  const [encuestasPendientes, setEncuestasPendientes] = useState<any[]>([]);
-  const [loadingEncuestas, setLoadingEncuestas] = useState(false);
 
   // Estados para cotizaciones
   const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
@@ -230,63 +226,56 @@ function ClientePanelContent() {
   const cargarReportesFinalizados = useCallback(
     async (email?: string) => {
       if (!email) {
-        console.log('[CLIENTE-PANEL] No hay email para cargar reportes finalizados');
-        return;
+        console.log('[CLIENTE-CARGAR-FINALIZADOS] Sin email');
+        return [];
       }
-      console.log('[CLIENTE-PANEL] Cargando reportes finalizados por técnico para:', email);
+      console.log('[CLIENTE-CARGAR-FINALIZADOS] Iniciando carga para:', email);
       try {
         const resultado = await obtenerReportesCliente(email);
+        console.log('[CLIENTE-CARGAR-FINALIZADOS] Respuesta backend:', { success: resultado.success, totalData: resultado.data?.length });
+        
         if (resultado.success && resultado.data) {
-          // Filtrar solo reportes que estén en estado final (terminado, cerrado por cliente, etc)
-          const finalizados = resultado.data.filter((r: any) =>
-            r.estado === 'finalizado' || 
-            r.estado === 'en_espera' ||
-            r.estado === 'cerrado_por_cliente' ||
-            r.estado === 'listo_para_encuesta' ||
-            r.estado === 'encuesta_satisfaccion' ||
-            r.estado === 'terminado'
-          );
-          console.log('[CLIENTE-PANEL] Reportes finalizados cargados:', finalizados.length);
+          // FILTRO DEFENSIVO: SOLO cargar reportes que el admin CONFIRMÓ
+          // - finalizado_por_tecnico: Admin confirmó en "Confirmar Finalización"
+          // - listo_para_encuesta: Cliente confirmó, va a encuesta
+          // - encuesta_satisfaccion: Cliente completó encuesta
+          // - terminado: Completamente terminado
+          
+          // EXCLUIR TODOS los demás:
+          // - cerrado_por_cliente: ❌ Técnico completó pero admin NO confirmó aún
+          // - cotizado: ❌ Admin aceptó precio pero cliente NO aceptó
+          // - pendiente: ❌ Cliente creó
+          // - en_proceso: ❌ Admin asignó, técnico trabaja
+          
+          const finalizados = resultado.data.filter((r: any) => {
+            return r.estado === 'finalizado_por_tecnico' || 
+                   r.estado === 'listo_para_encuesta' || 
+                   r.estado === 'encuesta_satisfaccion' || 
+                   r.estado === 'terminado';
+          });
+          
+          console.log('[CLIENTE-CARGAR-FINALIZADOS] Finalizados encontrados:', finalizados.length);
+          console.log('[CLIENTE-CARGAR-FINALIZADOS] Detalles:', finalizados.map((r: any) => ({ id: r.id, estado: r.estado, titulo: r.titulo })));
+          
+          // Desglosar por estado para debug
+          const porConfirmar = finalizados.filter(r => r.estado === 'finalizado_por_tecnico' || r.estado === 'listo_para_encuesta');
+          const otros = finalizados.filter(r => r.estado !== 'finalizado_por_tecnico' && r.estado !== 'listo_para_encuesta');
+          console.log('[CLIENTE-CARGAR-FINALIZADOS] Por confirmar:', porConfirmar.length, 'Otros:', otros.length);
+          if (otros.length > 0) {
+            console.log('[CLIENTE-CARGAR-FINALIZADOS] Estados de otros:', otros.map((r: any) => r.estado));
+          }
+          
           setReportesFinalizados(finalizados);
+          return finalizados;
         } else {
-          console.error('[CLIENTE-PANEL] Error cargando reportes finalizados:', resultado.error);
+          console.log('[CLIENTE-CARGAR-FINALIZADOS] Error en respuesta:', resultado);
           setReportesFinalizados([]);
+          return [];
         }
       } catch (error) {
-        console.error('[CLIENTE-PANEL] Exception cargando reportes finalizados:', error);
+        console.error('[CLIENTE-CARGAR-FINALIZADOS] Error:', error);
         setReportesFinalizados([]);
-      }
-    },
-    []
-  );
-
-  // Cargar encuestas pendientes (reportes con estado 'encuesta_satisfaccion')
-  const cargarEncuestasPendientes = useCallback(
-    async (email?: string) => {
-      if (!email) {
-        console.log('[CLIENTE-PANEL] No hay email para cargar encuestas');
-        return;
-      }
-      console.log('[CLIENTE-PANEL] Cargando encuestas pendientes para:', email);
-      setLoadingEncuestas(true);
-      try {
-        const resultado = await obtenerReportesCliente(email);
-        if (resultado.success && resultado.data) {
-          // Filtrar solo reportes con estado 'listo_para_encuesta' (confirmados por cliente, listos para responder encuesta)
-          const encuestas = resultado.data.filter((r: any) =>
-            r.estado === 'listo_para_encuesta'
-          );
-          console.log('[CLIENTE-PANEL] Encuestas pendientes cargadas:', encuestas.length);
-          setEncuestasPendientes(encuestas);
-        } else {
-          console.error('[CLIENTE-PANEL] Error cargando encuestas:', resultado.error);
-          setEncuestasPendientes([]);
-        }
-      } catch (error) {
-        console.error('[CLIENTE-PANEL] Exception cargando encuestas:', error);
-        setEncuestasPendientes([]);
-      } finally {
-        setLoadingEncuestas(false);
+        return [];
       }
     },
     []
@@ -323,14 +312,24 @@ function ClientePanelContent() {
   useFocusEffect(
     useCallback(() => {
       if (usuario?.email) {
-        cargarReportes(usuario.email);
-        cargarCotizaciones(usuario.email);
+        console.log('[CLIENTE-PANEL] Panel enfocado, cargando datos...');
+        cargarReportes(usuario?.email);
+        cargarCotizaciones(usuario?.email);
         // PASO 4: Cargar reportes finalizados por técnico
-        cargarReportesFinalizados(usuario.email);
-        // Cargar encuestas pendientes
-        cargarEncuestasPendientes(usuario.email);
+        cargarReportesFinalizados(usuario?.email);
+        
+        // Recargar cada 3 segundos para mantener datos actualizados (aumenté de 5 a 3)
+        const interval = setInterval(() => {
+          console.log('[CLIENTE-PANEL] Auto-refresh: recargando reportes finalizados');
+          cargarReportesFinalizados(usuario?.email);
+        }, 3000);
+        
+        return () => {
+          console.log('[CLIENTE-PANEL] Panel desenfocado, limpiando interval');
+          clearInterval(interval);
+        };
       }
-    }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados, cargarEncuestasPendientes])
+    }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados])
   );
 
   // Refrescar empresa/apellido si no están en AsyncStorage
@@ -375,6 +374,17 @@ function ClientePanelContent() {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
+
+  // Filtrar reportes que están pendientes de confirmación
+  // SOLO cuando admin confirmó (finalizado_por_tecnico) o cliente confirmó (listo_para_encuesta)
+  const reportesPorConfirmar = useMemo(
+    () => reportesFinalizados.filter(r => 
+      r.estado === 'finalizado_por_tecnico' || 
+      r.estado === 'listo_para_encuesta' ||
+      r.estado === 'encuesta_satisfaccion'
+    ),
+    [reportesFinalizados]
+  );
 
   const finalizados = useMemo(
     () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado'),
@@ -447,22 +457,19 @@ function ClientePanelContent() {
   }, [activosFiltrados]);
 
   const renderReporteCard = (rep: any, isSample = false) => {
-    // Colores dinámicos según el estado
+    // Colores dinámicos según el estado usando el mapeo visual
     const getEstadoStyles = () => {
-      const estado = (rep.estado || '').toLowerCase();
-      if (estado === 'pendiente') {
-        return { bg: '#f59e0b33', text: '#fcd34d', border: '#f59e0b66' };
-      } else if (estado === 'en_proceso' || estado === 'en proceso') {
-        return { bg: '#06b6d433', text: '#67e8f9', border: '#06b6d466' };
-      } else if (estado === 'programado' || estado === 'asignado') {
-        return { bg: '#8b5cf633', text: '#d8b4fe', border: '#8b5cf666' };
-      } else if (estado === 'pausado') {
-        return { bg: '#64748b33', text: '#cbd5e1', border: '#64748b66' };
-      } else if (estado === 'cotizado') {
-        return { bg: '#f59e0b33', text: '#fbbf24', border: '#f59e0b66' };
-      } else {
-        return { bg: '#10b98133', text: '#6ee7b7', border: '#10b98166' };
-      }
+      const nombreVisual = obtenerNombreEstado(rep.estado);
+      
+      const estilos: Record<string, any> = {
+        'En espera': { bg: '#f59e0b33', text: '#fcd34d', border: '#f59e0b66' },
+        'En asignando': { bg: '#06b6d433', text: '#67e8f9', border: '#06b6d466' },
+        'En cotización': { bg: '#ec489933', text: '#f472b6', border: '#ec489966' },
+        'En ejecución': { bg: '#10b98133', text: '#6ee7b7', border: '#10b98166' },
+        'Cerrado': { bg: '#6366f133', text: '#a5b4fc', border: '#6366f166' },
+      };
+      
+      return estilos[nombreVisual] || { bg: '#64748b33', text: '#cbd5e1', border: '#64748b66' };
     };
 
     const estadoStyles = getEstadoStyles();
@@ -493,12 +500,7 @@ function ClientePanelContent() {
               <Text style={[styles.badgeText, { fontFamily, color: estadoText, fontWeight: '600' }]}>
                 {isSample
                   ? 'Completado'
-                  : ((rep.estado || '').toLowerCase() === 'en_proceso'
-                    ? 'En proceso'
-                    : (rep.estado || 'terminado')
-                      .split('_')
-                      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-                      .join(' '))}
+                  : obtenerNombreEstado(rep.estado)}
               </Text>
             </View>
             {!isSample && (
@@ -807,14 +809,14 @@ function ClientePanelContent() {
                   <View>
                     <Text style={[styles.sectionTitle, { fontFamily }]}>Reportes por confirmar</Text>
                     <Text style={[styles.sectionSubtitle, { fontFamily }]}>
-                      {reportesFinalizados.length} reporte{reportesFinalizados.length !== 1 ? 's' : ''} pendiente{reportesFinalizados.length !== 1 ? 's' : ''}
+                      {reportesPorConfirmar.length} reporte{reportesPorConfirmar.length !== 1 ? 's' : ''} pendiente{reportesPorConfirmar.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
                 </View>
               </View>
 
               <View style={{ gap: 12 }}>
-                {reportesFinalizados.map((reporte) => (
+                {reportesPorConfirmar.map((reporte) => (
                   <TouchableOpacity
                     key={reporte.id}
                     onPress={() => {
@@ -1626,19 +1628,37 @@ function ClientePanelContent() {
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#10b981' }]}
                       onPress={async () => {
-                        // Cuando el cliente acepta la cotización, cambiar estado a "finalizado_por_tecnico"
-                        // Esto indica que pasó a Fase 2 y el empleado puede trabajar
-                        console.log('[CLIENTE] Aceptando cotización, cambiando a finalizado_por_tecnico');
-                        const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, { estado: 'finalizado_por_tecnico' });
-                        if (resultado.success) {
-                          showToast('Cotización aceptada. El reporte está listo para trabajar.', 'success');
-                          // Remover de la lista local
+                        try {
+                          // Cuando el cliente acepta, cambiar estado a 'aceptado_por_cliente'
+                          // Esto permite que el empleado trabaje pero que no aparezca en Cotizaciones
+                          console.log('[CLIENTE] Aceptando cotización, cambiando a aceptado_por_cliente');
+                          
+                          const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, {
+                            estado: 'aceptado_por_cliente'
+                          });
+                          
+                          if (!resultado.success) {
+                            showToast('Error al aceptar cotización', 'error');
+                            return;
+                          }
+                          
+                          // Remover de la lista local inmediatamente
                           setCotizaciones((prev) => 
                             prev.filter((c) => c.id !== cotizacionSeleccionada.id)
                           );
+                          
+                          // Cerrar el modal inmediatamente
                           setShowCotizacionDetalleModal(false);
-                        } else {
-                          showToast('Error al aceptar la cotización', 'error');
+                          
+                          showToast('Cotización aceptada. El técnico puede comenzar el trabajo.', 'success');
+                          
+                          // Recargar cotizaciones en background sin bloquear
+                          setTimeout(() => {
+                            cargarCotizaciones(usuario?.email);
+                          }, 500);
+                        } catch (error) {
+                          console.error('[CLIENTE] Error:', error);
+                          showToast('Error al aceptar cotización', 'error');
                         }
                       }}
                     >
@@ -1648,10 +1668,17 @@ function ClientePanelContent() {
                     <TouchableOpacity
                       style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
                       onPress={async () => {
-                        // Simplemente cerrar el modal (no hay rechazo en backend actualmente)
-                        showToast('Cotización no aceptada', 'info');
-                        cargarCotizaciones(usuario?.email);
-                        setShowCotizacionDetalleModal(false);
+                        try {
+                          showToast('Cotización no aceptada', 'info');
+                          setShowCotizacionDetalleModal(false);
+                          
+                          // Recargar en background
+                          setTimeout(() => {
+                            cargarCotizaciones(usuario?.email);
+                          }, 500);
+                        } catch (error) {
+                          console.error('[CLIENTE] Error:', error);
+                        }
                       }}
                     >
                       <Ionicons name="close-circle" size={20} color="white" />

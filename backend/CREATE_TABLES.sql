@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS reportes (
   id INT AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(255) NOT NULL,
   descripcion LONGTEXT,
-  estado ENUM('pendiente', 'en_proceso', 'cotizado', 'finalizado_por_tecnico', 'cerrado_por_cliente', 'encuesta_satisfaccion', 'terminado', 'finalizado', 'en_espera') DEFAULT 'pendiente',
+  estado ENUM('pendiente', 'en_proceso', 'cotizado', 'aceptado_por_cliente', 'finalizado_por_tecnico', 'cerrado_por_cliente', 'listo_para_encuesta', 'encuesta_satisfaccion', 'terminado', 'finalizado', 'en_espera') DEFAULT 'pendiente',
   prioridad ENUM('baja', 'media', 'alta') DEFAULT 'media',
   usuario_id INT,
   empresa_id INT,

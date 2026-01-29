@@ -2991,9 +2991,9 @@ function AdminPanelContent() {
 
                       <TouchableOpacity
                         onPress={async () => {
-                          // Confirmar finalización: cambiar estado a encuesta_satisfaccion
+                          // Confirmar finalización: cambiar estado a finalizado_por_tecnico (cliente debe confirmar después)
                           setUpdatingId(rep.id);
-                          const { success, error } = await actualizarEstadoReporteAsignado(rep.id, 'encuesta_satisfaccion');
+                          const { success, error } = await actualizarEstadoReporteAsignado(rep.id, 'finalizado_por_tecnico');
                           setUpdatingId(null);
                           
                           if (success) {
