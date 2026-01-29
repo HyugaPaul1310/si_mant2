@@ -169,25 +169,29 @@ router.put('/:id/asignar', verifyToken, requireRole(['admin']), async (req, res)
     const { empleado_id } = req.body;
 
     if (!empleado_id) {
-      return res.status(400).json({ success: false, error: 'Falta el ID del empleado' });
+      return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
     }
 
     // Obtener datos del empleado
-    const [empleado] = await pool.query('SELECT nombre, email FROM usuarios WHERE id = ?', [empleado_id]);
+    const [empleado] = await pool.query('SELECT nombre, apellido, email FROM usuarios WHERE id = ?', [empleado_id]);
 
     if (empleado.length === 0) {
       return res.status(404).json({ success: false, error: 'Empleado no encontrado' });
     }
 
-    // Asignar empleado manteniendo estado 'pendiente' para que cotice primero
-    console.log('[BACKEND-ASIGNAR] Asignando reporte', req.params.id, 'a empleado', empleado_id);
+    const { nombre, apellido, email } = empleado[0];
+    const nombreCompleto = `${nombre} ${apellido}`;
+
+    // Asignar empleado y cambiar estado a 'asignado'
+    // Actualizamos tanto el ID (para consultas eficientes) como Email/Nombre (para compatibilidad)
+    console.log('[BACKEND-ASIGNAR] Asignando reporte', req.params.id, 'a empleado', email);
     await pool.query(
-      'UPDATE reportes SET empleado_asignado_id = ? WHERE id = ?',
-      [empleado_id, req.params.id]
+      'UPDATE reportes SET empleado_asignado_id = ?, empleado_asignado_email = ?, empleado_asignado_nombre = ?, estado = "asignado" WHERE id = ?',
+      [empleado_id, email, nombreCompleto, req.params.id]
     );
 
     const [reporte] = await pool.query('SELECT * FROM reportes WHERE id = ?', [req.params.id]);
-    console.log('[BACKEND-ASIGNAR] ✓ Reporte asignado:', reporte[0]);
+    console.log('[BACKEND-ASIGNAR] ✓ Reporte asignado y estado cambiado a "asignado"');
 
     return res.json({ success: true, data: reporte[0] });
   } catch (error) {
@@ -685,93 +689,8 @@ router.get('/todos/admin/list', verifyToken, async (req, res) => {
   }
 });
 
-// PUT actualizar estado de reporte
-router.put('/:id/estado', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado } = req.body;
+// Las rutas duplicadas de /estado y /asignar han sido eliminadas y unificadas arriba.
 
-    if (!id || !estado) {
-      return res.status(400).json({ success: false, error: 'ID y estado son requeridos' });
-    }
-
-    const ESTADOS_PERMITIDOS = ['pendiente', 'en_proceso', 'en espera', 'terminado'];
-    const key = estado.trim().toLowerCase();
-
-    const mapa = {
-      'pendiente': 'pendiente',
-      'en_proceso': 'en_proceso',
-      'en proceso': 'en_proceso',
-      'en_espera': 'en espera',
-      'en espera': 'en espera',
-      'terminado': 'terminado',
-      'finalizado': 'terminado',
-      'resuelto': 'terminado',
-    };
-
-    const normalized = mapa[key];
-    console.log(`[BACKEND-ESTADO] ID: ${id}, entrada: "${estado}" -> normalized: "${normalized}"`);
-
-    if (!normalized || !ESTADOS_PERMITIDOS.includes(normalized)) {
-      console.error(`[BACKEND-ESTADO] Estado no permitido: "${normalized}". Válidos: ${ESTADOS_PERMITIDOS.join(', ')}`);
-      return res.status(400).json({ success: false, error: 'Estado no permitido' });
-    }
-
-    const [result] = await pool.query(
-      'UPDATE reportes SET estado = ? WHERE id = ?',
-      [normalized, id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Reporte no encontrado' });
-    }
-
-    const [reporte] = await pool.query(
-      'SELECT * FROM reportes WHERE id = ?',
-      [id]
-    );
-
-    console.log(`[BACKEND-ESTADO] Reporte actualizado a estado: "${normalized}"`);
-    return res.json({ success: true, data: reporte[0] });
-  } catch (error) {
-    console.error('[BACKEND-ESTADO] Error al actualizar estado:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// PUT asignar reporte a empleado
-router.put('/:id/asignar', verifyToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { empleadoEmail, empleadoNombre } = req.body;
-
-    if (!id || !empleadoEmail || !empleadoNombre) {
-      return res.status(400).json({ success: false, error: 'ID, empleadoEmail y empleadoNombre son requeridos' });
-    }
-
-    console.log(`[BACKEND-ASIGNAR] Asignando reporte ${id} a empleado: ${empleadoEmail}`);
-
-    const [result] = await pool.query(
-      'UPDATE reportes SET empleado_asignado_email = ?, empleado_asignado_nombre = ?, estado = ? WHERE id = ?',
-      [empleadoEmail, empleadoNombre, 'pendiente', id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'Reporte no encontrado' });
-    }
-
-    const [reporte] = await pool.query(
-      'SELECT * FROM reportes WHERE id = ?',
-      [id]
-    );
-
-    console.log(`[BACKEND-ASIGNAR] Reporte asignado a: ${empleadoEmail}`);
-    return res.json({ success: true, data: reporte[0] });
-  } catch (error) {
-    console.error('[BACKEND-ASIGNAR] Error al asignar reporte:', error);
-    return res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // GET reportes asignados a un empleado
 router.get('/asignados/:email', verifyToken, async (req, res) => {

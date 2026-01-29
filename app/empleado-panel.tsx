@@ -1,11 +1,11 @@
 // @ts-nocheck
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarEstadoTareaBackend,
-    obtenerArchivosReporteBackend,
-    obtenerInventarioEmpleadoBackend,
-    obtenerReportesAsignados,
-    obtenerTareasEmpleadoBackend
+  actualizarEstadoReporteAsignado,
+  actualizarEstadoTareaBackend,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesAsignados,
+  obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
@@ -17,16 +17,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -161,6 +161,7 @@ function EmpleadoPanelContent() {
     setReparacion('');
     setRecomendacionesAdicionales('');
     setMaterialesRefacciones('');
+    setDescripcionTrabajo(''); // Limpiar análisis al cerrar
   };
 
   const cargarHerramientas = async () => {
@@ -273,16 +274,26 @@ function EmpleadoPanelContent() {
           };
         });
 
-        // Mostrar reportes pendientes, cotizados, en_proceso, aceptado_por_cliente y finalizado_por_tecnico (excluir cerrados)
-        const reportesActivos = reportesMapeados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'aceptado_por_cliente' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico') || [];
+        // Mostrar reportes asignados, pendientes, cotizados, en_cotizacion, en_proceso, aceptado_por_cliente, finalizado_por_tecnico y en_espera_confirmacion (excluir cerrados)
+        const reportesActivos = reportesMapeados.filter((r: any) =>
+          r.estado === 'asignado' ||
+          r.estado === 'en_cotizacion' ||
+          r.estado === 'pendiente' ||
+          r.estado === 'cotizado' ||
+          r.estado === 'aceptado_por_cliente' ||
+          r.estado === 'en_proceso' ||
+          r.estado === 'finalizado_por_tecnico' ||
+          r.estado === 'en_espera_confirmacion'
+        ) || [];
         setListaReportes(reportesActivos);
         const pendientes = reportesActivos.length;
-        const terminados = reportesMapeados.filter((r: any) => 
-          r.estado === 'finalizado_por_tecnico' || 
-          r.estado === 'cerrado_por_cliente' || 
-          r.estado === 'listo_para_encuesta' || 
-          r.estado === 'encuesta_satisfaccion' || 
-          r.estado === 'terminado'
+        const terminados = reportesMapeados.filter((r: any) =>
+          r.estado === 'finalizado_por_tecnico' ||
+          r.estado === 'cerrado_por_cliente' ||
+          r.estado === 'listo_para_encuesta' ||
+          r.estado === 'encuesta_satisfaccion' ||
+          r.estado === 'terminado' ||
+          r.estado === 'rechazado'
         ).length || 0;
         setReportes(pendientes);
         setReportesTerminados(terminados);
@@ -322,11 +333,11 @@ function EmpleadoPanelContent() {
         });
 
         // Mostrar reportes finalizados: finalizado_por_tecnico, cerrado_por_cliente, listo_para_encuesta, encuesta_satisfaccion, terminado
-        const terminados = reportesMapeados.filter((r: any) => 
-          r.estado === 'finalizado_por_tecnico' || 
-          r.estado === 'cerrado_por_cliente' || 
-          r.estado === 'listo_para_encuesta' || 
-          r.estado === 'encuesta_satisfaccion' || 
+        const terminados = reportesMapeados.filter((r: any) =>
+          r.estado === 'finalizado_por_tecnico' ||
+          r.estado === 'cerrado_por_cliente' ||
+          r.estado === 'listo_para_encuesta' ||
+          r.estado === 'encuesta_satisfaccion' ||
           r.estado === 'terminado'
         ) || [];
         setListaReportesTerminados(terminados);
@@ -350,12 +361,19 @@ function EmpleadoPanelContent() {
         );
         setListaReportes(reportesActualizados);
 
-        const pendientes = reportesActualizados.filter((r: any) => r.estado === 'pendiente' || r.estado === 'cotizado' || r.estado === 'en_proceso' || r.estado === 'finalizado_por_tecnico').length;
-        const terminados = reportesActualizados.filter((r: any) => 
-          r.estado === 'finalizado_por_tecnico' || 
-          r.estado === 'cerrado_por_cliente' || 
-          r.estado === 'listo_para_encuesta' || 
-          r.estado === 'encuesta_satisfaccion' || 
+        const pendientes = reportesActualizados.filter((r: any) =>
+          r.estado === 'pendiente' ||
+          r.estado === 'cotizado' ||
+          r.estado === 'en_proceso' ||
+          r.estado === 'finalizado_por_tecnico' ||
+          r.estado === 'en_cotizacion' ||
+          r.estado === 'en_espera_confirmacion'
+        ).length;
+        const terminados = reportesActualizados.filter((r: any) =>
+          r.estado === 'finalizado_por_tecnico' ||
+          r.estado === 'cerrado_por_cliente' ||
+          r.estado === 'listo_para_encuesta' ||
+          r.estado === 'encuesta_satisfaccion' ||
           r.estado === 'terminado'
         ).length;
         setReportes(pendientes);
@@ -390,15 +408,15 @@ function EmpleadoPanelContent() {
     try {
       console.log('[EMPLEADO-ANALISIS] Enviando análisis:', {
         reporteId: reporteSeleccionado.id,
-        estado: 'en_proceso',
+        estado: 'en_cotizacion',
         analisis: descripcionTrabajo.trim()
       });
 
-      // Actualizar el estado del reporte a 'en_proceso' solo con el análisis (SIN PRECIO)
+      // Actualizar el estado del reporte a 'en_cotizacion' solo con el análisis (SIN PRECIO)
       // El precio lo agregará el admin después en "Cotizaciones Pendientes"
       const respuesta = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
-        'en_proceso',
+        'en_cotizacion',
         descripcionTrabajo.trim()
       );
 
@@ -407,7 +425,7 @@ function EmpleadoPanelContent() {
       if (respuesta.success) {
         // Actualizar lista de reportes localmente
         const reportesActualizados = listaReportes.map((r: any) =>
-          r.id === reporteSeleccionado.id ? { ...r, estado: 'en_proceso', analisis_general: descripcionTrabajo.trim() } : r
+          r.id === reporteSeleccionado.id ? { ...r, estado: 'en_cotizacion', analisis_general: descripcionTrabajo.trim() } : r
         );
         setListaReportes(reportesActualizados);
 
@@ -415,19 +433,24 @@ function EmpleadoPanelContent() {
         if (reporteSeleccionado) {
           setReporteSeleccionado({
             ...reporteSeleccionado,
-            estado: 'en_proceso',
+            estado: 'en_cotizacion',
             analisis_general: descripcionTrabajo.trim()
           });
         }
 
-        const pendientes = reportesActualizados.filter((r: any) => r.estado === 'pendiente').length;
+        const pendientes = reportesActualizados.filter((r: any) =>
+          r.estado === 'pendiente' ||
+          r.estado === 'cotizado' ||
+          r.estado === 'en_cotizacion' ||
+          r.estado === 'en_espera_confirmacion'
+        ).length;
         setReportes(pendientes);
 
         // Limpiar estados
         setShowCotizarModal(false);
         setDescripcionTrabajo('');
 
-        showToast('Análisis enviado exitosamente. El admin realizará la cotización.', 'success');
+        showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
       } else {
         console.error('[EMPLEADO-ANALISIS] Error en respuesta:', respuesta);
         showToast('Error al enviar análisis', 'error');
@@ -976,7 +999,7 @@ function EmpleadoPanelContent() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{reporte.equipo_descripcion}</Text>
                           <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>
-                            {reporte.usuario_nombre} - {reporte.usuario_email || 'Sin email'}
+                            {reporte.usuario_nombre}
                           </Text>
                           <Text style={[styles.cardCompanyInfo, { fontFamily }]} numberOfLines={1}>
                             {reporte.empresa} • {reporte.sucursal}
@@ -1053,9 +1076,6 @@ function EmpleadoPanelContent() {
                   <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Solicitante</Text>
                   <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
                     <Text style={[styles.detailValueText, { fontFamily }]}>{reporteSeleccionado.usuario_nombre}</Text>
-                    {reporteSeleccionado.usuario_email && (
-                      <Text style={[styles.detailSubValue, { fontFamily }]}>{reporteSeleccionado.usuario_email}</Text>
-                    )}
                   </View>
                 </View>
 
@@ -1098,69 +1118,41 @@ function EmpleadoPanelContent() {
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Estado</Text>
                     <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>
-                        {reporteSeleccionado.estado === 'en_proceso'
-                          ? 'En Proceso'
-                          : reporteSeleccionado.estado === 'cotizado'
-                            ? 'En Espera de Respuesta'
-                            : reporteSeleccionado.estado === 'aceptado_por_cliente'
-                              ? 'Aceptado - Listo para Trabajar'
-                              : reporteSeleccionado.estado === 'terminado'
-                                ? 'Terminado'
-                                : 'Pendiente'}
+                        {obtenerNombreEstado(reporteSeleccionado.estado)}
                       </Text>
                     </View>
                   </View>
                 </View>
 
-                {/* Fotos y Videos */}
-                {cargandoArchivos ? (
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Cargando archivos...</Text>
+                {/* Sección de Análisis para el Técnico */}
+                {reporteSeleccionado.estado === 'asignado' ? (
+                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b', fontWeight: 'bold' }]}>
+                      ANÁLISIS GENERAL (Reporte de fallas) *
+                    </Text>
+                    <TextInput
+                      style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily, minHeight: 100 }]}
+                      placeholder="Reporta aquí qué partes del equipo no están funcionando o qué análisis realizaste..."
+                      placeholderTextColor="#94a3b8"
+                      multiline
+                      numberOfLines={4}
+                      value={descripcionTrabajo}
+                      onChangeText={setDescripcionTrabajo}
+                      textAlignVertical="top"
+                    />
                   </View>
-                ) : null}
-
-                {!cargandoArchivos && archivosReporte.length > 0 && (
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
-                    <View style={styles.archivosContainer}>
-                      {archivosReporte.map((archivo, idx) => {
-                        const proxyUrl = getProxyUrl(archivo.cloudflare_url);
-                        return (
-                          <TouchableOpacity
-                            key={idx}
-                            style={styles.archivoItem}
-                            onPress={() => {
-                              setArchivoVisualizando({
-                                url: proxyUrl,
-                                tipo: archivo.tipo_archivo,
-                                nombre: archivo.nombre_original || 'Archivo'
-                              });
-                              setShowArchivoModal(true);
-                            }}
-                          >
-                            {archivo.tipo_archivo === 'foto' ? (
-                              <>
-                                <Image
-                                  source={{ uri: proxyUrl }}
-                                  style={styles.archivoThumb}
-                                  onError={() => console.log('Error loading image:', proxyUrl)}
-                                />
-                                <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
-                              </>
-                            ) : (
-                              <>
-                                <View style={styles.videoThumb}>
-                                  <Ionicons name="play-circle" size={40} color="#06b6d4" />
-                                </View>
-                                <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
+                ) : (reporteSeleccionado.analisis_general && (
+                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b', fontWeight: 'bold' }]}>
+                      ANÁLISIS REALIZADO
+                    </Text>
+                    <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
+                      <Text style={[styles.detailValueText, { fontFamily }]}>
+                        {reporteSeleccionado.analisis_general}
+                      </Text>
                     </View>
                   </View>
-                )}
+                ))}
 
                 {/* Campos Fase 2 (cuando cliente aceptó: aceptado_por_cliente o cotizado, o cuando admin confirmó: finalizado_por_tecnico) */}
                 {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
@@ -1239,6 +1231,56 @@ function EmpleadoPanelContent() {
                   </>
                 )}
 
+                {/* Fotos y Videos - MOVIDO AL FINAL */}
+                {cargandoArchivos ? (
+                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Cargando archivos...</Text>
+                  </View>
+                ) : null}
+
+                {!cargandoArchivos && archivosReporte.length > 0 && (
+                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                    <View style={styles.archivosContainer}>
+                      {archivosReporte.map((archivo, idx) => {
+                        const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            style={styles.archivoItem}
+                            onPress={() => {
+                              setArchivoVisualizando({
+                                url: proxyUrl,
+                                tipo: archivo.tipo_archivo,
+                                nombre: archivo.nombre_original || 'Archivo'
+                              });
+                              setShowArchivoModal(true);
+                            }}
+                          >
+                            {archivo.tipo_archivo === 'foto' ? (
+                              <>
+                                <Image
+                                  source={{ uri: proxyUrl }}
+                                  style={styles.archivoThumb}
+                                  onError={() => console.log('Error loading image:', proxyUrl)}
+                                />
+                                <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
+                              </>
+                            ) : (
+                              <>
+                                <View style={styles.videoThumb}>
+                                  <Ionicons name="play-circle" size={40} color="#06b6d4" />
+                                </View>
+                                <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
                 {/* Mensaje cuando la cotización está pendiente de cliente (solo si NO hay campos Fase 2) */}
                 {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente') && !(reporteSeleccionado.revision || reporteSeleccionado.reparacion) && (
                   <View style={{ backgroundColor: 'rgba(34, 211, 238, 0.15)', borderLeftWidth: 4, borderLeftColor: '#06b6d4', padding: 16, borderRadius: 8, marginTop: 16 }}>
@@ -1249,7 +1291,7 @@ function EmpleadoPanelContent() {
                           ✅ Listo para trabajar
                         </Text>
                         <Text style={[{ fontSize: 12, color: '#67e8f9', lineHeight: 18 }, { fontFamily }]}>
-                          {reporteSeleccionado.estado === 'cotizado' 
+                          {reporteSeleccionado.estado === 'cotizado'
                             ? 'Esperando que el cliente acepte la cotización para completar la Fase 2.'
                             : 'El cliente aceptó la cotización. Puedes completar la Fase 2 ahora.'}
                         </Text>
@@ -1268,6 +1310,26 @@ function EmpleadoPanelContent() {
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
+
+              {reporteSeleccionado.estado === 'asignado' && (
+                <LinearGradient
+                  colors={['#d97706', '#f59e0b']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.detailActionButton}
+                >
+                  <TouchableOpacity
+                    onPress={guardarCotizacion}
+                    disabled={guardandoCotizacion}
+                    activeOpacity={0.85}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                      {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              )}
 
               {reporteSeleccionado.estado === 'pendiente' && (
                 <LinearGradient
@@ -1338,11 +1400,11 @@ function EmpleadoPanelContent() {
 
                       console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
 
-                      // Actualizar el reporte con datos de Fase 2 - cambiar a cerrado_por_cliente
-                      // para indicar que el empleado ya terminó y ahora espera confirmación del admin
+                      // Actualizar el reporte con datos de Fase 2 - mantener el estado actual
+                      // para que el admin deba aceptar para finalizarlo
                       const updateResult = await actualizarEstadoReporteAsignado(
                         reporteSeleccionado.id,
-                        'cerrado_por_cliente',
+                        reporteSeleccionado.estado, // Mantener estado actual (ej: aceptado_por_cliente)
                         undefined, // descripcionTrabajo (ya fue enviado en Fase 1)
                         undefined, // precioCotizacion
                         fase2Data  // Datos completos de Fase 2
@@ -1350,13 +1412,13 @@ function EmpleadoPanelContent() {
 
                       if (!updateResult.success) {
                         console.error('[EMPLEADO-FASE2] Error al guardar:', updateResult.error);
-                        showToast('Error al finalizar el reporte: ' + updateResult.error, 'error');
+                        showToast('Error al guardar el trabajo: ' + updateResult.error, 'error');
                         return;
                       }
 
                       // Éxito: mostrar mensaje y recargar
-                      console.log('[EMPLEADO-FASE2] ✓ Trabajo finalizado exitosamente');
-                      showToast('Trabajo finalizado. El admin debe revisar y confirmar la finalización.', 'success');
+                      console.log('[EMPLEADO-FASE2] ✓ Trabajo guardado exitosamente');
+                      showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
 
                       // Limpiar y cerrar modal
                       cerrarModalReporteDetalle();
@@ -1422,7 +1484,7 @@ function EmpleadoPanelContent() {
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{reporte.equipo_descripcion}</Text>
                           <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>
-                            {reporte.usuario_nombre} - {reporte.usuario_email || 'Sin email'}
+                            {reporte.usuario_nombre}
                           </Text>
                           <Text style={[styles.cardCompanyInfo, { fontFamily }]} numberOfLines={1}>
                             {reporte.empresa} • {reporte.sucursal}

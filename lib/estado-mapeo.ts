@@ -3,38 +3,52 @@
  * Sin modificar el backend, solo cambiamos lo que se muestra en la UI
  */
 
+// Mapeo detallado para cubrir todas las variaciones posibles
 export const estadoMapeo: Record<string, string> = {
-  // Estado inicial - Cliente levanta reporte
-  'pendiente': 'En espera',
-  
-  // Admin asigna técnico
-  'en_proceso': 'En asignando',
-  
-  // Técnico envía análisis
-  'cotizado': 'En cotización',
-  
-  // Cliente acepta la cotización
-  'aceptado_por_cliente': 'En ejecución',
-  
-  // Esperando confirmación del cliente
-  'finalizado_por_tecnico': 'En espera',
-  
-  // Cliente confirma, técnico ejecuta
-  'cerrado_por_cliente': 'En ejecución',
-  'listo_para_encuesta': 'En ejecución',
-  
-  // Terminado/Cerrado
+  // Estados iniciales
+  'pendiente': 'En Espera',
+  'en espera': 'En Espera',
+  'en_espera': 'En Espera',
+
+  // Flujo de asignación
+  'asignado': 'Asignado',
+
+  // Flujo de cotización
+  'en_cotizacion': 'En Cotización',
+  'en cotizacion': 'En Cotización',
+  'cotizado': 'En Cotización',
+  'en_espera_confirmacion': 'Pendiente de Confirmación',
+  'en espera confirmacion': 'Pendiente de Confirmación',
+
+  // Flujo de ejecución
+  'en_proceso': 'En Proceso',
+  'en proceso': 'En Proceso',
+  'en_ejecucion': 'En Ejecución',
+  'en ejecucion': 'En Ejecución',
+  'aceptado_por_cliente': 'En Ejecución',
+
+  // Flujo de finalización
+  'terminado': 'Por Revisar',
+  'finalizado': 'Por Revisar',
+  'por_revisar': 'Por Revisar',
+  'finalizado_por_tecnico': 'Por Revisar',
+  'listo_para_encuesta': 'Por Revisar',
+
+  // Estados finales
+  'cerrado': 'Cerrado',
+  'resuelto': 'Cerrado',
+  'cerrado_por_cliente': 'Cerrado',
   'encuesta_satisfaccion': 'Cerrado',
-  'terminado': 'Cerrado',
-  'finalizado': 'Cerrado',
-  'en_espera': 'En espera'
+  'rechazado': 'Rechazado',
 };
 
 /**
  * Obtiene el nombre visual del estado
  */
-export const obtenerNombreEstado = (estado: string): string => {
-  return estadoMapeo[estado?.toLowerCase()] || estado || 'Desconocido';
+export const obtenerNombreEstado = (estado: any): string => {
+  if (!estado) return 'En Espera'; // Por defecto
+  const stringEstado = String(estado).toLowerCase().trim();
+  return estadoMapeo[stringEstado] || stringEstado.replace(/_/g, ' ') || 'Desconocido';
 };
 
 /**
@@ -42,15 +56,18 @@ export const obtenerNombreEstado = (estado: string): string => {
  */
 export const obtenerColorEstado = (estado: string): string => {
   const nombreVisual = obtenerNombreEstado(estado);
-  
+
   const colores: Record<string, string> = {
-    'En espera': '#f59e0b',      // Amarillo/Naranja
-    'En asignando': '#06b6d4',   // Cyan
-    'En cotización': '#ec4899',  // Rosa
-    'En ejecución': '#10b981',   // Verde
+    'En Espera': '#f59e0b',      // Amarillo/Naranja
+    'Asignado': '#06b6d4',       // Cyan
+    'En Cotización': '#ec4899',  // Rosa
+    'Pendiente de Confirmación': '#f59e0b', // Naranja (como En Espera pero con otro ícono)
+    'En Ejecución': '#10b981',   // Verde
+    'Por Revisar': '#8b5cf6',    // Violeta
     'Cerrado': '#6366f1',        // Indigo
+    'Rechazado': '#ef4444',      // Rojo
   };
-  
+
   return colores[nombreVisual] || '#94a3b8'; // Gris por defecto
 };
 
@@ -59,14 +76,17 @@ export const obtenerColorEstado = (estado: string): string => {
  */
 export const obtenerIconoEstado = (estado: string): string => {
   const nombreVisual = obtenerNombreEstado(estado);
-  
+
   const iconos: Record<string, string> = {
-    'En espera': 'hourglass-outline',
-    'En asignando': 'person-add-outline',
-    'En cotización': 'calculator-outline',
-    'En ejecución': 'hammer-outline',
+    'En Espera': 'hourglass-outline',
+    'Asignado': 'person-add-outline',
+    'En Cotización': 'calculator-outline',
+    'Pendiente de Confirmación': 'time-outline',
+    'En Ejecución': 'hammer-outline',
+    'Por Revisar': 'checkbox-outline',
     'Cerrado': 'checkmark-done-outline',
+    'Rechazado': 'close-circle-outline',
   };
-  
+
   return iconos[nombreVisual] || 'help-outline';
 };

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Cambiar según entorno
 const isDev = true; // Cambiar a false para producción
 const API_BASE = isDev
-  ? 'http://192.168.1.148:3001/api'
+  ? 'http://192.168.0.182:3001/api'
   : 'https://tu-vps.com/api'; // Reemplazar con tu dominio
 
 export interface ApiResponse<T = any> {

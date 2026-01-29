@@ -146,7 +146,8 @@ export async function actualizarEstadoReporteAsignado(
     finalizado: 'finalizado_por_tecnico',
     'finalizado_por_tecnico': 'finalizado_por_tecnico',
     cotizado: 'cotizado',
-    'cerrado_por_cliente': 'cerrado_por_cliente',
+    'cerrado': 'cerrado',
+    'cerrado_por_cliente': 'cerrado',
   };
 
   const normalized = mapa[key] || key;
@@ -210,19 +211,19 @@ export async function actualizarEstadoFinalizadoPorTecnico(reporteId: string) {
  */
 export async function actualizarEstadoCerradoPorCliente(reporteId: string) {
   try {
-    console.log(`[REPORTES] Marcando reporte ${reporteId} como "cerrado_por_cliente"`);
+    console.log(`[REPORTES] Marcando reporte ${reporteId} como "cerrado"`);
 
     const data = await apiCall(`/reportes/${reporteId}/estado`, 'PUT', {
-      estado: 'cerrado_por_cliente',
+      estado: 'cerrado',
       cerrado_por_cliente_at: new Date().toISOString(),
     });
 
     if (!data.success) throw new Error(data.error);
 
-    console.log(`[REPORTES] ✓ Reporte cerrado por cliente:`, data.data);
+    console.log(`[REPORTES] ✓ Reporte cerrado:`, data.data);
     return { success: true, data: data.data };
   } catch (error: any) {
-    console.error('Error al marcar como cerrado por cliente:', error);
+    console.error('Error al marcar como cerrado:', error);
     return { success: false, error: error.message };
   }
 }

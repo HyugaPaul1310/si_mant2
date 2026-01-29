@@ -34,5 +34,5 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor Express corriendo en puerto ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Accesible en: http://192.168.1.148:${PORT}`);
+  console.log(`Accesible en: http://192.168.0.182:${PORT}`);
 });
