@@ -54,6 +54,9 @@ function ClientePanelContent() {
   const [reporteAConfirmar, setReporteAConfirmar] = useState<any | null>(null);
   const [confirmandoFinalizacion, setConfirmandoFinalizacion] = useState(false);
 
+  // Estado para TODOS los reportes (sin filtrar) - usado para contadores
+  const [todosLosReportes, setTodosLosReportes] = useState<any[]>([]);
+
   // Estados para cotizaciones
   const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
   const [cotizaciones, setCotizaciones] = useState<any[]>([]);
@@ -154,7 +157,9 @@ function ClientePanelContent() {
           r.estado !== 'cerrado'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
+        console.log('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
         setReportes(reportesActivos);
+        setTodosLosReportes(reportesMapeados); // Guardar TODOS los reportes para los contadores
       }
       setLoadingReportes(false);
       return data || [];
@@ -208,7 +213,27 @@ function ClientePanelContent() {
             estado: r.estado,
             precio: r.precio_cotizacion
           })));
-          setCotizaciones(cotizacionesFiltradas);
+
+          // Mapear las cotizaciones igual que los reportes para extraer equipo_descripcion
+          const cotizacionesMapeadas = cotizacionesFiltradas.map((r: any) => {
+            const partes = (r.titulo || '').split(' - ');
+            const equipo_descripcion = partes[0] ? partes[0].trim() : 'Equipo / servicio';
+            const sucursal = partes.length > 1 ? partes[1].trim() : '';
+
+            let comentario = '';
+            const desc = r.descripcion || '';
+            const comentarioMatch = desc.match(/Comentario:\s*([^\n]+)/i);
+            if (comentarioMatch) comentario = comentarioMatch[1].trim();
+
+            return {
+              ...r,
+              equipo_descripcion,
+              sucursal,
+              comentario: comentario || 'Sin comentarios'
+            };
+          });
+
+          setCotizaciones(cotizacionesMapeadas);
         } else {
           console.error('[CLIENTE-PANEL] Error en respuesta:', resultado.error);
           setCotizaciones([]);
@@ -397,38 +422,57 @@ function ClientePanelContent() {
   const ahora = useMemo(() => new Date(), []);
   const reportesDelMes = useMemo(
     () =>
-      reportes.filter((r) => {
+      todosLosReportes.filter((r) => {
         if (!r.created_at) return false;
         const d = new Date(r.created_at);
         return d.getMonth() === ahora.getMonth() && d.getFullYear() === ahora.getFullYear();
       }).length,
-    [reportes, ahora]
+    [todosLosReportes, ahora]
   );
-  // Pendientes (ahora se cuentan como En Espera visualmente)
-  const pendientesCount = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'pendiente').length,
-    [reportes]
-  );
-  // En proceso
-  const enProcesoCount = useMemo(
-    () => reportes.filter((r) => ((r.estado || '').toLowerCase().replace('_', ' ')) === 'en proceso').length,
-    [reportes]
-  );
-  // En espera (incluye los internos 'pendiente' y 'en_espera')
+  // Contadores individuales por estado
+  // Debug: ver qué estados están llegando
+  useEffect(() => {
+    if (todosLosReportes.length > 0) {
+      const estados = todosLosReportes.map(r => r.estado);
+      console.log('[CLIENTE-PANEL] Estados de reportes:', estados);
+      console.log('[CLIENTE-PANEL] Estados únicos:', [...new Set(estados)]);
+    }
+  }, [todosLosReportes]);
+
   const enEsperaCount = useMemo(
-    () => reportes.filter((r) => {
-      const st = (r.estado || '').toLowerCase();
-      return st === 'en_espera' || st === 'pendiente';
+    () => todosLosReportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
+      return st === 'en_espera';
     }).length,
-    [reportes]
+    [todosLosReportes]
   );
-  // Terminados
-  const resueltosCount = useMemo(
-    () => reportes.filter((r) => {
-      const st = (r.estado || '').toLowerCase();
-      return st === 'terminado' || st === 'cerrado';
+  const asignadoCount = useMemo(
+    () => todosLosReportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
+      return st === 'asignado';
     }).length,
-    [reportes]
+    [todosLosReportes]
+  );
+  const enCotizacionCount = useMemo(
+    () => todosLosReportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
+      return st === 'en_cotizacion' || st === 'cotizado';
+    }).length,
+    [todosLosReportes]
+  );
+  const enEjecucionCount = useMemo(
+    () => todosLosReportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
+      return st === 'en_proceso' || st === 'en_ejecucion';
+    }).length,
+    [todosLosReportes]
+  );
+  const cerradoCount = useMemo(
+    () => todosLosReportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
+      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'finalizado' || st === 'listo_para_encuesta' || st === 'encuesta_satisfaccion';
+    }).length,
+    [todosLosReportes]
   );
   const activos = useMemo(() =>
     reportes.filter((r) => {
@@ -619,34 +663,42 @@ function ClientePanelContent() {
       accent: 'text-cyan-400',
     },
     {
-      label: 'Pendientes',
-      value: pendientesCount,
-      iconBg: 'bg-amber-500',
-      iconName: 'time-outline',
-      cardBg: 'bg-slate-800/40',
-      accent: 'text-amber-400',
-    },
-    {
-      label: 'En proceso',
-      value: enProcesoCount,
-      iconBg: 'bg-blue-500',
-      iconName: 'hourglass-outline',
-      cardBg: 'bg-slate-800/40',
-      accent: 'text-blue-400',
-    },
-    {
-      label: 'En espera',
+      label: 'En Espera',
       value: enEsperaCount,
       iconBg: 'bg-yellow-500',
-      iconName: 'pause-circle-outline',
+      iconName: 'time-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-yellow-400',
     },
     {
-      label: 'Resueltos',
-      value: resueltosCount,
+      label: 'Asignado',
+      value: asignadoCount,
+      iconBg: 'bg-cyan-500',
+      iconName: 'person-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-cyan-400',
+    },
+    {
+      label: 'En Cotización',
+      value: enCotizacionCount,
+      iconBg: 'bg-amber-500',
+      iconName: 'calculator-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-amber-400',
+    },
+    {
+      label: 'En Ejecución',
+      value: enEjecucionCount,
+      iconBg: 'bg-blue-500',
+      iconName: 'construct-outline',
+      cardBg: 'bg-slate-800/40',
+      accent: 'text-blue-400',
+    },
+    {
+      label: 'Cerrado',
+      value: cerradoCount,
       iconBg: 'bg-emerald-500',
-      iconName: 'checkmark-done-outline',
+      iconName: 'checkmark-circle-outline',
       cardBg: 'bg-slate-800/40',
       accent: 'text-emerald-400',
     },
@@ -990,9 +1042,11 @@ function ClientePanelContent() {
                       <Text style={[styles.filtroLabel, { fontFamily }]}>Estado</Text>
                       <View style={styles.filtroChips}>
                         {[
-                          { value: 'pendiente', label: 'En Espera', icon: 'time-outline', color: '#f59e0b' },
-                          { value: 'en proceso', label: 'En Proceso', icon: 'hourglass-outline', color: '#3b82f6' },
-                          { value: 'en espera', label: 'En Espera', icon: 'pause-circle-outline', color: '#eab308' },
+                          { value: 'en_espera', label: 'En Espera', icon: 'time-outline', color: '#eab308' },
+                          { value: 'asignado', label: 'Asignado', icon: 'person-outline', color: '#06b6d4' },
+                          { value: 'en_cotizacion', label: 'En Cotización', icon: 'calculator-outline', color: '#f59e0b' },
+                          { value: 'en_ejecucion', label: 'En Ejecución', icon: 'construct-outline', color: '#3b82f6' },
+                          { value: 'cerrado', label: 'Cerrado', icon: 'checkmark-circle-outline', color: '#10b981' },
                         ].map((estado) => {
                           const isActive = filtroEstado.includes(estado.value);
                           return (
@@ -1075,7 +1129,7 @@ function ClientePanelContent() {
                       </View>
                     ) : (
                       <>
-                        {['pendiente', 'en proceso', 'en espera']
+                        {['en_espera', 'asignado', 'en_cotizacion', 'en_ejecucion', 'cerrado']
                           .filter((e) => activosPorEstado[e])
                           .map((estado) => (
                             <View key={estado}>
@@ -1083,7 +1137,7 @@ function ClientePanelContent() {
                             </View>
                           ))}
                         {Object.keys(activosPorEstado)
-                          .filter((e) => !['pendiente', 'en proceso', 'en espera'].includes(e))
+                          .filter((e) => !['en_espera', 'asignado', 'en_cotizacion', 'en_ejecucion', 'cerrado'].includes(e))
                           .map((estado) => (
                             <View key={estado}>
                               {activosPorEstado[estado].map((rep) => renderReporteCard(rep))}
@@ -1125,24 +1179,46 @@ function ClientePanelContent() {
                 </Text>
               </View>
 
-              {selectedReporte.equipo_modelo && (
-                <View style={styles.detailField}>
-                  <Text style={[styles.detailLabel, { fontFamily }]}>Modelo</Text>
-                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.equipo_modelo}</Text>
-                </View>
-              )}
+              {(() => {
+                // Usar descripcion que contiene el formato completo: "Modelo: xxx\nSerie: yyy\nSucursal: zzz\nComentario: aaa"
+                const fullDescripcion = selectedReporte.descripcion || '';
 
-              {selectedReporte.equipo_serie && (
-                <View style={styles.detailField}>
-                  <Text style={[styles.detailLabel, { fontFamily }]}>Serie</Text>
-                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.equipo_serie}</Text>
-                </View>
-              )}
+                // Regex para extraer campos (consistente con admin.tsx)
+                const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
+                const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
+                const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
+                const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
 
-              <View style={styles.detailField}>
-                <Text style={[styles.detailLabel, { fontFamily }]}>Comentario / Problema</Text>
-                <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.comentario || 'Sin comentarios'}</Text>
-              </View>
+                const modeloValue = modeloMatch ? modeloMatch[1].trim() : (selectedReporte.equipo_modelo || 'N/A');
+                const serieValue = serieMatch ? serieMatch[1].trim() : (selectedReporte.equipo_serie || 'N/A');
+                const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (selectedReporte.sucursal || 'N/A');
+                const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (selectedReporte.comentario || 'Sin comentarios');
+
+                return (
+                  <>
+                    <View style={styles.detailRow}>
+                      <View style={[styles.detailField, { flex: 1 }]}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>Modelo</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{modeloValue}</Text>
+                      </View>
+                      <View style={[styles.detailField, { flex: 1 }]}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>Serie</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{serieValue}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>Sucursal</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{sucursalValue}</Text>
+                    </View>
+
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>Comentario / Problema</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>{comentarioFinal}</Text>
+                    </View>
+                  </>
+                );
+              })()}
 
               <View style={styles.detailRow}>
                 <View style={[styles.detailField, { flex: 1 }]}>
@@ -1157,13 +1233,6 @@ function ClientePanelContent() {
                   </Text>
                 </View>
               </View>
-
-              {selectedReporte.sucursal && (
-                <View style={styles.detailField}>
-                  <Text style={[styles.detailLabel, { fontFamily }]}>Sucursal</Text>
-                  <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.sucursal}</Text>
-                </View>
-              )}
 
               {selectedReporte.empresa && (
                 <View style={styles.detailField}>
@@ -1228,37 +1297,60 @@ function ClientePanelContent() {
 
 
 
-              {/* Fase 2: Detalles del Trabajo Realizado (Técnico) */}
-              {(selectedReporte.revision || selectedReporte.reparacion || selectedReporte.recomendaciones) && (
-                <>
-                  <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
-                    <View style={styles.separatorLine} />
-                    <Text style={[styles.separatorText, { fontFamily }]}>Trabajo Realizado</Text>
-                    <View style={styles.separatorLine} />
-                  </View>
-
-                  {selectedReporte.revision ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Revisión</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.revision}</Text>
+              {/* Fase 2: Detalles del Trabajo Realizado (Técnico) - Solo si está finalizado/cerrado */}
+              {(
+                selectedReporte.estado === 'cerrado' ||
+                selectedReporte.estado === 'resuelto' ||
+                selectedReporte.estado === 'cerrado_por_cliente' ||
+                selectedReporte.estado === 'encuesta_satisfaccion' ||
+                selectedReporte.estado === 'terminado' ||
+                selectedReporte.estado === 'finalizado' ||
+                selectedReporte.estado === 'finalizado_por_tecnico' ||
+                selectedReporte.estado === 'listo_para_encuesta'
+              ) && (selectedReporte.revision || selectedReporte.reparacion || selectedReporte.recomendaciones || selectedReporte.materiales_refacciones || selectedReporte.recomendaciones_adicionales) && (
+                  <>
+                    <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
+                      <View style={styles.separatorLine} />
+                      <Text style={[styles.separatorText, { fontFamily }]}>Trabajo Realizado</Text>
+                      <View style={styles.separatorLine} />
                     </View>
-                  ) : null}
 
-                  {selectedReporte.reparacion ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Reparación</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.reparacion}</Text>
-                    </View>
-                  ) : null}
+                    {selectedReporte.revision ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Revisión</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.revision}</Text>
+                      </View>
+                    ) : null}
 
-                  {selectedReporte.recomendaciones ? (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Recomendaciones</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.recomendaciones}</Text>
-                    </View>
-                  ) : null}
-                </>
-              )}
+                    {selectedReporte.reparacion ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Reparación</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.reparacion}</Text>
+                      </View>
+                    ) : null}
+
+                    {selectedReporte.materiales_refacciones ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Materiales y Refacciones</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.materiales_refacciones}</Text>
+                      </View>
+                    ) : null}
+
+                    {selectedReporte.recomendaciones ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Recomendaciones</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.recomendaciones}</Text>
+                      </View>
+                    ) : null}
+
+                    {selectedReporte.recomendaciones_adicionales ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily, color: '#67e8f9' }]}>Recomendaciones Adicionales</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{selectedReporte.recomendaciones_adicionales}</Text>
+                      </View>
+                    ) : null}
+                  </>
+                )}
               {loadingArchivos ? (
                 <View style={styles.detailField}>
                   <Text style={[styles.detailLabel, { fontFamily }]}>Cargando archivos...</Text>
@@ -1479,12 +1571,12 @@ function ClientePanelContent() {
                             <View style={[styles.reportHeaderText, { gap: 6 }]}>
                               {/* 1. Nombre del Equipo */}
                               <Text style={[styles.reportTitle, { fontFamily, fontSize: 16 }]} numberOfLines={1}>
-                                {cot.reportes?.equipo_descripcion || 'Equipo'}
+                                {cot.equipo_descripcion || cot.reportes?.equipo_descripcion || 'Equipo'}
                               </Text>
 
-                              {/* 2. Modelo y Serie (extraídos del comentario) */}
+                              {/* 2. Modelo y Serie (extraídos de descripcion) */}
                               {(() => {
-                                const desc = cot.comentario || '';
+                                const desc = cot.descripcion || '';
                                 const modeloMatch = desc.match(/Modelo:\s*([^\n]+)/i);
                                 const serieMatch = desc.match(/Serie:\s*([^\n]+)/i);
                                 const modelo = modeloMatch ? modeloMatch[1].trim() : '';
@@ -1579,9 +1671,9 @@ function ClientePanelContent() {
                       <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.equipo_descripcion || 'N/A'}</Text>
                     </View>
 
-                    {/* Parsear comentario para obtener Modelo, Serie, Sucursal, Prioridad */}
+                    {/* Parsear descripcion para obtener Modelo, Serie, Sucursal, Prioridad */}
                     {(() => {
-                      const desc = cotizacionSeleccionada.comentario || '';
+                      const desc = cotizacionSeleccionada.descripcion || '';
                       const modeloMatch = desc.match(/Modelo:\s*([^\n]+)/i);
                       const serieMatch = desc.match(/Serie:\s*([^\n]+)/i);
                       const sucursalMatch = desc.match(/Sucursal:\s*([^\n]+)/i);
@@ -1593,7 +1685,7 @@ function ClientePanelContent() {
                       const serie = serieMatch ? serieMatch[1].trim() : null;
                       const sucursal = sucursalMatch ? sucursalMatch[1].trim() : null;
                       const prioridad = prioridadMatch ? prioridadMatch[1].trim() : null;
-                      const comentarioReal = comentarioRealMatch ? comentarioRealMatch[1].trim() : desc;
+                      const comentarioReal = comentarioRealMatch ? comentarioRealMatch[1].trim() : (cotizacionSeleccionada.comentario || desc);
 
                       return (
                         <>
