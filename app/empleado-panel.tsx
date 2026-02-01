@@ -165,6 +165,29 @@ function EmpleadoPanelContent() {
     setDescripcionTrabajo(''); // Limpiar análisis al cerrar
   };
 
+  // Cargar datos de Fase 2 cuando se selecciona un reporte
+  useEffect(() => {
+    if (reporteSeleccionado) {
+      console.log('[EMPLEADO-FASE2-LOAD] Reporte seleccionado:', reporteSeleccionado);
+      console.log('[EMPLEADO-FASE2-LOAD] Campos Fase 2:', {
+        revision: reporteSeleccionado.revision,
+        recomendaciones: reporteSeleccionado.recomendaciones,
+        reparacion: reporteSeleccionado.reparacion,
+        recomendaciones_adicionales: reporteSeleccionado.recomendaciones_adicionales,
+        materiales_refacciones: reporteSeleccionado.materiales_refacciones
+      });
+
+      // Cargar datos de Fase 2 si existen
+      setRevision(reporteSeleccionado.revision || '');
+      setRecomendaciones(reporteSeleccionado.recomendaciones || '');
+      setReparacion(reporteSeleccionado.reparacion || '');
+      setRecomendacionesAdicionales(reporteSeleccionado.recomendaciones_adicionales || '');
+      setMaterialesRefacciones(reporteSeleccionado.materiales_refacciones || '');
+      setDescripcionTrabajo(reporteSeleccionado.analisis_general || '');
+    }
+  }, [reporteSeleccionado]);
+
+
   const cargarHerramientas = async () => {
     if (!usuario?.id) return;
     setLoadingHerramientas(true);
@@ -1099,6 +1122,40 @@ function EmpleadoPanelContent() {
               </TouchableOpacity>
             </View>
 
+            {/* Aviso prominente cuando el cliente aceptó la cotización */}
+            {reporteSeleccionado.estado === 'aceptado_por_cliente' && !(reporteSeleccionado.revision || reporteSeleccionado.reparacion) && (
+              <View style={{
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                borderBottomWidth: 3,
+                borderBottomColor: '#10b981',
+                padding: 16,
+                marginHorizontal: isMobile ? 16 : 24,
+                marginTop: 12,
+                borderRadius: 12
+              }}>
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                  <View style={{
+                    backgroundColor: '#10b981',
+                    borderRadius: 20,
+                    width: 40,
+                    height: 40,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Ionicons name="checkmark-circle" size={24} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[{ fontSize: 15, fontWeight: '800', color: '#10b981', marginBottom: 4 }, { fontFamily }]}>
+                      ✅ Cliente aceptó la cotización
+                    </Text>
+                    <Text style={[{ fontSize: 13, color: '#6ee7b7', lineHeight: 18 }, { fontFamily }]}>
+                      Ahora puedes completar los campos de Revisión, Recomendaciones y Reparación abajo.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
             <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
               <View style={[styles.detailContent, isMobile && styles.detailContentMobile]}>
                 <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
@@ -1195,6 +1252,30 @@ function EmpleadoPanelContent() {
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
 
+                    {/* Mensaje cuando el trabajo ya fue enviado */}
+                    {reporteSeleccionado.estado === 'finalizado_por_tecnico' && (
+                      <View style={{
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                        borderLeftWidth: 4,
+                        borderLeftColor: '#3b82f6',
+                        padding: 14,
+                        borderRadius: 8,
+                        marginBottom: 16
+                      }}>
+                        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                          <Ionicons name="checkmark-done-circle" size={22} color="#60a5fa" />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ fontSize: 13, fontWeight: '700', color: '#60a5fa', marginBottom: 2 }, { fontFamily }]}>
+                              Trabajo enviado
+                            </Text>
+                            <Text style={[{ fontSize: 12, color: '#93c5fd', lineHeight: 16 }, { fontFamily }]}>
+                              El trabajo fue finalizado y está esperando confirmación del administrador.
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )}
+
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Revisión</Text>
                       <TextInput
@@ -1205,7 +1286,7 @@ function EmpleadoPanelContent() {
                         numberOfLines={3}
                         value={revision}
                         onChangeText={setRevision}
-                        editable={!guardandoFase2}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
 
@@ -1219,7 +1300,7 @@ function EmpleadoPanelContent() {
                         numberOfLines={3}
                         value={recomendaciones}
                         onChangeText={setRecomendaciones}
-                        editable={!guardandoFase2}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
 
@@ -1233,7 +1314,7 @@ function EmpleadoPanelContent() {
                         numberOfLines={3}
                         value={reparacion}
                         onChangeText={setReparacion}
-                        editable={!guardandoFase2}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
 
@@ -1245,9 +1326,9 @@ function EmpleadoPanelContent() {
                         placeholderTextColor="#cbd5e1"
                         multiline
                         numberOfLines={2}
-                        value={recomendacionesAdicionales}
+                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !recomendacionesAdicionales ? 'N/A' : recomendacionesAdicionales}
                         onChangeText={setRecomendacionesAdicionales}
-                        editable={!guardandoFase2}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
 
@@ -1259,9 +1340,9 @@ function EmpleadoPanelContent() {
                         placeholderTextColor="#cbd5e1"
                         multiline
                         numberOfLines={2}
-                        value={materialesRefacciones}
+                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !materialesRefacciones ? 'N/A' : materialesRefacciones}
                         onChangeText={setMaterialesRefacciones}
-                        editable={!guardandoFase2}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
                   </>
@@ -1317,26 +1398,9 @@ function EmpleadoPanelContent() {
                   </View>
                 )}
 
-                {/* Mensaje cuando la cotización está pendiente de cliente (solo si NO hay campos Fase 2) */}
-                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente') && !(reporteSeleccionado.revision || reporteSeleccionado.reparacion) && (
-                  <View style={{ backgroundColor: 'rgba(34, 211, 238, 0.15)', borderLeftWidth: 4, borderLeftColor: '#06b6d4', padding: 16, borderRadius: 8, marginTop: 16 }}>
-                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-                      <Ionicons name="checkmark-circle" size={24} color="#06b6d4" />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[{ fontSize: 14, fontWeight: '700', color: '#06b6d4', marginBottom: 4 }, { fontFamily }]}>
-                          ✅ Listo para trabajar
-                        </Text>
-                        <Text style={[{ fontSize: 12, color: '#67e8f9', lineHeight: 18 }, { fontFamily }]}>
-                          {reporteSeleccionado.estado === 'cotizado'
-                            ? 'Esperando que el cliente acepte la cotización para completar la Fase 2.'
-                            : 'El cliente aceptó la cotización. Puedes completar la Fase 2 ahora.'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
               </View>
             </ScrollView>
+
 
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
@@ -1411,7 +1475,7 @@ function EmpleadoPanelContent() {
                 </LinearGradient>
               )}
 
-              {(reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
+              {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
                 <LinearGradient
                   colors={['#10b981', '#06b6d4']}
                   start={{ x: 0, y: 0 }}
@@ -1436,11 +1500,10 @@ function EmpleadoPanelContent() {
 
                       console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
 
-                      // Actualizar el reporte con datos de Fase 2 - mantener el estado actual
-                      // para que el admin deba aceptar para finalizarlo
+                      // Actualizar el reporte con datos de Fase 2 y cambiar estado a finalizado_por_tecnico
                       const updateResult = await actualizarEstadoReporteAsignado(
                         reporteSeleccionado.id,
-                        reporteSeleccionado.estado, // Mantener estado actual (ej: aceptado_por_cliente)
+                        'finalizado_por_tecnico', // Cambiar estado a finalizado por técnico
                         undefined, // descripcionTrabajo (ya fue enviado en Fase 1)
                         undefined, // precioCotizacion
                         fase2Data  // Datos completos de Fase 2
