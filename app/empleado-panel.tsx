@@ -90,6 +90,7 @@ function EmpleadoPanelContent() {
   const [evidenciaReporte, setEvidenciaReporte] = useState<any[]>([]);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const [showConfirmarAnalisis, setShowConfirmarAnalisis] = useState(false);
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -396,15 +397,19 @@ function EmpleadoPanelContent() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const guardarCotizacion = async () => {
-    if (!reporteSeleccionado?.id) return;
-
+  const confirmarEnvioAnalisis = () => {
     if (!descripcionTrabajo.trim()) {
       showToast('Por favor ingresa un análisis general', 'warning');
       return;
     }
+    setShowConfirmarAnalisis(true);
+  };
+
+  const guardarCotizacion = async () => {
+    if (!reporteSeleccionado?.id) return;
 
     setGuardandoCotizacion(true);
+    setShowConfirmarAnalisis(false); // Cerrar modal de confirmación
     try {
       console.log('[EMPLEADO-ANALISIS] Enviando análisis:', {
         reporteId: reporteSeleccionado.id,
@@ -446,9 +451,10 @@ function EmpleadoPanelContent() {
         ).length;
         setReportes(pendientes);
 
-        // Limpiar estados
+        // Limpiar estados y cerrar modal
         setShowCotizarModal(false);
         setDescripcionTrabajo('');
+        cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
 
         showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
       } else {
@@ -698,6 +704,36 @@ function EmpleadoPanelContent() {
           </View>
         </View>
       )}
+
+      {showConfirmarAnalisis && (
+        <View style={styles.overlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(217, 119, 6, 0.2)', borderColor: 'rgba(217, 119, 6, 0.5)' }]}>
+                <Ionicons name="send-outline" size={22} color="#d97706" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar envío</Text>
+            </View>
+            <Text style={[styles.modalBodyText, { fontFamily }]}>¿Estás seguro de enviar este análisis? El reporte pasará a estado "En Cotización".</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalSecondary} onPress={() => setShowConfirmarAnalisis(false)}>
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#d97706', '#f59e0b']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity onPress={guardarCotizacion} activeOpacity={0.85} disabled={guardandoCotizacion}>
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>{guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}</Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
+
 
       {showTareasModal && (
         <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
@@ -1319,7 +1355,7 @@ function EmpleadoPanelContent() {
                   style={styles.detailActionButton}
                 >
                   <TouchableOpacity
-                    onPress={guardarCotizacion}
+                    onPress={confirmarEnvioAnalisis}
                     disabled={guardandoCotizacion}
                     activeOpacity={0.85}
                     style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}

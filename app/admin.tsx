@@ -150,6 +150,8 @@ function AdminPanelContent() {
   const [cotizando, setCotizando] = useState(false);
   const [cotizarError, setCotizarError] = useState<string | null>(null);
   const [showConfirmarCotizacionModal, setShowConfirmarCotizacionModal] = useState(false);
+  const [archivoCotizacion, setArchivoCotizacion] = useState<any | null>(null);
+  const [subiendoArchivo, setSubiendoArchivo] = useState(false);
 
   // Estados para encuestas
   const [encuestas, setEncuestas] = useState<any[]>([]);
@@ -706,6 +708,30 @@ function AdminPanelContent() {
     setUpdatingId(null);
   };
 
+  const seleccionarArchivoPDF = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      if (result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        console.log('[PDF-COTIZACION] Archivo seleccionado:', file);
+        setArchivoCotizacion(file);
+        setCotizarError(null);
+      }
+    } catch (error) {
+      console.error('Error al seleccionar archivo PDF:', error);
+      setCotizarError('Error al seleccionar el archivo');
+    }
+  };
+
+
   const handleCotizarReporte = async () => {
     if (!reporteACotizar) return;
     if (!precioCotizacion.trim()) {
@@ -746,6 +772,7 @@ function AdminPanelContent() {
         setShowCotizarReporteModal(false);
         setReporteACotizar(null);
         setPrecioCotizacion('');
+        setArchivoCotizacion(null);
       }
     } catch (error) {
       console.error('Error al cotizar reporte:', error);
@@ -2662,6 +2689,71 @@ function AdminPanelContent() {
                   </View>
                 </View>
 
+                {/* Campo para subir PDF de cotización */}
+                <View style={{ gap: 10, marginTop: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="document-attach-outline" size={14} color="#8b5cf6" />
+                    <Text style={[{ fontSize: 12, color: '#8b5cf6', fontWeight: '800', letterSpacing: 0.5 }, { fontFamily }]}>ARCHIVO PDF (OPCIONAL)</Text>
+                  </View>
+
+                  {!archivoCotizacion ? (
+                    <TouchableOpacity
+                      onPress={seleccionarArchivoPDF}
+                      style={{
+                        backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                        borderWidth: 1.5,
+                        borderColor: '#8b5cf6',
+                        borderRadius: 12,
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 10,
+                        borderStyle: 'dashed'
+                      }}
+                    >
+                      <Ionicons name="cloud-upload-outline" size={24} color="#a78bfa" />
+                      <Text style={[{ fontSize: 14, color: '#a78bfa', fontWeight: '600' }, { fontFamily }]}>
+                        Seleccionar archivo PDF
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={{
+                      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                      borderWidth: 1,
+                      borderColor: '#8b5cf6',
+                      borderRadius: 12,
+                      padding: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <Ionicons name="document-text" size={24} color="#a78bfa" />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[{ fontSize: 13, color: '#e2e8f0', fontWeight: '600' }, { fontFamily }]} numberOfLines={1}>
+                            {archivoCotizacion.name}
+                          </Text>
+                          <Text style={[{ fontSize: 11, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                            {(archivoCotizacion.size / 1024).toFixed(1)} KB
+                          </Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setArchivoCotizacion(null)}
+                        style={{
+                          backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                          borderRadius: 8,
+                          padding: 8
+                        }}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
                 {/* Campo de Precio */}
                 <View style={{ gap: 10, marginTop: 4 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -2696,6 +2788,7 @@ function AdminPanelContent() {
                   setReporteACotizar(null);
                   setPrecioCotizacion('');
                   setCotizarError(null);
+                  setArchivoCotizacion(null);
                 }}
                 style={{ flex: 1, backgroundColor: '#1e293b', borderRadius: 12, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' }}
               >
