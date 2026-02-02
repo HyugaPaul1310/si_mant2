@@ -220,6 +220,10 @@ function AdminPanelContent() {
   const [errorUsuario, setErrorUsuario] = useState<string | null>(null);
   const [exitoUsuario, setExitoUsuario] = useState(false);
 
+  // Estados para confirmación de cierre de reporte
+  const [showConfirmarCierreModal, setShowConfirmarCierreModal] = useState(false);
+  const [reporteACerrar, setReporteACerrar] = useState<any | null>(null);
+
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
     setNewUserPhone(digits);
@@ -645,12 +649,18 @@ function AdminPanelContent() {
   ];
 
   const reportesPendientes = useMemo(
-    () => reportes.filter((r) => r.estado !== 'terminado' && r.estado !== 'rechazado'),
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st !== 'terminado' && st !== 'rechazado' && st !== 'cerrado';
+    }),
     [reportes]
   );
 
   const reportesTerminados = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'terminado' || (r.estado || '').toLowerCase() === 'rechazado'),
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st === 'terminado' || st === 'rechazado' || st === 'cerrado';
+    }),
     [reportes]
   );
 
@@ -832,7 +842,7 @@ function AdminPanelContent() {
   const mainOptions = useMemo(() => [
     {
       title: 'Historial de Reportes',
-      description: 'Ver reportes',
+      description: 'Ver seguimiento de reportes',
       gradient: ['#2563eb', '#3b82f6'] as const,
       iconName: 'document-text-outline',
     },
@@ -3096,27 +3106,13 @@ function AdminPanelContent() {
                         </View>
 
                         <TouchableOpacity
-                          onPress={async () => {
-                            setUpdatingId(rep.id);
-                            const { success, error } = await actualizarEstadoReporteAsignado(rep.id, 'cerrado');
-                            setUpdatingId(null);
-
-                            if (success) {
-                              setLoadingFinalizadosPorEmpleado(true);
-                              const { success: success2, data } = await obtenerReportesBackend();
-                              if (success2 && data) {
-                                const finalizadosPorEmpleado = data.filter((r: any) =>
-                                  r.estado === 'finalizado_por_tecnico' ||
-                                  (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
-                                );
-                                setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
-                              }
-                              setLoadingFinalizadosPorEmpleado(false);
-                            }
+                          onPress={() => {
+                            setReporteACerrar(rep);
+                            setShowConfirmarCierreModal(true);
                           }}
                           style={{
                             marginTop: 12,
-                            backgroundColor: updatingId === rep.id ? '#4b5563' : '#15803d', // Verde mate (green-700)
+                            backgroundColor: '#15803d', // Verde mate (green-700)
                             borderRadius: 6,
                             paddingVertical: 10,
                             paddingHorizontal: 12,
@@ -3125,20 +3121,10 @@ function AdminPanelContent() {
                             flexDirection: 'row',
                             gap: 8,
                           }}
-                          disabled={updatingId === rep.id}
                           activeOpacity={0.9}
                         >
-                          {updatingId === rep.id ? (
-                            <>
-                              <ActivityIndicator size="small" color="#fff" />
-                              <Text style={[{ color: '#e5e7eb', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Confirmando...</Text>
-                            </>
-                          ) : (
-                            <>
-                              <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                              <Text style={[{ color: '#fff', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Confirmar Finalización</Text>
-                            </>
-                          )}
+                          <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                          <Text style={[{ color: '#fff', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Confirmar Finalización</Text>
                         </TouchableOpacity>
                       </View>
                     );
@@ -3150,6 +3136,91 @@ function AdminPanelContent() {
         </View>
       )
       }
+
+      {/* Modal de Confirmación de Cierre */}
+      {showConfirmarCierreModal && reporteACerrar && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.5)' }]}>
+                <Ionicons name="warning-outline" size={22} color="#ef4444" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Cierre de Reporte</Text>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+              <Text style={[{ fontSize: 14, color: '#cbd5e1', lineHeight: 22 }, { fontFamily }]}>
+                ¿Estás seguro de que deseas cerrar este reporte?
+              </Text>
+              <Text style={[{ fontSize: 13, color: '#94a3b8', marginTop: 8, lineHeight: 20 }, { fontFamily }]}>
+                El reporte se marcará como <Text style={{ color: '#10b981', fontWeight: '600' }}>cerrado</Text> y se moverá a la sección de reportes terminados.
+              </Text>
+
+              {/* Información del reporte */}
+              <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(30, 41, 59, 0.6)', borderRadius: 8, borderWidth: 1, borderColor: '#334155' }}>
+                <Text style={[{ fontSize: 12, color: '#67e8f9', fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>REPORTE:</Text>
+                <Text style={[{ fontSize: 13, color: '#e2e8f0' }, { fontFamily }]}>
+                  {reporteACerrar.usuario_nombre} {reporteACerrar.usuario_apellido}
+                </Text>
+                <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                  {reporteACerrar.empresa || 'Sin empresa'}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => {
+                  setShowConfirmarCierreModal(false);
+                  setReporteACerrar(null);
+                }}
+                disabled={updatingId !== null}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={updatingId === reporteACerrar.id ? ['#4b5563', '#4b5563'] : ['#15803d', '#16a34a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={async () => {
+                    setUpdatingId(reporteACerrar.id);
+                    const { success, error } = await actualizarEstadoReporteAsignado(reporteACerrar.id, 'cerrado');
+                    setUpdatingId(null);
+
+                    if (success) {
+                      // Cerrar modal de confirmación
+                      setShowConfirmarCierreModal(false);
+                      setReporteACerrar(null);
+
+                      // Recargar lista de reportes finalizados
+                      setLoadingFinalizadosPorEmpleado(true);
+                      const { success: success2, data } = await obtenerReportesBackend();
+                      if (success2 && data) {
+                        const finalizadosPorEmpleado = data.filter((r: any) =>
+                          r.estado === 'finalizado_por_tecnico' ||
+                          (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
+                        );
+                        setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
+                      }
+                      setLoadingFinalizadosPorEmpleado(false);
+                    }
+                  }}
+                  disabled={updatingId === reporteACerrar.id}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {updatingId === reporteACerrar.id ? 'Cerrando...' : 'Sí, Cerrar Reporte'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* PASO 6: Modal de Reportes Cerrados por Cliente */}
       {
@@ -4483,9 +4554,24 @@ function AdminPanelContent() {
                     <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todas las tareas creadas</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} activeOpacity={0.7}>
-                  <Ionicons name="close" size={24} color="#94a3b8" />
-                </TouchableOpacity>
+                <View style={styles.largeModalActions}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setLoadingTareas(true);
+                      setErrorTareas('');
+                      const { success, data, error } = await obtenerTareasBackend();
+                      if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
+                      else setTareas(data || []);
+                      setLoadingTareas(false);
+                    }}
+                    style={styles.refreshButton}
+                  >
+                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={styles.closeButton} activeOpacity={0.7}>
+                    <Ionicons name="close" size={20} color="#cbd5e1" />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {loadingTareas ? (
