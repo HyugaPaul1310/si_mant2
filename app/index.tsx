@@ -167,7 +167,6 @@ export default function Login() {
                     alignItems: 'center',
                     backgroundColor: '#334155',
                     borderRadius: 8,
-                    paddingHorizontal: 14,
                     borderWidth: passwordFocused ? 2 : 1,
                     borderColor: passwordFocused
                       ? '#22d3ee'
@@ -186,6 +185,7 @@ export default function Login() {
                     style={{
                       flex: 1,
                       color: '#ffffff',
+                      paddingHorizontal: 14,
                       paddingVertical: isSmallScreen ? 10 : 12,
                       fontSize: isSmallScreen ? 15 : 16,
                       fontFamily: 'System',
@@ -194,7 +194,8 @@ export default function Login() {
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
                     disabled={loading}
-                    style={{ marginLeft: 8, padding: 4 }}
+                    style={{ paddingHorizontal: 14, paddingVertical: 12 }}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={showPassword ? 'eye-off' : 'eye'}

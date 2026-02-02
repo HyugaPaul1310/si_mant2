@@ -146,14 +146,6 @@ function ClientePanelContent() {
         });
 
         const reportesActivos = reportesMapeados.filter((r: any) =>
-          r.estado !== 'finalizado' &&
-          r.estado !== 'en_espera' &&
-          r.estado !== 'en_espera_confirmacion' &&
-          r.estado !== 'cerrado_por_cliente' &&
-          r.estado !== 'listo_para_encuesta' &&
-          r.estado !== 'encuesta_satisfaccion' &&
-          r.estado !== 'terminado' &&
-          r.estado !== 'rechazado' &&
           r.estado !== 'cerrado'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
@@ -273,12 +265,10 @@ function ClientePanelContent() {
           // - pendiente: ❌ Cliente creó
           // - en_proceso: ❌ Admin asignó, técnico trabaja
 
+          // FILTRO: SOLO mostrar reportes cerrados definitivamente
+          // - cerrado: Admin confirmó el cierre definitivo del reporte
+
           const finalizados = resultado.data.filter((r: any) =>
-            r.estado === 'finalizado_por_tecnico' ||
-            r.estado === 'listo_para_encuesta' ||
-            r.estado === 'encuesta_satisfaccion' ||
-            r.estado === 'terminado' ||
-            r.estado === 'rechazado' ||
             r.estado === 'cerrado'
           );
 
@@ -918,7 +908,7 @@ function ClientePanelContent() {
 
             <View style={styles.infoBox}>
               <Text style={[styles.infoText, { fontFamily }]}>
-                Aquí ves todos tus reportes completados. Los en progreso están en Seguimiento.
+                Aquí ves todos tus reportes completados. Los reportes en progreso están en Seguimiento.
               </Text>
             </View>
 
@@ -939,23 +929,9 @@ function ClientePanelContent() {
                 <View style={styles.reportCard}>
                   <Text style={[styles.emptyText, { fontFamily }]}>Aún no tienes reportes completados.</Text>
                 </View>
-                <View style={styles.demoBox}>
-                  <Text style={[styles.demoTitle, { fontFamily }]}>Ejemplo generado (SQL)</Text>
-                  {renderReporteCard(
-                    {
-                      id: 'sample-finalizado',
-                      equipo_descripcion: 'Caso demo finalizado',
-                      comentario: 'Ejemplo de reporte marcado como finalizado.',
-                      created_at: new Date().toISOString(),
-                      prioridad: 'media',
-                      estado: 'terminado',
-                      sucursal: 'Sucursal Demo',
-                    },
-                    true
-                  )}
-                </View>
               </View>
             ) : null}
+
 
             {!loadingReportes && !errorReportes && reportesFinalizados.length > 0 ? (
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
@@ -1481,22 +1457,66 @@ function ClientePanelContent() {
       {
         showSuccessOverlay && (
           <View style={styles.successOverlay}>
-            <View style={styles.successContainer}>
-              <View style={styles.successHeader}>
-                <View style={styles.successIcon}>
-                  <Ionicons name="sparkles" size={22} color="#22d3ee" />
+            <View style={[styles.successContainer, {
+              backgroundColor: '#d1d1d1ff',
+              borderRadius: 16,
+              padding: 32,
+              maxWidth: 400,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+            }]}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <View style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: '#10b981',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}>
+                  <Ionicons name="checkmark" size={36} color="#ffffff" />
                 </View>
-                <Text style={[styles.successTitle, { fontFamily }]}>Reporte enviado</Text>
+                <Text style={[{
+                  fontSize: 24,
+                  fontWeight: '700',
+                  color: '#1f2937',
+                  marginBottom: 8,
+                  textAlign: 'center',
+                }, { fontFamily }]}>
+                  ¡Reporte enviado!
+                </Text>
               </View>
-              <Text style={[styles.successMessage, { fontFamily }]}>
+              <Text style={[{
+                fontSize: 15,
+                color: '#6b7280',
+                textAlign: 'center',
+                lineHeight: 22,
+                marginBottom: 24,
+              }, { fontFamily }]}>
                 Tu reporte se generó exitosamente. El equipo lo revisará en breve.
               </Text>
               <TouchableOpacity
                 onPress={() => setShowSuccessOverlay(false)}
-                style={styles.successButton}
-                activeOpacity={0.9}
+                style={{
+                  backgroundColor: '#10b981',
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                }}
+                activeOpacity={0.8}
               >
-                <Text style={[styles.successButtonText, { fontFamily }]}>Entendido</Text>
+                <Text style={[{
+                  color: '#ffffff',
+                  fontSize: 16,
+                  fontWeight: '600',
+                }, { fontFamily }]}>
+                  Entendido
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

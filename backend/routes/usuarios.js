@@ -10,17 +10,19 @@ router.get('/', verifyToken, requireRole(['admin']), async (req, res) => {
   try {
     const [usuarios] = await pool.query(
       `SELECT 
-        id, 
-        nombre, 
-        apellido, 
-        email, 
-        rol, 
-        estado, 
-        empresa_id,
-        telefono, 
-        created_at 
-      FROM usuarios 
-      ORDER BY created_at DESC`
+        u.id, 
+        u.nombre, 
+        u.apellido, 
+        u.email, 
+        u.rol, 
+        u.estado, 
+        u.empresa_id,
+        e.nombre as empresa,
+        u.telefono, 
+        u.created_at 
+      FROM usuarios u
+      LEFT JOIN empresas e ON u.empresa_id = e.id
+      ORDER BY u.created_at DESC`
     );
 
     return res.json({ success: true, data: usuarios });
@@ -96,7 +98,7 @@ router.get('/:id', verifyToken, async (req, res) => {
 // Actualizar usuario
 router.put('/:id', verifyToken, async (req, res) => {
   try {
-    const { nombre, apellido, email, telefono, ciudad, empresa } = req.body;
+    const { nombre, apellido, email, telefono, ciudad, empresa, empresa_id } = req.body;
 
     // Verificar que es su propio perfil o es admin
     if (req.user.id !== parseInt(req.params.id) && req.user.rol !== 'admin') {
@@ -109,7 +111,8 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (email) updateData.email = email.toLowerCase().trim();
     if (telefono) updateData.telefono = telefono;
     if (ciudad) updateData.ciudad = ciudad;
-    if (empresa) updateData.empresa = empresa;
+    if (empresa !== undefined) updateData.empresa = empresa;
+    if (empresa_id !== undefined) updateData.empresa_id = empresa_id;
 
     const query = 'UPDATE usuarios SET ' + Object.keys(updateData).map(k => `${k} = ?`).join(', ') + ' WHERE id = ?';
     const values = [...Object.values(updateData), req.params.id];

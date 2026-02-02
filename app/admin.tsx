@@ -211,6 +211,7 @@ function AdminPanelContent() {
   const [editTelefono, setEditTelefono] = useState('');
   const [editCiudad, setEditCiudad] = useState('');
   const [editEmpresa, setEditEmpresa] = useState('');
+  const [editEmpresaId, setEditEmpresaId] = useState<number | null>(null);
   const [editRol, setEditRol] = useState<'cliente' | 'empleado' | 'admin'>('cliente');
   const [editEstado, setEditEstado] = useState<'activo' | 'inactivo'>('activo');
   const [showRolPicker, setShowRolPicker] = useState(false);
@@ -219,6 +220,8 @@ function AdminPanelContent() {
   const [actualizandoUsuario, setActualizandoUsuario] = useState(false);
   const [errorUsuario, setErrorUsuario] = useState<string | null>(null);
   const [exitoUsuario, setExitoUsuario] = useState(false);
+  const [showConfirmarGuardarUsuario, setShowConfirmarGuardarUsuario] = useState(false);
+
 
   // Estados para confirmación de cierre de reporte
   const [showConfirmarCierreModal, setShowConfirmarCierreModal] = useState(false);
@@ -933,6 +936,7 @@ function AdminPanelContent() {
     setEditTelefono(user.telefono || '');
     setEditCiudad(user.ciudad || '');
     setEditEmpresa(user.empresa || '');
+    setEditEmpresaId(user.empresa_id || null);
     setEditRol(user.rol || 'cliente');
     setEditEstado(user.estado || 'activo');
     setErrorUsuario(null);
@@ -955,6 +959,7 @@ function AdminPanelContent() {
       telefono: editTelefono,
       ciudad: editCiudad,
       empresa: editEmpresa,
+      empresa_id: editEmpresaId,
     });
 
     if (!resultadoDatos.success) {
@@ -4336,6 +4341,7 @@ function AdminPanelContent() {
                               ]}
                               onPress={() => {
                                 setEditEmpresa('');
+                                setEditEmpresaId(null);
                                 setShowEmpresaPickerEdit(false);
                               }}
                             >
@@ -4351,6 +4357,7 @@ function AdminPanelContent() {
                                 ]}
                                 onPress={() => {
                                   setEditEmpresa(emp.nombre);
+                                  setEditEmpresaId(emp.id);
                                   setShowEmpresaPickerEdit(false);
                                 }}
                               >
@@ -4523,7 +4530,7 @@ function AdminPanelContent() {
                   style={[styles.saveButtonPro, isMobile && styles.saveButtonProMobile]}
                 >
                   <TouchableOpacity
-                    onPress={handleActualizarUsuario}
+                    onPress={() => setShowConfirmarGuardarUsuario(true)}
                     disabled={actualizandoUsuario}
                     activeOpacity={0.85}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -4538,6 +4545,95 @@ function AdminPanelContent() {
           </View>
         )
       }
+
+      {/* Modal de Confirmación para Guardar Cambios de Usuario */}
+      {showConfirmarGuardarUsuario && usuarioEditando && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(37, 99, 235, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                <Ionicons name="save-outline" size={22} color="#3b82f6" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Cambios</Text>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+              <Text style={[{ fontSize: 14, color: '#cbd5e1', lineHeight: 22 }, { fontFamily }]}>
+                ¿Estás seguro de que deseas guardar los cambios realizados a este usuario?
+              </Text>
+
+              {/* Información del usuario */}
+              <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(30, 41, 59, 0.6)', borderRadius: 8, borderWidth: 1, borderColor: '#334155' }}>
+                <Text style={[{ fontSize: 12, color: '#67e8f9', fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>USUARIO:</Text>
+                <Text style={[{ fontSize: 13, color: '#e2e8f0' }, { fontFamily }]}>
+                  {editNombre} {editApellido}
+                </Text>
+                <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                  {editEmail}
+                </Text>
+                {editEmpresa && (
+                  <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                    Empresa: {editEmpresa}
+                  </Text>
+                )}
+                <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                  Rol: {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
+                </Text>
+              </View>
+
+              {(editRol !== usuarioEditando.rol || editEstado !== usuarioEditando.estado) && (
+                <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(251, 146, 60, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 146, 60, 0.3)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="warning-outline" size={16} color="#fb923c" />
+                    <Text style={[{ fontSize: 12, color: '#fb923c', fontWeight: '600' }, { fontFamily }]}>
+                      CAMBIOS IMPORTANTES
+                    </Text>
+                  </View>
+                  {editRol !== usuarioEditando.rol && (
+                    <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
+                      • El rol cambiará de "{usuarioEditando.rol}" a "{editRol}"
+                    </Text>
+                  )}
+                  {editEstado !== usuarioEditando.estado && (
+                    <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
+                      • El estado cambiará de "{usuarioEditando.estado}" a "{editEstado}"
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => setShowConfirmarGuardarUsuario(false)}
+                disabled={actualizandoUsuario}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={actualizandoUsuario ? ['#4b5563', '#4b5563'] : ['#2563eb', '#3b82f6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={async () => {
+                    await handleActualizarUsuario();
+                    setShowConfirmarGuardarUsuario(false);
+                  }}
+                  disabled={actualizandoUsuario}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {actualizandoUsuario ? 'Guardando...' : 'Sí, Guardar Cambios'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Modal Historial de Tareas */}
       {
