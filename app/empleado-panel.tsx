@@ -1,11 +1,11 @@
 // @ts-nocheck
 import {
-  actualizarEstadoReporteAsignado,
-  actualizarEstadoTareaBackend,
-  obtenerArchivosReporteBackend,
-  obtenerInventarioEmpleadoBackend,
-  obtenerReportesAsignados,
-  obtenerTareasEmpleadoBackend
+    actualizarEstadoReporteAsignado,
+    actualizarEstadoTareaBackend,
+    obtenerArchivosReporteBackend,
+    obtenerInventarioEmpleadoBackend,
+    obtenerReportesAsignados,
+    obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
@@ -17,21 +17,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Empleado = {
-  id?: number;
   nombre?: string;
   email?: string;
   rol?: string;
@@ -1073,7 +1072,8 @@ function EmpleadoPanelContent() {
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(reporte.id);
                             if (resultado.success) {
-                              setArchivosReporte(resultado.data || []);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
                             }
                             setCargandoArchivos(false);
                           }}
@@ -1598,7 +1598,8 @@ function EmpleadoPanelContent() {
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(reporte.id);
                             if (resultado.success) {
-                              setArchivosReporte(resultado.data || []);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
                             }
                             setCargandoArchivos(false);
                           }}
@@ -1802,7 +1803,7 @@ function EmpleadoPanelContent() {
               <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
             </TouchableOpacity>
 
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', paddingBottom: 60 }}>
               {archivoVisualizando.tipo === 'foto' ? (
                 <Image
                   source={{ uri: archivoVisualizando.url }}
@@ -2789,10 +2790,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     padding: 20,
-    maxWidth: '90%',
-    maxHeight: '90%',
-    width: '85%',
-    height: '85%',
+    maxWidth: '95%',
+    maxHeight: '95%',
+    width: '90%',
+    height: '90%',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -2801,8 +2802,8 @@ const styles = StyleSheet.create({
   archivoModalContentMobile: {
     borderRadius: 12,
     padding: 16,
-    width: '90%',
-    height: '80%',
+    width: '95%',
+    height: '90%',
   },
   archivoModalClose: {
     position: 'absolute',

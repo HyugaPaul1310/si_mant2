@@ -9,7 +9,7 @@ import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, Touchabl
 interface ReporteArchivo {
   id: string;
   cloudflare_url: string;
-  tipo_archivo: 'foto' | 'video';
+  tipo_archivo: 'foto' | 'video' | 'pdf';
   nombre_original?: string;
 }
 

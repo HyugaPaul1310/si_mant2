@@ -5,26 +5,26 @@ import { Platform } from 'react-native';
 // - Web (Expo web): localhost:3001
 // - Emulador Android: 10.0.2.2:3001 (acceso a máquina host)
 // - Emulador iOS: localhost:3001
-// - Teléfono real: IP de la máquina (ej: 192.168.0.182:3001)
+// - Teléfono real: IP de la máquina (ej: 192.168.1.254:3001)
 
-let API_URL = 'http://192.168.0.182:3001/api';
+let API_URL = 'http://localhost:3001/api';
 
 try {
   // Usar IP local para acceso desde teléfono en la misma red
   if (Platform.OS === 'android') {
-    API_URL = 'http://192.168.0.182:3001/api';
+    API_URL = 'http://192.168.1.254:3001/api';
   }
   // Si es iOS, usar IP local
   else if (Platform.OS === 'ios') {
-    API_URL = 'http://192.168.0.182:3001/api';
+    API_URL = 'http://192.168.1.254:3001/api';
   }
-  // Si es web, usar IP local
+  // Si es web, usar localhost
   else {
-    API_URL = 'http://192.168.0.182:3001/api';
+    API_URL = 'http://localhost:3001/api';
   }
 } catch (e) {
   // Fallback
-  API_URL = 'http://192.168.0.182:3001/api';
+  API_URL = 'http://localhost:3001/api';
 }
 
 interface ApiResponse<T = any> {

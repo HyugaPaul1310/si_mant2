@@ -91,10 +91,10 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       });
     }
 
-    if (!['foto', 'video'].includes(fileType)) {
+    if (!['foto', 'video', 'pdf'].includes(fileType)) {
       return res.status(400).json({
         success: false,
-        error: 'fileType debe ser "foto" o "video"',
+        error: 'fileType debe ser "foto", "video" o "pdf"',
       });
     }
 
@@ -102,7 +102,8 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
 
     // Generar clave única
     const timestamp = Date.now();
-    const key = `reportes/${fileType}s/${timestamp}-${fileName}`;
+    const folder = fileType === 'pdf' ? 'pdfs' : `${fileType}s`;
+    const key = `reportes/${folder}/${timestamp}-${fileName}`;
 
     console.log(`🔐 Subiendo a S3: ${BUCKET_NAME}/${key}`);
 
@@ -111,7 +112,7 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
-      ContentType: fileType === 'video' ? 'video/mp4' : 'image/jpeg',
+      ContentType: fileType === 'pdf' ? 'application/pdf' : fileType === 'video' ? 'video/mp4' : 'image/jpeg',
     });
 
     const response = await s3Client.send(command);
@@ -220,6 +221,7 @@ app.get('/api/get-file', async (req, res) => {
       '.gif': 'image/gif',
       '.mp4': 'video/mp4',
       '.webm': 'video/webm',
+      '.pdf': 'application/pdf',
     };
 
     const ext = key.toLowerCase().match(/\.[^.]+$/)?.[0] || '.jpg';

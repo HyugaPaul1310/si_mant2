@@ -19,7 +19,7 @@ interface ReporteData {
 interface ReporteArchivo {
   id?: string;
   reporte_id: string;
-  tipo_archivo: 'foto' | 'video';
+  tipo_archivo: 'foto' | 'video' | 'pdf';
   cloudflare_url: string;
   cloudflare_key: string;
   nombre_original?: string;

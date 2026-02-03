@@ -9,9 +9,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  actualizarReporteBackend,
-  obtenerArchivosReporteBackend,
-  obtenerReportesCliente
+    actualizarReporteBackend,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -90,29 +90,13 @@ function ClientePanelContent() {
             return;
           }
           setUsuario(parsedUser);
-        } else {
-          router.replace('/');
         }
       } catch (error) {
-        router.replace('/');
+        console.error('[CLIENTE-PANEL] Error al obtener usuario:', error);
       }
     };
     obtenerUsuario();
-  }, [router]);
-
-  // Mostrar alerta de reporte enviado si viene de crear reporte
-  useFocusEffect(
-    useCallback(() => {
-      const mostrarExito = async () => {
-        const flag = await AsyncStorage.getItem('reporte_exito');
-        if (flag === '1') {
-          await AsyncStorage.removeItem('reporte_exito');
-          setShowSuccessOverlay(true);
-        }
-      };
-      mostrarExito();
-    }, [])
-  );
+  }, []);
 
   const cargarReportes = useCallback(
     async (email?: string) => {
@@ -310,7 +294,8 @@ function ClientePanelContent() {
       try {
         const { success, data, error } = await obtenerArchivosReporteBackend(reporteId);
         if (success && data) {
-          setArchivosReporte(data || []);
+          const soloMedia = (data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+          setArchivosReporte(soloMedia);
           console.log('[CLIENTE-PANEL] Archivos cargados:', data?.length);
         } else {
           console.error('[CLIENTE-PANEL] Error cargando archivos:', error);
@@ -1912,7 +1897,7 @@ function ClientePanelContent() {
                 <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
               </TouchableOpacity>
 
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', paddingBottom: 60 }}>
                 {archivoVisualizando.tipo === 'foto' ? (
                   <Image
                     source={{ uri: archivoVisualizando.url }}
@@ -3010,10 +2995,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
     padding: 20,
-    maxWidth: '90%',
-    maxHeight: '90%',
-    width: '85%',
-    height: '85%',
+    maxWidth: '95%',
+    maxHeight: '95%',
+    width: '90%',
+    height: '90%',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -3022,8 +3007,8 @@ const styles = StyleSheet.create({
   archivoModalContentMobile: {
     borderRadius: 12,
     padding: 16,
-    width: '90%',
-    height: '80%',
+    width: '95%',
+    height: '90%',
   },
   archivoModalClose: {
     position: 'absolute',

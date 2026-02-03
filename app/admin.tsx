@@ -1,31 +1,32 @@
 // @ts-nocheck
 import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
-import { getProxyUrl } from '@/lib/cloudflare';
+import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
-import { obtenerTodasLasEncuestas } from '@/lib/reportes';
+import { guardarArchivoReporte, obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Video } from 'expo-av';
+import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Animated,
+    Easing,
+    Image,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -768,6 +769,32 @@ function AdminPanelContent() {
     setCotizarError(null);
     setShowConfirmarCotizacionModal(false); // Cerrar el modal de confirmación antes de la llamada
     try {
+      if (archivoCotizacion?.uri) {
+        const nombreArchivo = archivoCotizacion.name || `cotizacion-${reporteACotizar.id}-${Date.now()}.pdf`;
+        const uploadResult = await uploadToCloudflare(archivoCotizacion.uri, nombreArchivo, 'pdf');
+
+        if (!uploadResult.success || !uploadResult.url || !uploadResult.key) {
+          setCotizarError(uploadResult.error || 'No se pudo subir el PDF');
+          setCotizando(false);
+          return;
+        }
+
+        const guardado = await guardarArchivoReporte({
+          reporte_id: String(reporteACotizar.id),
+          tipo_archivo: 'pdf',
+          cloudflare_url: uploadResult.url,
+          cloudflare_key: uploadResult.key,
+          nombre_original: nombreArchivo,
+          tamaño: archivoCotizacion.size,
+        });
+
+        if (!guardado.success) {
+          setCotizarError(guardado.error || 'No se pudo guardar el PDF');
+          setCotizando(false);
+          return;
+        }
+      }
+
       const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
         estado: 'en_espera_confirmacion',
         precioCotizacion: precioNumerico,
@@ -2338,7 +2365,8 @@ function AdminPanelContent() {
                                 console.log(`[ADMIN] Resultado obtenerArchivosReporte:`, resultado);
                                 if (resultado.success) {
                                   console.log(`[ADMIN] Archivos encontrados: ${resultado.data?.length || 0}`);
-                                  setArchivosReporte(resultado.data || []);
+                                  const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                                  setArchivosReporte(soloMedia);
                                 } else {
                                   console.log(`[ADMIN] Error al obtener archivos: ${resultado.error}`);
                                 }
@@ -2471,7 +2499,8 @@ function AdminPanelContent() {
                             console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
                             if (resultado.success) {
                               console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
-                              setArchivosReporte(resultado.data || []);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
                             } else {
                               console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
                             }
@@ -2576,7 +2605,8 @@ function AdminPanelContent() {
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(rep.id);
                             if (resultado.success) {
-                              setArchivosReporte(resultado.data || []);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
                             }
                             setCargandoArchivos(false);
                           }}
@@ -2940,7 +2970,8 @@ function AdminPanelContent() {
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(rep.id);
                             if (resultado.success) {
-                              setArchivosReporte(resultado.data || []);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
                             }
                             setCargandoArchivos(false);
                           }}
@@ -3073,7 +3104,8 @@ function AdminPanelContent() {
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(rep.id);
                               if (resultado.success) {
-                                setArchivosReporte(resultado.data || []);
+                                const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                                setArchivosReporte(soloMedia);
                               }
                               setCargandoArchivos(false);
                             }}
@@ -3281,7 +3313,8 @@ function AdminPanelContent() {
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(rep.id);
                               if (resultado.success) {
-                                setArchivosReporte(resultado.data || []);
+                                const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                                setArchivosReporte(soloMedia);
                               }
                               setCargandoArchivos(false);
                             }}
@@ -3648,7 +3681,7 @@ function AdminPanelContent() {
                   isMuted={false}
                   resizeMode="contain"
                   useNativeControls
-                  style={styles.archivoModalVideo}
+                  style={[styles.archivoModalVideo, { aspectRatio: 16 / 9, maxHeight: '85vh' }]}
                 />
               )}
 
@@ -6329,8 +6362,9 @@ const styles = StyleSheet.create({
   },
   // Estilos para modal de visualización de archivo
   archivoModalContent: {
-    width: '90%',
-    maxWidth: 800,
+    width: '95%',
+    maxWidth: 1000,
+    height: '90%',
     backgroundColor: '#0f172a',
     borderRadius: 16,
     padding: 24,
