@@ -178,8 +178,7 @@ function ClientePanelContent() {
               setShowEncuestaSuccessModal(true);
             }, 500);
 
-            // Limpiar params router replace
-            router.replace('/cliente-panel');
+            // router.replace('/cliente-panel'); // Comentado para evitar recarga que cierra el modal
 
           } catch (e) {
             console.error('Error al guardar encuesta enviada (móvil):', e);
@@ -1359,7 +1358,7 @@ function ClientePanelContent() {
 
       {showReportModal && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column' }]}>
+          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 20 }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderText}>
                 <Text style={[styles.modalTitle, { fontFamily }]}>Mis reportes</Text>
@@ -1428,7 +1427,7 @@ function ClientePanelContent() {
 
       {showSeguimientoModal && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column' }]}>
+          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 20 }]}>
             <View style={[styles.modalHeader, isMobile && styles.modalHeaderMobile]}>
               <View style={styles.modalHeaderText}>
                 <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Seguimiento</Text>
@@ -1863,13 +1862,13 @@ function ClientePanelContent() {
               )}
             </ScrollView>
 
-            <View style={styles.detailFooter}>
+            <View style={[styles.detailFooter, isMobile && { flexDirection: 'column' }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowReporteDetail(false);
                   setSelectedReporte(null);
                 }}
-                style={styles.detailCloseButton}
+                style={[styles.detailCloseButton, isMobile && { flex: 0, width: '100%' }]}
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
@@ -1895,12 +1894,14 @@ function ClientePanelContent() {
                       setShowReporteDetail(false);
                     }}
                     style={{
-                      flex: 1,
+                      flex: isMobile ? 0 : 1,
+                      width: isMobile ? '100%' : 'auto',
                       backgroundColor: '#f59e0b',
-                      marginLeft: 12,
+                      marginLeft: isMobile ? 0 : 12,
                       borderRadius: 8,
                       alignItems: 'center',
-                      justifyContent: 'center'
+                      justifyContent: 'center',
+                      paddingVertical: 12 // Ensure consistent padding
                     }}
                   >
                     <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
@@ -1922,9 +1923,10 @@ function ClientePanelContent() {
                       generarPDF(selectedReporte);
                     }}
                     style={{
-                      flex: 1,
+                      flex: isMobile ? 0 : 1,
+                      width: isMobile ? '100%' : 'auto',
                       backgroundColor: generandoPDF ? '#9ca3af' : '#ef4444',
-                      marginLeft: 12,
+                      marginLeft: isMobile ? 0 : 12,
                       borderRadius: 8,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2022,7 +2024,7 @@ function ClientePanelContent() {
       {
         showCotizacionesModal && (
           <View style={styles.overlay}>
-            <View style={[styles.largeModal, { flex: 1, flexDirection: 'column' }]}>
+            <View style={[styles.largeModal, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 0 }]}>
               <View style={styles.largeModalHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.largeModalTitle, { fontFamily }]}>Cotizaciones</Text>
@@ -2182,7 +2184,7 @@ function ClientePanelContent() {
       {
         showCotizacionDetalleModal && cotizacionSeleccionada && (
           <View style={styles.overlay}>
-            <View style={[styles.largeModal, { flex: 1, flexDirection: 'column' }]}>
+            <View style={[styles.largeModal, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 0 }]}>
               <View style={styles.largeModalHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.largeModalTitle, { fontFamily }]}>Detalle de Cotización</Text>
@@ -2629,7 +2631,15 @@ function ClientePanelContent() {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setShowEncuestaSuccessModal(false)}
+              onPress={() => {
+                setShowEncuestaSuccessModal(false);
+                // Limpiar parámetros al cerrar
+                if (Platform.OS !== 'web') {
+                  router.replace('/cliente-panel');
+                } else {
+                  window.history.replaceState({}, '', '/cliente-panel');
+                }
+              }}
               style={{ backgroundColor: '#3b82f6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}
             >
               <Text style={{ color: 'white', fontWeight: '600', fontSize: 16, fontFamily }}>
