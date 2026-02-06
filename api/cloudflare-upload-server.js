@@ -100,10 +100,11 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
 
     console.log(`📤 Iniciando subida: ${fileName} (${fileBuffer.length} bytes)`);
 
-    // Generar clave única
+    // Generar clave única y sanitizar el nombre de archivo (evitar espacios y caracteres raros)
     const timestamp = Date.now();
     const folder = fileType === 'pdf' ? 'pdfs' : `${fileType}s`;
-    const key = `reportes/${folder}/${timestamp}-${fileName}`;
+    const sanitizedFileName = fileName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.-]/g, '');
+    const key = `reportes/${folder}/${timestamp}-${sanitizedFileName}`;
 
     console.log(`🔐 Subiendo a S3: ${BUCKET_NAME}/${key}`);
 

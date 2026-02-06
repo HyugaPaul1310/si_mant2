@@ -24,7 +24,8 @@ export interface UploadResult {
 export function getProxyUrl(cloudflareUrl: string): string {
   try {
     const url = new URL(cloudflareUrl);
-    const key = url.pathname.replace(/^\//, ''); // Remover el / inicial
+    // decodeURIComponent decodifica espacios (%20) que new URL().pathname suele codificar
+    const key = decodeURIComponent(url.pathname).replace(/^\//, '');
 
     // Usar el servidor Cloudflare en puerto 5001 como proxy
     // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg

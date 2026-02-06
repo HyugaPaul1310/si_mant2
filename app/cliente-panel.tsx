@@ -68,6 +68,7 @@ function ClientePanelContent() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [generandoPDF, setGenerandoPDF] = useState(false);
+  const [archivoPDFCotizacion, setArchivoPDFCotizacion] = useState<any | null>(null);
 
 
   useEffect(() => {
@@ -2004,10 +2005,30 @@ function ClientePanelContent() {
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
 
                               <TouchableOpacity
-                                onPress={() => {
-                                  console.log('[UI] Presionando ojo de cotización:', cot.id);
+                                onPress={async () => {
+                                  console.log('[DEBUG] Presionando ojo de cotización:', cot.id);
+                                  console.log('[DEBUG] Cotización completa:', JSON.stringify(cot, null, 2));
                                   setCotizacionSeleccionada(cot);
                                   setShowCotizacionDetalleModal(true);
+
+                                  // Buscar si hay un PDF adjunto para esta cotización
+                                  const reporteId = cot.reporte_id || cot.id;
+                                  console.log('[DEBUG] Buscando archivos para reporteId:', reporteId);
+
+                                  if (reporteId) {
+                                    try {
+                                      const { success, data, error } = await obtenerArchivosReporteBackend(reporteId);
+                                      console.log('[DEBUG] Resultado obtención archivos:', { success, dataLength: data?.length, error });
+
+                                      if (success && data) {
+                                        const pdf = data.find((a: any) => a.tipo_archivo === 'pdf');
+                                        console.log('[DEBUG] PDF encontrado:', pdf ? pdf.nombre_original : 'NINGUNO');
+                                        setArchivoPDFCotizacion(pdf || null);
+                                      }
+                                    } catch (err) {
+                                      console.error('[CLIENTE] Error al buscar PDF de cotización:', err);
+                                    }
+                                  }
                                 }}
                                 style={styles.eyeButton}
                               >
@@ -2039,6 +2060,7 @@ function ClientePanelContent() {
                 <TouchableOpacity onPress={() => {
                   setShowCotizacionDetalleModal(false);
                   setCotizacionSeleccionada(null);
+                  setArchivoPDFCotizacion(null);
                 }} style={styles.closeButton}>
                   <Ionicons name="close" size={20} color="#cbd5e1" />
                 </TouchableOpacity>
@@ -2126,6 +2148,41 @@ function ClientePanelContent() {
                     </View>
 
                   </View>
+
+                  {/* PDF de la cotización */}
+                  {archivoPDFCotizacion && (
+                    <View style={[styles.detailSection, { marginTop: 10, borderColor: '#8b5cf6', borderWidth: 1.5, backgroundColor: 'rgba(139, 92, 246, 0.05)' }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <View style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', padding: 8, borderRadius: 10 }}>
+                          <Ionicons name="document-text" size={24} color="#a78bfa" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.detailSectionTitle, { color: '#a78bfa', marginBottom: 2, fontFamily }]}>Cotización Formal (PDF)</Text>
+                          <Text style={{ color: '#94a3b8', fontSize: 12, fontFamily }}>Documento adjunto por administración</Text>
+                        </View>
+                      </View>
+
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#8b5cf6',
+                          borderRadius: 10,
+                          paddingVertical: 12,
+                          paddingHorizontal: 16,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 10,
+                        }}
+                        onPress={() => {
+                          const proxyUrl = getProxyUrl(archivoPDFCotizacion.cloudflare_url);
+                          Linking.openURL(proxyUrl);
+                        }}
+                      >
+                        <Ionicons name="download-outline" size={20} color="white" />
+                        <Text style={{ color: 'white', fontWeight: '700', fontSize: 14, fontFamily }}>Ver / Descargar Cotización PDF</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                   {/* Acciones */}
                   {(cotizacionSeleccionada.estado === 'cotizado' || cotizacionSeleccionada.estado === 'en_espera_confirmacion') && (
