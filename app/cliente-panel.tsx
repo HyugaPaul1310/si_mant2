@@ -419,7 +419,7 @@ function ClientePanelContent() {
             }
             
             .field-label {
-              font-size: 10px;
+              font-size: 11px;
               color: #0077b6;
               font-weight: 700;
               text-transform: uppercase;
@@ -429,10 +429,14 @@ function ClientePanelContent() {
             }
             
             .field-value {
-              font-size: 15px;
+              font-size: 16px;
               color: #2c3e50;
               line-height: 1.6;
               font-weight: 500;
+              word-wrap: break-word;
+              word-break: break-word;
+              overflow-wrap: break-word;
+              white-space: pre-wrap;
             }
             
             /* Valores especiales */
@@ -526,23 +530,21 @@ function ClientePanelContent() {
             </div>
             
             <!-- Información de Cotización -->
-            ${(reporte.analisis_general || (reporte.precio_cotizacion && reporte.precio_cotizacion > 0)) ? `
+            ${reporte.analisis_general ? `
             <div class="section">
               <div class="section-title">Información de Cotización</div>
               
-              ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+              ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
               <div class="field">
                 <div class="field-label">Costo de cotización:</div>
                 <div class="field-value value-price">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</div>
               </div>
-              ` : '<div class="field"><div class="field-value">$ ***</div></div>'}
+              ` : ''}
               
-              ${reporte.analisis_general ? `
               <div class="field">
                 <div class="field-label">Análisis:</div>
                 <div class="field-value">${reporte.analisis_general}</div>
               </div>
-              ` : ''}
             </div>
             ` : ''}
             
@@ -1772,35 +1774,40 @@ function ClientePanelContent() {
                 </TouchableOpacity>
               )}
 
-              {/* Botón Descargar PDF para reportes cerrados */}
-              {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'cerrado_por_cliente' || selectedReporte.estado === 'terminado') && (
-                <TouchableOpacity
-                  disabled={generandoPDF}
-                  onPress={() => {
-                    generarPDF(selectedReporte);
-                  }}
-                  style={{
-                    flex: 1,
-                    backgroundColor: generandoPDF ? '#9ca3af' : '#ef4444',
-                    marginLeft: 12,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexDirection: 'row',
-                    gap: 8,
-                    paddingVertical: 14 // Match other buttons height
-                  }}
-                >
-                  {generandoPDF ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Ionicons name="document-text-outline" size={20} color="#fff" />
-                  )}
-                  <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
-                    {generandoPDF ? 'Descargando...' : 'Descargar PDF'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Botón Descargar PDF para reportes cerrados y en cotización */}
+              {(selectedReporte.estado === 'cerrado' ||
+                selectedReporte.estado === 'cerrado_por_cliente' ||
+                selectedReporte.estado === 'terminado' ||
+                selectedReporte.estado === 'en_cotizacion' ||
+                selectedReporte.estado === 'cotizado' ||
+                selectedReporte.estado === 'en_espera_confirmacion') && (
+                  <TouchableOpacity
+                    disabled={generandoPDF}
+                    onPress={() => {
+                      generarPDF(selectedReporte);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: generandoPDF ? '#9ca3af' : '#ef4444',
+                      marginLeft: 12,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexDirection: 'row',
+                      gap: 8,
+                      paddingVertical: 14 // Match other buttons height
+                    }}
+                  >
+                    {generandoPDF ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="document-text-outline" size={20} color="#fff" />
+                    )}
+                    <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
+                      {generandoPDF ? 'Descargando...' : 'Descargar PDF'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
             </View>
           </View>
         </View>
@@ -2298,6 +2305,35 @@ function ClientePanelContent() {
                       </TouchableOpacity>
                     </View>
                   )}
+
+                  {/* Botón de Descargar PDF - Disponible siempre */}
+                  <View style={[styles.detailSection, { marginTop: 20, borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 20 }]}>
+                    <TouchableOpacity
+                      disabled={generandoPDF}
+                      onPress={() => {
+                        generarPDF(cotizacionSeleccionada);
+                      }}
+                      style={{
+                        backgroundColor: generandoPDF ? '#9ca3af' : '#ef4444',
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 8,
+                        paddingVertical: 14,
+                        paddingHorizontal: 20
+                      }}
+                    >
+                      {generandoPDF ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Ionicons name="document-text-outline" size={20} color="#fff" />
+                      )}
+                      <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
+                        {generandoPDF ? 'Descargando...' : 'Descargar PDF'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </ScrollView>
             </View>
