@@ -1,17 +1,19 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { Video } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    actualizarReporteBackend,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente
+  actualizarReporteBackend,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -65,6 +67,7 @@ function ClientePanelContent() {
   const [showCotizacionDetalleModal, setShowCotizacionDetalleModal] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
+  const [generandoPDF, setGenerandoPDF] = useState(false);
 
 
   useEffect(() => {
@@ -283,7 +286,377 @@ function ClientePanelContent() {
     []
   );
 
-  // Cargar archivos de un reporte específico
+  // Función para generar PDF del reporte
+  const generarPDF = async (reporte: any) => {
+    if (generandoPDF) return;
+    setGenerandoPDF(true);
+    try {
+      // Extraer información del reporte
+      const fullDescripcion = reporte.descripcion || '';
+      const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
+      const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
+      const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
+      const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
+
+      const modeloValue = modeloMatch ? modeloMatch[1].trim() : (reporte.equipo_modelo || 'N/A');
+      const serieValue = serieMatch ? serieMatch[1].trim() : (reporte.equipo_serie || 'N/A');
+      const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
+      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || 'Sin comentarios');
+
+      // Crear HTML para el PDF con diseño SI MANT
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            
+            @page {
+              margin: 10mm 15mm;
+              size: A4;
+            }
+            
+            body {
+              font-family: 'Helvetica', 'Arial', sans-serif;
+              background: #ffffff;
+              color: #2c3e50;
+              line-height: 1.6;
+              padding: 0 30px;
+            }
+            
+            /* Header solo con logo */
+            .header {
+              text-align: right;
+              padding: 20px 0 30px 0;
+              border-bottom: 4px solid #00a8e8;
+              margin-bottom: 40px;
+            }
+            
+            .header-title {
+              display: none;
+            }
+            
+            .logo-container {
+              display: inline-block;
+            }
+            
+            .logo-text {
+              font-size: 42px;
+              font-weight: 900;
+              letter-spacing: 5px;
+              line-height: 1;
+            }
+            
+            .logo-si {
+              color: #c41e3a;
+            }
+            
+            .logo-mant {
+              color: #2c3e50;
+            }
+            
+            .logo-subtitle {
+              font-size: 9px;
+              color: #6c757d;
+              letter-spacing: 3px;
+              margin-top: 8px;
+              font-weight: 500;
+              text-align: right;
+            }
+            
+            /* Contenido con padding lateral */
+            .content {
+              padding: 0 20px;
+            }
+            
+            /* Secciones con color azul */
+            .section {
+              margin-bottom: 45px;
+              page-break-inside: avoid;
+            }
+            
+            .section-title {
+              color: #c41e3a;
+              background: #ffffff;
+              font-size: 16px;
+              font-weight: 700;
+              margin-bottom: 25px;
+              margin-top: 30px;
+              padding: 12px 20px;
+              letter-spacing: 1px;
+              border-radius: 4px;
+              border-left: 5px solid #c41e3a;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            }
+            
+            /* Primera sección sin margin-top extra */
+            .section:first-of-type .section-title {
+              margin-top: 0;
+            }
+            
+            /* Grid de campos con cajas */
+            .field-row {
+              display: flex;
+              gap: 25px;
+              margin-bottom: 20px;
+            }
+            
+            .field {
+              flex: 1;
+              margin-bottom: 20px;
+              padding: 15px 18px;
+              background: #f8f9fa;
+              border-left: 4px solid #00a8e8;
+              border-radius: 4px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            }
+            
+            .field-label {
+              font-size: 10px;
+              color: #0077b6;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 1.2px;
+              margin-bottom: 8px;
+              display: block;
+            }
+            
+            .field-value {
+              font-size: 15px;
+              color: #2c3e50;
+              line-height: 1.6;
+              font-weight: 500;
+            }
+            
+            /* Valores especiales */
+            .value-highlight {
+              color: #c41e3a;
+              font-weight: 700;
+              text-transform: capitalize;
+            }
+            
+            .value-price {
+              font-size: 32px;
+              font-weight: 700;
+              color: red;
+              letter-spacing: 1px;
+            }
+          </style>
+        </head>
+        <body>
+          <!-- Header -->
+          <div class="header">
+            <div class="header-title"></div>
+            <div class="logo-container">
+              <div class="logo-text">
+                <span class="logo-si">SI</span> <span class="logo-mant">MANT</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Contenido -->
+          <div class="content">
+            <!-- Datos Generales -->
+            <div class="section">
+              <div class="section-title">Datos Generales</div>
+              
+              <div class="field-row">
+                <div class="field">
+                  <div class="field-label">Modelo:</div>
+                  <div class="field-value">${modeloValue}</div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Serie:</div>
+                  <div class="field-value">${serieValue}</div>
+                </div>
+              </div>
+              
+              <div class="field-row">
+                <div class="field">
+                  <div class="field-label">Sucursal:</div>
+                  <div class="field-value">${sucursalValue}</div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Prioridad:</div>
+                  <div class="field-value" style="text-transform: capitalize;">${reporte.prioridad || 'media'}</div>
+                </div>
+              </div>
+              
+              <div class="field">
+                <div class="field-label">Comentario / Problema:</div>
+                <div class="field-value">${comentarioFinal}</div>
+              </div>
+              
+              <div class="field-row">
+                <div class="field">
+                  <div class="field-label">Prioridad:</div>
+                  <div class="field-value" style="text-transform: capitalize;">${reporte.prioridad || 'media'}</div>
+                </div>
+                <div class="field">
+                  <div class="field-label">Estado:</div>
+                  <div class="field-value value-highlight">${obtenerNombreEstado(reporte.estado)}</div>
+                </div>
+              </div>
+              
+              ${reporte.empresa ? `
+              <div class="field">
+                <div class="field-label">Empresa:</div>
+                <div class="field-value">${reporte.empresa}</div>
+              </div>
+              ` : ''}
+              
+              <div class="field">
+                <div class="field-label">Fecha de creación:</div>
+                <div class="field-value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No disponible'}</div>
+              </div>
+              
+              ${reporte.usuario_nombre ? `
+              <div class="field">
+                <div class="field-label">Solicitante:</div>
+                <div class="field-value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</div>
+              </div>
+              ` : ''}
+            </div>
+            
+            <!-- Información de Cotización -->
+            ${(reporte.analisis_general || (reporte.precio_cotizacion && reporte.precio_cotizacion > 0)) ? `
+            <div class="section">
+              <div class="section-title">Información de Cotización</div>
+              
+              ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+              <div class="field">
+                <div class="field-label">Costo de cotización:</div>
+                <div class="field-value value-price">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</div>
+              </div>
+              ` : '<div class="field"><div class="field-value">$ ***</div></div>'}
+              
+              ${reporte.analisis_general ? `
+              <div class="field">
+                <div class="field-label">Análisis:</div>
+                <div class="field-value">${reporte.analisis_general}</div>
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+            
+            <!-- Trabajo Realizado -->
+            ${(reporte.revision || reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+            <div class="section">
+              <div class="section-title">Trabajo Realizado</div>
+              
+              ${reporte.revision ? `
+              <div class="field">
+                <div class="field-label">Revisión:</div>
+                <div class="field-value">${reporte.revision}</div>
+              </div>
+              ` : '<div class="field"><div class="field-label">Revisión:</div><div class="field-value">*** Detalles de la revisión o diagnóstico ***</div></div>'}
+              
+              ${reporte.reparacion ? `
+              <div class="field">
+                <div class="field-label">Reparación:</div>
+                <div class="field-value">${reporte.reparacion}</div>
+              </div>
+              ` : '<div class="field"><div class="field-label">Reparación:</div><div class="field-value">*** Detalles de las reparaciones realizadas aquí ***</div></div>'}
+              
+              ${reporte.materiales_refacciones ? `
+              <div class="field">
+                <div class="field-label">Materiales y Refacciones:</div>
+                <div class="field-value">${reporte.materiales_refacciones}</div>
+              </div>
+              ` : '<div class="field"><div class="field-label">Materiales y Refacciones:</div><div class="field-value">*** Lista de materiales y refacciones utilizados aquí ***</div></div>'}
+              
+              ${reporte.recomendaciones ? `
+              <div class="field">
+                <div class="field-label">Recomendaciones:</div>
+                <div class="field-value">${reporte.recomendaciones}</div>
+              </div>
+              ` : '<div class="field"><div class="field-label">Recomendaciones:</div><div class="field-value">*** Recomendaciones adicionales aquí ***</div></div>'}
+            </div>
+            ` : ''}
+          </div>
+          
+          <!-- Onda inferior -->
+          <div class="wave-bottom"></div>
+        </body>
+        </html>
+      `;
+
+      // Generar el PDF
+      console.log('[PDF] Iniciando generación de PDF...');
+      console.log('[PDF] Platform.OS:', Platform.OS);
+
+      if (Platform.OS === 'web') {
+        // En web, enviar al backend para generar PDF
+        console.log('[PDF] Modo web detectado, enviando al backend...');
+        try {
+          console.log('[PDF] Haciendo fetch a backend...');
+          const response = await fetch('http://localhost:3001/api/pdf/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html: htmlContent })
+          });
+
+          console.log('[PDF] Response status:', response.status);
+
+          if (!response.ok) throw new Error('Error al generar PDF');
+
+          console.log('[PDF] Creando blob...');
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
+          document.body.appendChild(link);
+          console.log('[PDF] Haciendo click en link de descarga...');
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log('[PDF] PDF descargado exitosamente');
+          Alert.alert(
+            'PDF Descargado',
+            'El archivo se ha guardado en tu carpeta de descargas.',
+            [{ text: 'OK' }]
+          );
+        } catch (error) {
+          console.error('[PDF] Error:', error);
+          Alert.alert('Error', 'No se pudo generar el PDF');
+        }
+      } else {
+        // En mÃ³vil, usar expo-print normalmente
+        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        console.log('[PDF] PDF generado en:', uri);
+
+        const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
+        const downloadPath = `${FileSystem.documentDirectory}${fileName}`;
+
+        await FileSystem.moveAsync({
+          from: uri,
+          to: downloadPath
+        });
+
+        console.log('[PDF] PDF guardado en:', downloadPath);
+
+        Alert.alert(
+          'PDF Descargado',
+          'El archivo se ha guardado exitosamente.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('[PDF] Error al generar PDF:', error);
+      Alert.alert('Error', 'No se pudo generar el PDF');
+    } finally {
+      setGenerandoPDF(false);
+    }
+  };
+
   const cargarArchivosReporte = useCallback(
     async (reporteId: string) => {
       if (!reporteId) {
@@ -1412,12 +1785,13 @@ function ClientePanelContent() {
               {/* Botón Descargar PDF para reportes cerrados */}
               {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'cerrado_por_cliente' || selectedReporte.estado === 'terminado') && (
                 <TouchableOpacity
+                  disabled={generandoPDF}
                   onPress={() => {
                     generarPDF(selectedReporte);
                   }}
                   style={{
                     flex: 1,
-                    backgroundColor: '#ef4444',
+                    backgroundColor: generandoPDF ? '#9ca3af' : '#ef4444',
                     marginLeft: 12,
                     borderRadius: 8,
                     alignItems: 'center',
@@ -1427,9 +1801,13 @@ function ClientePanelContent() {
                     paddingVertical: 14 // Match other buttons height
                   }}
                 >
-                  <Ionicons name="document-text-outline" size={20} color="#fff" />
+                  {generandoPDF ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="document-text-outline" size={20} color="#fff" />
+                  )}
                   <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
-                    Descargar PDF
+                    {generandoPDF ? 'Descargando...' : 'Descargar PDF'}
                   </Text>
                 </TouchableOpacity>
               )}
