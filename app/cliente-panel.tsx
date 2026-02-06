@@ -791,7 +791,7 @@ function ClientePanelContent() {
   const enEsperaCount = useMemo(
     () => todosLosReportes.filter((r) => {
       const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
-      return st === 'en_espera';
+      return st === 'en_espera' || st === 'pendiente' || st === 'en_espera';
     }).length,
     [todosLosReportes]
   );
@@ -805,14 +805,14 @@ function ClientePanelContent() {
   const enCotizacionCount = useMemo(
     () => todosLosReportes.filter((r) => {
       const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
-      return st === 'en_cotizacion' || st === 'cotizado';
+      return st === 'en_cotizacion' || st === 'cotizado' || st === 'en_espera_confirmacion';
     }).length,
     [todosLosReportes]
   );
   const enEjecucionCount = useMemo(
     () => todosLosReportes.filter((r) => {
       const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
-      return st === 'en_proceso' || st === 'en_ejecucion';
+      return st === 'en_proceso' || st === 'en_ejecucion' || st === 'aceptado_por_cliente';
     }).length,
     [todosLosReportes]
   );
@@ -927,17 +927,6 @@ function ClientePanelContent() {
                 >
                   <Ionicons name="eye-outline" size={16} color="#06b6d4" />
                 </TouchableOpacity>
-                {(rep.estado === 'en_cotizacion' || rep.estado === 'cerrado' || rep.estado === 'cotizado') && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      showToast('Generando PDF...', 'success');
-                      // Aquí se implementará la lógica de PDF en el futuro
-                    }}
-                    style={[styles.eyeButton, { borderColor: '#10b981' }]}
-                  >
-                    <Ionicons name="document-text-outline" size={16} color="#10b981" />
-                  </TouchableOpacity>
-                )}
               </View>
             )}
           </View>
