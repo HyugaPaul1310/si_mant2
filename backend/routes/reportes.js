@@ -527,8 +527,8 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
       `INSERT INTO encuestas_satisfaccion 
        (reporte_id, cliente_email, cliente_nombre, empleado_email, empleado_nombre, empresa, 
         trato_equipo, equipo_tecnico, personal_administrativo, rapidez, costo_calidad, 
-        recomendacion, satisfaccion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        satisfaccion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         reporte_id,
         cliente_email,
@@ -541,12 +541,19 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
         personal_administrativo || null,
         rapidez || null,
         costo_calidad || null,
-        recomendacion || null,
         satisfaccion || null
       ]
     );
 
     console.log('[BACKEND-ENCUESTA] Encuesta guardada con ID:', result.insertId);
+
+    // Actualizar el estado del reporte a 'cerrado_por_cliente'
+    await pool.query(
+      `UPDATE reportes SET estado = 'cerrado_por_cliente' WHERE id = ?`,
+      [reporte_id]
+    );
+
+    console.log('[BACKEND-ENCUESTA] Estado del reporte actualizado a cerrado_por_cliente');
 
     // Obtener la encuesta insertada
     const [encuesta] = await pool.query(

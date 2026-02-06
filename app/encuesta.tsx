@@ -46,11 +46,6 @@ const PREGUNTAS = [
   },
   {
     id: 6,
-    texto: '¿Recomendaría nuestros servicios a otros clientes?',
-    key: 'recomendacion'
-  },
-  {
-    id: 7,
     texto: '¿Qué tan satisfecho está con la solución proporcionada?',
     key: 'satisfaccion'
   },
@@ -128,7 +123,6 @@ export default function EncuestaPage() {
         personal_administrativo: respuestas['personal_administrativo'],
         rapidez: respuestas['rapidez'],
         costo_calidad: respuestas['costo_calidad'],
-        recomendacion: respuestas['recomendacion'],
         satisfaccion: respuestas['satisfaccion'],
       };
 
@@ -169,12 +163,13 @@ export default function EncuestaPage() {
 
       setGuardando(false);
 
-      // Navegar al panel del cliente con modales cerrados
-      console.log('Navegando a cliente-panel en 1 segundo...');
-      setTimeout(() => {
-        console.log('Ejecutando navegación a panel del cliente...');
-        router.push('/cliente-panel?closeModals=true');
-      }, 1000);
+      // Navegar directamente con parámetro de éxito
+      // Forzar recarga completa para actualizar estados
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.location.href = `/cliente-panel?encuestaEnviada=true&reporteId=${reporteId}`;
+      } else {
+        router.replace({ pathname: '/cliente-panel', params: { encuestaEnviada: 'true', reporteId } });
+      }
 
     } catch (error: any) {
       console.error('Error al guardar encuesta:', error);

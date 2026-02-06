@@ -214,13 +214,13 @@ export async function actualizarEstadoCerradoPorCliente(reporteId: string) {
     console.log(`[REPORTES] Marcando reporte ${reporteId} como "cerrado"`);
 
     const data = await apiCall(`/reportes/${reporteId}/estado`, 'PUT', {
-      estado: 'cerrado',
+      estado: 'cerrado_por_cliente',
       cerrado_por_cliente_at: new Date().toISOString(),
     });
 
     if (!data.success) throw new Error(data.error);
 
-    console.log(`[REPORTES] ✓ Reporte cerrado:`, data.data);
+    console.log(`[REPORTES] ✓ Reporte cerrado por cliente:`, data.data);
     return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al marcar como cerrado:', error);

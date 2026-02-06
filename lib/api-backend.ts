@@ -12,11 +12,11 @@ let API_URL = 'http://localhost:3001/api';
 try {
   // Usar IP local para acceso desde teléfono en la misma red
   if (Platform.OS === 'android') {
-    API_URL = 'http://192.168.1.254:3001/api';
+    API_URL = 'http://192.168.0.182:3001/api';
   }
   // Si es iOS, usar IP local
   else if (Platform.OS === 'ios') {
-    API_URL = 'http://192.168.1.254:3001/api';
+    API_URL = 'http://192.168.0.182:3001/api';
   }
   // Si es web, usar localhost
   else {
@@ -264,5 +264,12 @@ export async function eliminarUsuarioBackend(id: string) {
 
 export async function obtenerSucursalesCliente(email: string) {
   return apiCall(`/usuarios/sucursales?email=${encodeURIComponent(email)}`, 'GET');
+}
+
+// ==================== ENCUESTAS ====================
+
+// Verificar si existe una encuesta para un reporte
+export async function verificarEncuestaExiste(reporteId: string) {
+  return apiCall(`/reportes/encuestas/reporte/${reporteId}`, 'GET');
 }
 

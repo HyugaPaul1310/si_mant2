@@ -6,14 +6,16 @@ import { Video } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   actualizarReporteBackend,
   obtenerArchivosReporteBackend,
-  obtenerReportesCliente
+  obtenerReportesCliente,
+  verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -27,6 +29,7 @@ type Cliente = {
 
 function ClientePanelContent() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
@@ -70,6 +73,29 @@ function ClientePanelContent() {
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [archivoPDFCotizacion, setArchivoPDFCotizacion] = useState<any | null>(null);
 
+  // Estado para rastrear encuestas enviadas (usando localStorage)
+  const [encuestasEnviadas, setEncuestasEnviadas] = useState<Set<number>>(new Set());
+  // Estado para rastrear encuestas confirmadas en BD
+  const [encuestasRespondidas, setEncuestasRespondidas] = useState<Set<number>>(new Set());
+  // Modal de éxito para encuesta
+  const [showEncuestaSuccessModal, setShowEncuestaSuccessModal] = useState(false);
+
+  // Cargar encuestas enviadas desde AsyncStorage al iniciar
+  useEffect(() => {
+    const cargarEncuestasEnviadas = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('encuestas_enviadas');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          setEncuestasEnviadas(new Set(ids));
+        }
+      } catch (e) {
+        console.error('Error al cargar encuestas enviadas:', e);
+      }
+    };
+    cargarEncuestasEnviadas();
+  }, []);
+
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -101,6 +127,95 @@ function ClientePanelContent() {
     };
     obtenerUsuario();
   }, []);
+
+  // Detectar si se envió una encuesta y mostrar mensaje de agradecimiento
+  // Detectar si se envió una encuesta y mostrar mensaje de agradecimiento
+  useEffect(() => {
+    const checkEncuestaEnviada = async () => {
+      // En móvil, obtenemos los parámetros de la navegación o deep linking
+      // Para simplificar y mantener compatibilidad web/móvil:
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const reporteId = urlParams.get('reporteId');
+
+        if (urlParams.get('encuestaEnviada') === 'true' && reporteId) {
+          try {
+            const stored = await AsyncStorage.getItem('encuestas_enviadas');
+            const ids = stored ? JSON.parse(stored) : [];
+            const reporteIdNum = parseInt(reporteId);
+
+            if (!ids.includes(reporteIdNum)) {
+              ids.push(reporteIdNum);
+              await AsyncStorage.setItem('encuestas_enviadas', JSON.stringify(ids));
+              setEncuestasEnviadas(new Set(ids));
+            }
+
+            setTimeout(() => {
+              setShowEncuestaSuccessModal(true);
+            }, 500);
+
+            window.history.replaceState({}, '', '/cliente-panel');
+          } catch (e) {
+            console.error('Error al guardar encuesta enviada:', e);
+          }
+        }
+      } else {
+        // Lógica para móvil (usando parámetros de ruta)
+        const reporteId = params.reporteId as string;
+        if (params.encuestaEnviada === 'true' && reporteId) {
+          try {
+            const stored = await AsyncStorage.getItem('encuestas_enviadas');
+            const ids = stored ? JSON.parse(stored) : [];
+            const reporteIdNum = parseInt(reporteId);
+
+            if (!ids.includes(reporteIdNum)) {
+              ids.push(reporteIdNum);
+              await AsyncStorage.setItem('encuestas_enviadas', JSON.stringify(ids));
+              setEncuestasEnviadas(new Set(ids));
+            }
+
+            setTimeout(() => {
+              setShowEncuestaSuccessModal(true);
+            }, 500);
+
+            // Limpiar params router replace
+            router.replace('/cliente-panel');
+
+          } catch (e) {
+            console.error('Error al guardar encuesta enviada (móvil):', e);
+          }
+        }
+      }
+    };
+
+    checkEncuestaEnviada();
+  }, [params.encuestaEnviada, params.reporteId]);
+
+  // Verificar si existen encuestas para los reportes
+  const verificarEncuestas = useCallback(
+    async (reportes: any[]) => {
+      console.log('[VERIFICAR-ENCUESTAS] Verificando encuestas para', reportes.length, 'reportes');
+      const encuestasSet = new Set<number>();
+
+      for (const reporte of reportes) {
+        try {
+          console.log('[VERIFICAR-ENCUESTAS] Verificando reporte ID:', reporte.id);
+          const { success, data } = await verificarEncuestaExiste(reporte.id.toString());
+          console.log('[VERIFICAR-ENCUESTAS] Respuesta para reporte', reporte.id, ':', { success, dataLength: data?.length, data });
+          if (success && data && data.length > 0) {
+            console.log('[VERIFICAR-ENCUESTAS] ✓ Encuesta encontrada para reporte', reporte.id);
+            encuestasSet.add(reporte.id);
+          }
+        } catch (error) {
+          console.error(`[CLIENTE-PANEL] Error verificando encuesta para reporte ${reporte.id}:`, error);
+        }
+      }
+
+      console.log('[VERIFICAR-ENCUESTAS] Total de encuestas encontradas:', encuestasSet.size, 'IDs:', Array.from(encuestasSet));
+      setEncuestasRespondidas(encuestasSet);
+    },
+    [setEncuestasRespondidas]
+  );
 
   const cargarReportes = useCallback(
     async (email?: string) => {
@@ -134,17 +249,20 @@ function ClientePanelContent() {
         });
 
         const reportesActivos = reportesMapeados.filter((r: any) =>
-          r.estado !== 'cerrado'
+          r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
         console.log('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
         setReportes(reportesActivos);
         setTodosLosReportes(reportesMapeados); // Guardar TODOS los reportes para los contadores
+
+        // Verificar encuestas existentes
+        verificarEncuestas(reportesMapeados);
       }
       setLoadingReportes(false);
       return data || [];
     },
-    []
+    [verificarEncuestas]
   );
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
@@ -257,7 +375,7 @@ function ClientePanelContent() {
           // - cerrado: Admin confirmó el cierre definitivo del reporte
 
           const finalizados = resultado.data.filter((r: any) =>
-            r.estado === 'cerrado'
+            r.estado === 'cerrado' || r.estado === 'cerrado_por_cliente'
           );
 
           console.log('[CLIENTE-CARGAR-FINALIZADOS] Finalizados encontrados:', finalizados.length);
@@ -637,20 +755,33 @@ function ClientePanelContent() {
         console.log('[PDF] PDF generado en:', uri);
 
         const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
-        const downloadPath = `${FileSystem.documentDirectory}${fileName}`;
+
+        // Android: Usar cacheDirectory es más seguro para compartir (FileProvider)
+        // iOS: documentDirectory está bien, pero cache también funciona
+        const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
+        const downloadPath = `${storageDir}${fileName}`;
 
         await FileSystem.moveAsync({
           from: uri,
           to: downloadPath
         });
 
-        console.log('[PDF] PDF guardado en:', downloadPath);
+        const fileInfo = await FileSystem.getInfoAsync(downloadPath);
+        console.log('[PDF] PDF guardado en:', downloadPath, 'Size:', fileInfo.exists ? fileInfo.size : 'UNKNOWN');
 
-        Alert.alert(
-          'PDF Descargado',
-          'El archivo se ha guardado exitosamente.',
-          [{ text: 'OK' }]
-        );
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadPath, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Abrir PDF de Reporte',
+            UTI: 'com.adobe.pdf'
+          });
+        } else {
+          Alert.alert(
+            'PDF Descargado',
+            'El archivo se ha guardado exitosamente.',
+            [{ text: 'OK' }]
+          );
+        }
       }
     } catch (error) {
       console.error('[PDF] Error al generar PDF:', error);
@@ -659,6 +790,7 @@ function ClientePanelContent() {
       setGenerandoPDF(false);
     }
   };
+
 
   const cargarArchivosReporte = useCallback(
     async (reporteId: string) => {
@@ -1742,37 +1874,40 @@ function ClientePanelContent() {
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-              {selectedReporte.estado === 'listo_para_encuesta' && (
-                <TouchableOpacity
-                  onPress={() => {
-                    // Abrir la encuesta de satisfacción con todos los datos necesarios
-                    router.push({
-                      pathname: '/encuesta',
-                      params: {
-                        reporteId: selectedReporte.id,
-                        clienteEmail: usuario?.email || '',
-                        clienteNombre: usuario?.nombre || '',
-                        empresa: usuario?.empresa || '',
-                        empleadoEmail: selectedReporte.empleado_email || '',
-                        empleadoNombre: selectedReporte.empleado_nombre || ''
-                      }
-                    });
-                    setShowReporteDetail(false);
-                  }}
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#f59e0b',
-                    marginLeft: 12,
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
-                    📋 Responder Encuesta
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Botón Responder Encuesta - solo para reportes cerrados/terminados que NO han enviado encuesta */}
+              {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'terminado') &&
+                !encuestasEnviadas.has(selectedReporte.id) &&
+                !encuestasRespondidas.has(selectedReporte.id) && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Abrir la encuesta de satisfacción con todos los datos necesarios
+                      router.push({
+                        pathname: '/encuesta',
+                        params: {
+                          reporteId: selectedReporte.id,
+                          clienteEmail: usuario?.email || '',
+                          clienteNombre: usuario?.nombre || '',
+                          empresa: usuario?.empresa || '',
+                          empleadoEmail: selectedReporte.empleado_email || '',
+                          empleadoNombre: selectedReporte.empleado_nombre || ''
+                        }
+                      });
+                      setShowReporteDetail(false);
+                    }}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#f59e0b',
+                      marginLeft: 12,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>
+                      📋 Responder Encuesta
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
               {/* Botón Descargar PDF para reportes cerrados y en cotización */}
               {(selectedReporte.estado === 'cerrado' ||
@@ -2471,6 +2606,40 @@ function ClientePanelContent() {
           </View>
         )
       }
+      {/* Modal de éxito encuesta */}
+      <Modal
+        visible={showEncuestaSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowEncuestaSuccessModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#1e293b', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="checkmark-circle" size={40} color="#10b981" />
+            </View>
+
+            <Text style={{ fontSize: 20, fontWeight: 'bold', color: 'white', marginBottom: 8, textAlign: 'center', fontFamily }}>
+              ¡Gracias por tu tiempo!
+            </Text>
+
+            <Text style={{ fontSize: 15, color: '#94a3b8', textAlign: 'center', marginBottom: 24, lineHeight: 22, fontFamily }}>
+              Tu opinión es muy valiosa para nosotros. El reporte ha sido cerrado exitosamente.
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowEncuestaSuccessModal(false)}
+              style={{ backgroundColor: '#3b82f6', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, width: '100%', alignItems: 'center' }}
+            >
+              <Text style={{ color: 'white', fontWeight: '600', fontSize: 16, fontFamily }}>
+                Entendido
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView >
   );
 }
