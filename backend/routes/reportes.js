@@ -24,6 +24,9 @@ router.get('/', verifyToken, async (req, res) => {
         r.reparacion,
         r.recomendaciones_adicionales,
         r.materiales_refacciones,
+        r.empleado_asignado_id,
+        COALESCE(emp.email, r.empleado_asignado_email) as empleado_asignado_email,
+        COALESCE(CONCAT(emp.nombre, ' ', emp.apellido), r.empleado_asignado_nombre) as empleado_asignado_nombre,
         u.nombre as usuario_nombre,
         u.apellido as usuario_apellido,
         u.email as usuario_email,
@@ -34,6 +37,7 @@ router.get('/', verifyToken, async (req, res) => {
       FROM reportes r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN empresas e ON r.empresa_id = e.id
+      LEFT JOIN usuarios emp ON r.empleado_asignado_id = emp.id
     `;
     const params = [];
 

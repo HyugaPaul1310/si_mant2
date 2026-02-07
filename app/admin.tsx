@@ -101,7 +101,9 @@ function AdminPanelContent() {
   const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const [mostrarFiltrosTerminados, setMostrarFiltrosTerminados] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [filtroEmpleado, setFiltroEmpleado] = useState('');
 
   // Estados para historial y terminados
   const [showHistorialModal, setShowHistorialModal] = useState(false);
@@ -727,6 +729,22 @@ function AdminPanelContent() {
       });
     }
 
+    // Filtrar por empleado (nombre o correo)
+    if (filtroEmpleado.trim() !== '') {
+      const search = filtroEmpleado.toLowerCase();
+      filtrados = filtrados.filter((r) => {
+        const nombre = (r.empleado_asignado_nombre || '').toLowerCase();
+        const email = (r.empleado_asignado_email || '').toLowerCase();
+        return nombre.includes(search) || email.includes(search);
+      });
+    }
+
+    return filtrados;
+  }, [reportesPendientes, filtrosEstado, filtrosPrioridad, filtroEmpleado]);
+
+  const reportesTerminadosFiltrados = useMemo(() => {
+    let filtrados = reportesTerminados;
+
     // Filtrar por prioridad
     if (filtrosPrioridad.length > 0) {
       filtrados = filtrados.filter((r) => {
@@ -735,8 +753,18 @@ function AdminPanelContent() {
       });
     }
 
+    // Filtrar por empleado (nombre o correo)
+    if (filtroEmpleado.trim() !== '') {
+      const search = filtroEmpleado.toLowerCase();
+      filtrados = filtrados.filter((r) => {
+        const nombre = (r.empleado_asignado_nombre || '').toLowerCase();
+        const email = (r.empleado_asignado_email || '').toLowerCase();
+        return nombre.includes(search) || email.includes(search);
+      });
+    }
+
     return filtrados;
-  }, [reportesPendientes, filtrosEstado, filtrosPrioridad]);
+  }, [reportesTerminados, filtrosPrioridad, filtroEmpleado]);
 
   const toggleFiltroEstado = (estado: string) => {
     setFiltrosEstado(prev =>
@@ -753,6 +781,7 @@ function AdminPanelContent() {
   const limpiarFiltros = () => {
     setFiltrosEstado([]);
     setFiltrosPrioridad([]);
+    setFiltroEmpleado('');
   };
 
   const handleCambiarEstado = async (id: string, nuevoEstado: EstadoReporte) => {
@@ -2362,6 +2391,31 @@ function AdminPanelContent() {
                     </View>
                   </View>
 
+                  <View style={styles.searchFilterContainerPro}>
+                    <View style={styles.searchFilterLabelPro}>
+                      <Ionicons name="person-search-outline" size={16} color="#06b6d4" />
+                      <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por empleado</Text>
+                    </View>
+                    <View style={[
+                      styles.searchFilterInputWrapperPro,
+                      filtroEmpleado.length > 0 && styles.searchFilterInputWrapperFocused
+                    ]}>
+                      <Ionicons name="search-outline" size={18} color={filtroEmpleado.length > 0 ? "#06b6d4" : "#64748b"} />
+                      <TextInput
+                        style={[styles.searchInputPro, { fontFamily }]}
+                        placeholder="Nombre o correo del empleado..."
+                        placeholderTextColor="#64748b"
+                        value={filtroEmpleado}
+                        onChangeText={setFiltroEmpleado}
+                      />
+                      {filtroEmpleado.length > 0 && (
+                        <TouchableOpacity onPress={() => setFiltroEmpleado('')}>
+                          <Ionicons name="close-circle" size={20} color="#64748b" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
                   {!loadingReportes && (
                     <View style={styles.filtrosResultados}>
                       <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
@@ -2424,6 +2478,14 @@ function AdminPanelContent() {
                             <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
                               {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
                             </Text>
+                            {rep.empleado_asignado_nombre ? (
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 }}>
+                                <Ionicons name="construct-outline" size={12} color="#06b6d4" />
+                                <Text style={[{ color: '#06b6d4', fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
+                                  TÉCNICO: {rep.empleado_asignado_nombre.toUpperCase()}
+                                </Text>
+                              </View>
+                            ) : null}
                           </View>
                           <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
                             <TouchableOpacity
@@ -2525,6 +2587,121 @@ function AdminPanelContent() {
               </View>
             </View>
 
+            <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile, { marginTop: 0, marginHorizontal: 20, marginBottom: 15 }]}>
+              <TouchableOpacity
+                style={styles.filtrosHeader}
+                onPress={() => setMostrarFiltrosTerminados(!mostrarFiltrosTerminados)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.filtrosHeaderLeft}>
+                  <Ionicons name="filter-outline" size={18} color="#22d3ee" />
+                  <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
+                  {(filtrosPrioridad.length > 0 || filtroEmpleado.length > 0) && (
+                    <View style={styles.filtrosActiveBadge}>
+                      <Text style={[styles.filtrosActiveBadgeText, { fontFamily }]}>
+                        {filtrosPrioridad.length + (filtroEmpleado.length > 0 ? 1 : 0)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  {(filtrosPrioridad.length > 0 || filtroEmpleado.length > 0) && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                      <Ionicons name="close-circle" size={16} color="#f87171" />
+                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Ionicons
+                    name={mostrarFiltrosTerminados ? "chevron-up" : "chevron-down"}
+                    size={24}
+                    color="#22d3ee"
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {mostrarFiltrosTerminados && (
+                <View style={{ padding: 16, backgroundColor: 'rgba(15, 23, 42, 0.2)', borderRadius: 12, marginTop: 8 }}>
+                  {/* Priority Section */}
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>
+                      <Ionicons name="alert-circle-outline" size={14} color="#94a3b8" /> Prioridad
+                    </Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                        { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                        { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                      ].map((prioridad) => {
+                        const isActive = filtrosPrioridad.includes(prioridad.value);
+                        return (
+                          <TouchableOpacity
+                            key={prioridad.value}
+                            onPress={() => toggleFiltroPrioridad(prioridad.value)}
+                            style={[
+                              styles.filtroChip,
+                              isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
+                            ]}
+                          >
+                            <Ionicons
+                              name={prioridad.icon as any}
+                              size={14}
+                              color={isActive ? prioridad.color : '#94a3b8'}
+                            />
+                            <Text style={[
+                              styles.filtroChipText,
+                              { fontFamily },
+                              isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
+                            ]}>
+                              {prioridad.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Search Section */}
+                  <View style={[styles.searchFilterContainerPro, { padding: 0, backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, marginTop: 12 }]}>
+                    <View style={[styles.searchFilterLabelPro, { marginBottom: 8 }]}>
+                      <Ionicons name="person-search-outline" size={14} color="#06b6d4" />
+                      <Text style={[styles.searchFilterLabelText, { fontSize: 10, fontFamily }]}>Buscar Técnico/Empleado</Text>
+                    </View>
+                    <View style={[
+                      styles.searchFilterInputWrapperPro,
+                      filtroEmpleado.length > 0 && styles.searchFilterInputWrapperFocused,
+                      { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                    ]}>
+                      <Ionicons name="search-outline" size={16} color={filtroEmpleado.length > 0 ? "#06b6d4" : "#64748b"} />
+                      <TextInput
+                        style={[styles.searchInputPro, { fontSize: 13, fontFamily }]}
+                        placeholder="Nombre o correo..."
+                        placeholderTextColor="#64748b"
+                        value={filtroEmpleado}
+                        onChangeText={setFiltroEmpleado}
+                      />
+                      {filtroEmpleado.length > 0 && (
+                        <TouchableOpacity onPress={() => setFiltroEmpleado('')}>
+                          <Ionicons name="close-circle" size={18} color="#64748b" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Conteo de resultados */}
+            {!loadingReportes && (
+              <View style={{ marginBottom: 15, paddingHorizontal: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(30, 41, 59, 0.3)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, alignSelf: 'center', borderColor: 'rgba(6, 182, 212, 0.2)', borderWidth: 1 }}>
+                  <Ionicons name="document-text-outline" size={14} color="#06b6d4" />
+                  <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '600' }, { fontFamily }]}>
+                    {reportesTerminadosFiltrados.length} {reportesTerminadosFiltrados.length === 1 ? 'reporte encontrado' : 'reportes encontrados'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {loadingReportes && (
               <View style={styles.infoBox}>
                 <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes...</Text>
@@ -2537,16 +2714,18 @@ function AdminPanelContent() {
               </View>
             ) : null}
 
-            {!loadingReportes && !errorReportes && reportesTerminados.length === 0 ? (
+            {!loadingReportes && !errorReportes && (filtroEmpleado.length > 0 ? reportesTerminadosFiltrados.length === 0 : reportesTerminados.length === 0) ? (
               <View style={styles.infoBox}>
-                <Text style={[styles.infoText, { fontFamily }]}>No hay reportes terminados.</Text>
+                <Text style={[styles.infoText, { fontFamily }]}>
+                  {filtroEmpleado.length > 0 ? 'No se encontraron reportes para este empleado.' : 'No hay reportes terminados.'}
+                </Text>
               </View>
             ) : null}
 
-            {!loadingReportes && !errorReportes && reportesTerminados.length > 0 ? (
+            {!loadingReportes && !errorReportes && reportesTerminadosFiltrados.length > 0 ? (
               <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
                 <View style={styles.listSpacing}>
-                  {reportesTerminados.map((rep) => (
+                  {reportesTerminadosFiltrados.map((rep) => (
                     <View key={rep.id} style={styles.reportCard}>
                       <View style={styles.reportHeader}>
                         <View style={styles.reportHeaderText}>
@@ -2559,6 +2738,14 @@ function AdminPanelContent() {
                           <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
                             {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
                           </Text>
+                          {rep.empleado_asignado_nombre && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                              <Ionicons name="construct-outline" size={12} color="#06b6d4" />
+                              <Text style={[{ color: '#06b6d4', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }, { fontFamily }]}>
+                                TÉCNICO: {rep.empleado_asignado_nombre}
+                              </Text>
+                            </View>
+                          )}
                         </View>
                         <TouchableOpacity
                           onPress={async () => {
@@ -4375,9 +4562,9 @@ function AdminPanelContent() {
                         borderWidth: 1,
                         borderColor: '#334155',
                         shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
                         shadowOpacity: 0.1,
                         shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 },
                       }}
                     >
                       {/* Header de la tarea */}
@@ -6834,6 +7021,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#334155',
+    position: 'relative',
+    flexDirection: 'column',
   },
   archivoModalClose: {
     position: 'absolute',
@@ -6871,7 +7060,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(6, 182, 212, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
   archivoModalVideoText: {
     fontSize: 14,
@@ -7037,5 +7225,53 @@ const styles = StyleSheet.create({
   },
   modalOverlayMobile: {
     padding: 12,
+  },
+  /* NUEVOS ESTILOS PREMIUM PARA FILTRO DE BÚSQUEDA */
+  searchFilterContainerPro: {
+    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.2)',
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  searchFilterLabelPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  searchFilterLabelText: {
+    color: '#06b6d4',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  searchFilterInputWrapperPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  searchFilterInputWrapperFocused: {
+    borderColor: 'rgba(6, 182, 212, 0.6)',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+  },
+  searchInputPro: {
+    flex: 1,
+    color: '#f0f9ff',
+    fontSize: 14,
+    fontWeight: '500',
+    paddingLeft: 10,
   },
 });
