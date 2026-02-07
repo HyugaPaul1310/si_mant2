@@ -13,20 +13,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Animated,
-    Easing,
-    Image,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -227,6 +227,13 @@ function AdminPanelContent() {
   // Estados para confirmación de cierre de reporte
   const [showConfirmarCierreModal, setShowConfirmarCierreModal] = useState(false);
   const [reporteACerrar, setReporteACerrar] = useState<any | null>(null);
+
+  // Estados para confirmación de creación de tarea
+  const [showConfirmarCrearTareaModal, setShowConfirmarCrearTareaModal] = useState(false);
+
+  // Estados para confirmación de creación de cuenta
+  const [showConfirmarCrearCuentaModal, setShowConfirmarCrearCuentaModal] = useState(false);
+  const [pendingUserData, setPendingUserData] = useState<any>(null);
 
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
@@ -577,6 +584,21 @@ function AdminPanelContent() {
     cargarTareasData();
   }, []);
 
+  // Recargar tareas cuando se abre el modal de historial
+  useEffect(() => {
+    if (showTareasHistorialModal) {
+      const cargarTareasData = async () => {
+        setLoadingTareas(true);
+        setErrorTareas('');
+        const { success, data, error } = await obtenerTareasBackend();
+        if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
+        else setTareas(data || []);
+        setLoadingTareas(false);
+      };
+      cargarTareasData();
+    }
+  }, [showTareasHistorialModal]);
+
   useEffect(() => {
     const cargarInventario = async () => {
       setLoadingEmpleadosInventario(true);
@@ -599,39 +621,45 @@ function AdminPanelContent() {
   }, []);
 
   const hoy = useMemo(() => new Date(), []);
-  // Reportes pedidos = reportes en historial (no terminados)
-  const reportesPedidos = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() !== 'terminado').length,
-    [reportes]
-  );
-  // Pendientes específicamente
-  const reportesPendiente = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'pendiente').length,
-    [reportes]
-  );
-  // En proceso
-  const reportesEnProceso = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en_proceso').length,
-    [reportes]
-  );
-  // En espera
-  const reportesEnEspera = useMemo(
-    () => reportes.filter((r) => (r.estado || '').toLowerCase() === 'en espera').length,
-    [reportes]
-  );
-  const reportesTerminadosCount = useMemo(
+  // Agrupación de estados según solicitud
+  const reportesEnEsperaCount = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'terminado' || st === 'rechazado' || st === 'cerrado';
+      return st === 'pendiente' || st === 'en_espera' || st === 'en espera';
     }).length,
     [reportes]
   );
-  // Por Revisar (contador) - reportes finalizados por técnico
-  const reportesPorRevisarCount = useMemo(
-    () => reportes.filter((r) =>
-      r.estado === 'finalizado_por_tecnico' ||
-      (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
-    ).length,
+
+  const reportesAsignadoCount = useMemo(
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st === 'asignado';
+    }).length,
+    [reportes]
+  );
+
+  const reportesEnCotizacionCount = useMemo(
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st === 'en_cotizacion' || st === 'en cotizacion' || st === 'cotizado' || st === 'en_espera_confirmacion' || st === 'en espera confirmacion';
+    }).length,
+    [reportes]
+  );
+
+  const reportesEnEjecucionCount = useMemo(
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st === 'en_proceso' || st === 'en proceso' || st === 'en_ejecucion' || st === 'en ejecucion' ||
+        st === 'aceptado_por_cliente' || st === 'finalizado_por_tecnico' || st === 'listo_para_encuesta';
+    }).length,
+    [reportes]
+  );
+
+  const reportesCerradoCount = useMemo(
+    () => reportes.filter((r) => {
+      const st = (r.estado || '').toLowerCase();
+      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'rechazado' || st === 'resuelto' || st === 'encuesta_satisfaccion';
+    }).length,
     [reportes]
   );
 
@@ -655,7 +683,8 @@ function AdminPanelContent() {
   const reportesPendientes = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st !== 'terminado' && st !== 'rechazado' && st !== 'cerrado';
+      return st !== 'terminado' && st !== 'rechazado' && st !== 'cerrado' &&
+        st !== 'cerrado_por_cliente' && st !== 'resuelto' && st !== 'encuesta_satisfaccion';
     }),
     [reportes]
   );
@@ -663,7 +692,8 @@ function AdminPanelContent() {
   const reportesTerminados = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'terminado' || st === 'rechazado' || st === 'cerrado';
+      return st === 'terminado' || st === 'rechazado' || st === 'cerrado' ||
+        st === 'cerrado_por_cliente' || st === 'resuelto' || st === 'encuesta_satisfaccion';
     }),
     [reportes]
   );
@@ -826,46 +856,39 @@ function AdminPanelContent() {
 
   const stats = [
     {
-      label: 'Reportes pedidos',
-      value: reportesPedidos,
-      iconBg: '#3b82f6',
-      iconName: 'notifications-outline',
-      accent: '#60a5fa',
-    },
-    {
-      label: 'Pendientes',
-      value: reportesPendiente,
+      label: 'En Espera', // Solicitudes nuevas
+      value: reportesEnEsperaCount,
       iconBg: '#f59e0b',
       iconName: 'time-outline',
       accent: '#fbbf24',
     },
     {
-      label: 'En proceso',
-      value: reportesEnProceso,
+      label: 'Asignado', // Asignado a técnico
+      value: reportesAsignadoCount,
+      iconBg: '#06b6d4',
+      iconName: 'person-add-outline',
+      accent: '#67e8f9',
+    },
+    {
+      label: 'Cotización', // En proceso de cotización
+      value: reportesEnCotizacionCount,
+      iconBg: '#8b5cf6',
+      iconName: 'calculator-outline',
+      accent: '#a78bfa',
+    },
+    {
+      label: 'Ejecución', // Trabajo en curso
+      value: reportesEnEjecucionCount,
       iconBg: '#3b82f6',
-      iconName: 'hourglass-outline',
-      accent: '#93c5fd',
+      iconName: 'construct-outline',
+      accent: '#aec8ff',
     },
     {
-      label: 'En espera',
-      value: reportesEnEspera,
-      iconBg: '#eab308',
-      iconName: 'pause-circle-outline',
-      accent: '#facc15',
-    },
-    {
-      label: 'Terminados',
-      value: reportesTerminadosCount,
+      label: 'Cerrado', // Completados
+      value: reportesCerradoCount,
       iconBg: '#10b981',
       iconName: 'checkmark-circle-outline',
       accent: '#34d399',
-    },
-    {
-      label: 'Por Revisar',
-      value: reportesPorRevisarCount,
-      iconBg: '#8b5cf6',
-      iconName: 'checkbox-outline',
-      accent: '#a78bfa',
     },
   ];
 
@@ -873,57 +896,57 @@ function AdminPanelContent() {
     {
       title: 'Historial de Reportes',
       description: 'Ver seguimiento de reportes',
-      gradient: ['#2563eb', '#3b82f6'] as const,
+      gradient: ['#1e3a8a', '#3b82f6'] as const, // Deep Blue
       iconName: 'document-text-outline',
     },
     {
       title: 'Reportes Finalizados (Empleado)',
       description: 'Revisar trabajos completados por técnicos',
-      gradient: ['#ec4899', '#f472b6'] as const,
+      gradient: ['#831843', '#db2777'] as const, // Deep Pink
       iconName: 'checkbox-outline',
       badge: finalizadosCount, // Badge dinámico
     },
     {
       title: 'Cotizaciones Pendientes',
       description: 'Cotizar reportes con análisis completado',
-      gradient: ['#f59e0b', '#f97316'] as const,
+      gradient: ['#92400e', '#d97706'] as const, // Deep Amber
       iconName: 'pricetag-outline',
       badge: cotizacionesPendientesCount,
     },
     {
       title: 'Reportes Terminados',
       description: 'Ver reportes terminados',
-      gradient: ['#7c3aed', '#8b5cf6'] as const,
+      gradient: ['#4c1d95', '#7c3aed'] as const, // Deep Violet
       iconName: 'checkmark-circle-outline',
     },
     {
       title: 'Gestion de Usuarios',
       description: 'Administrar permisos de usuarios',
-      gradient: ['#06b6d4', '#0ea5e9'] as const,
+      gradient: ['#155e75', '#06b6d4'] as const, // Deep Cyan
       iconName: 'people-outline',
     },
     {
       title: 'Gestion de Empresas',
       description: 'Administrar empresas y sucursales',
-      gradient: ['#7c3aed', '#8b5cf6'] as const,
+      gradient: ['#064e3b', '#10b981'] as const, // Deep Emerald
       iconName: 'business-outline',
     },
     {
       title: 'Generar Tareas',
       description: 'Crear nuevas tareas para el equipo',
-      gradient: ['#ea580c', '#f97316'] as const,
+      gradient: ['#7f1d1d', '#ef4444'] as const, // Deep Red
       iconName: 'create-outline',
     },
     {
       title: 'Generar Correo Electrónico',
       description: 'Redactar y enviar correos',
-      gradient: ['#7c3aed', '#8b5cf6'] as const,
+      gradient: ['#312e81', '#6366f1'] as const, // Deep Indigo
       iconName: 'mail-outline',
     },
     {
       title: 'Historial de Tareas',
       description: 'Ver historial de tareas asignadas',
-      gradient: ['#3b82f6', '#2563eb'] as const,
+      gradient: ['#0f172a', '#475569'] as const, // Deep Slate
       iconName: 'list-outline',
     },
   ], [finalizadosCount, cotizacionesPendientesCount]);
@@ -1082,8 +1105,15 @@ function AdminPanelContent() {
       return;
     }
 
+    // Si aún no se ha mostrado el modal de confirmación, mostrarlo
+    if (!showConfirmarCrearTareaModal) {
+      setShowConfirmarCrearTareaModal(true);
+      return;
+    }
+
     setCreandoTarea(true);
     setTareasError(null);
+    setShowConfirmarCrearTareaModal(false); // Cerrar el modal de confirmación
 
     try {
       const empleadoData = empleados.find(e => e.email === selectedEmpleado);
@@ -1393,14 +1423,19 @@ function AdminPanelContent() {
                   onPress={cargarEncuestasData}
                   style={{
                     backgroundColor: '#1e293b',
-                    padding: 10,
-                    borderRadius: 10,
+                    marginTop: 20,
+                    padding: 20,
+                    borderRadius: 8,
                     borderWidth: 1,
-                    borderColor: '#334155'
+                    borderColor: '#334155',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh-outline" size={20} color="#22d3ee" />
+                  <Ionicons name="refresh-outline" size={16} color="#22d3ee" />
                 </TouchableOpacity>
               </View>
 
@@ -1954,22 +1989,23 @@ function AdminPanelContent() {
                   disabled={creatingUser}
                   onPress={async () => {
                     if (creatingUser) return;
-                    setCreateError(null);
+                    setCreateError(null); // Clear previous errors
                     const name = newUserName.trim();
                     const email = newUserEmail.trim().toLowerCase();
                     const pwd = newUserPassword.trim();
                     const phone = newUserPhone.trim();
                     const birth = newUserBirth.trim();
                     const city = newUserCity.trim();
-                    const company = newUserCompany.trim();
                     const state = newUserState.trim();
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    const company = newUserCompany.trim();
+
                     if (!name || !email || !pwd) {
-                      setCreateError('Completa nombre, correo y contraseña.');
+                      setCreateError('Por favor completa todos los campos obligatorios.');
                       return;
                     }
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(email)) {
-                      setCreateError('Correo inválido.');
+                      setCreateError('Por favor ingresa un correo válido.');
                       return;
                     }
                     if (pwd.length < 6) {
@@ -1984,9 +2020,10 @@ function AdminPanelContent() {
                       setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
                       return;
                     }
-                    setCreatingUser(true);
-                    try {
-                      const res = await registerBackend({
+
+                    // If confirmation modal is not shown, store data and show it
+                    if (!showConfirmarCrearCuentaModal) {
+                      setPendingUserData({
                         nombre: name,
                         apellido: newUserLastName.trim() || undefined,
                         email,
@@ -2002,6 +2039,15 @@ function AdminPanelContent() {
                         empresa: company || undefined,
                         empresa_id: empresaSeleccionada?.id || undefined,
                       });
+                      setShowConfirmarCrearCuentaModal(true);
+                      return;
+                    }
+
+                    // If already confirmed, proceed with creation
+                    setCreatingUser(true);
+                    setShowConfirmarCrearCuentaModal(false);
+                    try {
+                      const res = await registerBackend(pendingUserData);
                       if (!res.success) {
                         setCreateError(res.error || 'No se pudo crear la cuenta');
                       } else {
@@ -2015,6 +2061,7 @@ function AdminPanelContent() {
                         setNewUserBirth('');
                         setNewUserCity('');
                         setNewUserState('');
+                        setPendingUserData(null); // Clear pending data after successful creation
                       }
                     } catch (e: any) {
                       setCreateError(e?.message || 'Error inesperado');
@@ -4051,6 +4098,345 @@ function AdminPanelContent() {
           </Pressable>
         )
       }
+
+      {/* Modal de Confirmación para Crear Tarea */}
+      {showConfirmarCrearTareaModal && (
+        <View style={styles.overlayHeavy}>
+          <Pressable
+            style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+            onPress={() => setShowConfirmarCrearTareaModal(false)}
+          >
+            <TouchableWithoutFeedback>
+              <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ backgroundColor: '#ea580c', borderRadius: 50, padding: 16, marginBottom: 16 }}>
+                    <Ionicons name="checkmark-circle-outline" size={48} color="#f97316" />
+                  </View>
+                  <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta tarea?</Text>
+                  <Text style={[styles.confirmMessage, { fontFamily }]}>
+                    Se creará una nueva tarea para el empleado seleccionado.
+                  </Text>
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalSecondary}
+                    onPress={() => setShowConfirmarCrearTareaModal(false)}
+                  >
+                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <LinearGradient
+                    colors={['#ea580c', '#f97316']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.modalPrimary}
+                  >
+                    <TouchableOpacity
+                      onPress={handleCrearTarea}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                        Confirmar
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Modal de Confirmación para Crear Cuenta */}
+      {showConfirmarCrearCuentaModal && (
+        <View style={styles.overlayHeavy}>
+          <Pressable
+            style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+            onPress={() => {
+              setShowConfirmarCrearCuentaModal(false);
+              setPendingUserData(null);
+            }}
+          >
+            <TouchableWithoutFeedback>
+              <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
+                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                  <View style={{ backgroundColor: '#7c3aed', borderRadius: 50, padding: 16, marginBottom: 16 }}>
+                    <Ionicons name="person-add-outline" size={48} color="#a78bfa" />
+                  </View>
+                  <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta cuenta?</Text>
+                  <Text style={[styles.confirmMessage, { fontFamily }]}>
+                    Se creará una nueva cuenta de usuario con los datos ingresados.
+                  </Text>
+                </View>
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalSecondary}
+                    onPress={() => {
+                      setShowConfirmarCrearCuentaModal(false);
+                      setPendingUserData(null);
+                    }}
+                  >
+                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <LinearGradient
+                    colors={['#7c3aed', '#8b5cf6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.modalPrimary}
+                  >
+                    <TouchableOpacity
+                      onPress={async () => {
+                        const name = newUserName.trim();
+                        const email = newUserEmail.trim().toLowerCase();
+                        const pwd = newUserPassword.trim();
+                        const phone = newUserPhone.trim();
+                        const birth = newUserBirth.trim();
+                        const city = newUserCity.trim();
+                        const state = newUserState.trim();
+                        const company = newUserCompany.trim();
+
+                        if (!name || !email || !pwd) {
+                          setCreateError('Por favor completa todos los campos obligatorios.');
+                          return;
+                        }
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(email)) {
+                          setCreateError('Por favor ingresa un correo válido.');
+                          return;
+                        }
+                        if (pwd.length < 6) {
+                          setCreateError('La contraseña debe tener al menos 6 caracteres.');
+                          return;
+                        }
+                        if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+                          setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
+                          return;
+                        }
+
+                        setCreatingUser(true);
+                        setShowConfirmarCrearCuentaModal(false);
+                        try {
+                          const res = await registerBackend(pendingUserData);
+                          if (!res.success) {
+                            setCreateError(res.error || 'No se pudo crear la cuenta');
+                          } else {
+                            setShowEmailModal(false);
+                            setNewUserCompany('');
+                            setNewUserName('');
+                            setNewUserLastName('');
+                            setNewUserEmail('');
+                            setNewUserPassword('');
+                            setNewUserPhone('');
+                            setNewUserBirth('');
+                            setNewUserCity('');
+                            setNewUserState('');
+                            setPendingUserData(null);
+                          }
+                        } catch (e: any) {
+                          setCreateError(e?.message || 'Error inesperado');
+                        } finally {
+                          setCreatingUser(false);
+                        }
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                        Confirmar
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Modal de Historial de Tareas - Diseño Moderno */}
+      {showTareasHistorialModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 700 }]}>
+            {/* Header con gradiente */}
+            <LinearGradient
+              colors={['#1e293b', '#0f172a']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile, { borderBottomWidth: 1, borderBottomColor: '#334155' }]}
+            >
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                  <View style={{ backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 8, padding: 8 }}>
+                    <Ionicons name="list-outline" size={24} color="#94a3b8" />
+                  </View>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800' }]}>
+                    Historial de Tareas
+                  </Text>
+                </View>
+                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily, color: '#64748b' }]}>
+                  Todas las tareas creadas
+                </Text>
+              </View>
+              <View style={styles.largeModalActions}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setLoadingTareas(true);
+                    const { success, data, error } = await obtenerTareasBackend();
+                    if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
+                    else setTareas(data || []);
+                    setLoadingTareas(false);
+                  }}
+                  style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                >
+                  <Ionicons name="refresh" size={16} color="#67e8f9" />
+                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+
+            {loadingTareas && (
+              <View style={styles.infoBox}>
+                <Text style={[styles.infoText, { fontFamily }]}>Cargando tareas...</Text>
+              </View>
+            )}
+
+            {!loadingTareas && errorTareas ? (
+              <View style={styles.errorPanel}>
+                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorTareas}</Text>
+              </View>
+            ) : null}
+
+            {!loadingTareas && !errorTareas && tareas.length === 0 ? (
+              <View style={[styles.infoBox, { paddingVertical: 60 }]}>
+                <Ionicons name="document-text-outline" size={64} color="#334155" style={{ marginBottom: 16 }} />
+                <Text style={[styles.infoText, { fontFamily, fontSize: 16, fontWeight: '600', marginBottom: 8 }]}>No hay tareas registradas</Text>
+                <Text style={[{ color: '#64748b', fontSize: 14, textAlign: 'center' }, { fontFamily }]}>
+                  Aún no se han creado tareas en el sistema
+                </Text>
+              </View>
+            ) : null}
+
+            {!loadingTareas && !errorTareas && tareas.length > 0 ? (
+              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={styles.listSpacing}>
+                  {/* Contador de tareas */}
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#06b6d4' }}>
+                    <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                      📋 {tareas.length} {tareas.length === 1 ? 'tarea registrada' : 'tareas registradas'}
+                    </Text>
+                  </View>
+
+                  {tareas.map((tarea: any) => (
+                    <View
+                      key={tarea.id}
+                      style={{
+                        backgroundColor: '#1e293b',
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 12,
+                        borderWidth: 1,
+                        borderColor: '#334155',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                      }}
+                    >
+                      {/* Header de la tarea */}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                        <View style={{ flex: 1, marginRight: 12 }}>
+                          <Text style={[{ color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
+                            {tarea.descripcion || 'Sin descripción'}
+                          </Text>
+                        </View>
+                        {/* Badge de estado */}
+                        <View
+                          style={{
+                            backgroundColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(251, 191, 36, 0.2)',
+                            borderRadius: 6,
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            borderWidth: 1,
+                            borderColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(251, 191, 36, 0.4)',
+                          }}
+                        >
+                          <Text
+                            style={[
+                              {
+                                color: tarea.estado === 'completada' ? '#86efac' : '#fde047',
+                                fontSize: 11,
+                                fontWeight: '700',
+                                textTransform: 'uppercase',
+                              },
+                              { fontFamily },
+                            ]}
+                          >
+                            {tarea.estado === 'completada' ? '✓ Completada' : '⏳ Pendiente'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Información de la tarea */}
+                      <View style={{ gap: 8 }}>
+                        {/* Creada por */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', borderRadius: 6, padding: 6 }}>
+                            <Ionicons name="person-outline" size={14} color="#a78bfa" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Creada por:</Text>
+                            <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Admin</Text>
+                          </View>
+                        </View>
+
+                        {/* Fecha de creación */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.2)', borderRadius: 6, padding: 6 }}>
+                            <Ionicons name="calendar-outline" size={14} color="#67e8f9" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Fecha:</Text>
+                            <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                              {tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString('es-MX', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) : 'Fecha no disponible'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+
+            {/* Footer */}
+            <View style={{ borderTopWidth: 1, borderTopColor: '#334155', padding: 16, backgroundColor: '#0f172a' }}>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#1e293b',
+                  borderRadius: 8,
+                  padding: 14,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: '#334155',
+                }}
+                onPress={() => setShowTareasHistorialModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={[{ color: '#cbd5e1', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Modal de Gestión de Usuarios */}
       {
@@ -6491,5 +6877,31 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     width: '100%',
+  },
+  confirmModal: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 400,
+    width: '90%',
+    borderWidth: 1,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  confirmTitle: {
+    color: '#f1f5f9',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  confirmMessage: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
