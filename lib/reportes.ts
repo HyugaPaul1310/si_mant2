@@ -12,7 +12,7 @@ interface ReporteData {
   equipo_modelo?: string;
   equipo_serie?: string;
   comentario: string;
-  prioridad: 'baja' | 'media' | 'urgente';
+  prioridad: 'baja' | 'media' | 'alta' | 'urgente';
   direccion_sucursal?: string;
 }
 
@@ -44,6 +44,13 @@ Sucursal: ${datos.sucursal || 'N/A'}
 Comentario: ${datos.comentario || 'N/A'}
 Prioridad: ${datos.prioridad || 'media'}
     `.trim();
+
+    console.log('[CLIENTE] Enviando reporte:', {
+      titulo,
+      descripcion,
+      estado: 'pendiente',
+      prioridad: datos.prioridad || 'media',
+    });
 
     return apiCall('/reportes', 'POST', {
       titulo,

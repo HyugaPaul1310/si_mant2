@@ -75,7 +75,7 @@ router.post('/', verifyToken, async (req, res) => {
     const [user] = await pool.query('SELECT empresa_id FROM usuarios WHERE id = ?', [req.user.id]);
     const empresa_id = user[0]?.empresa_id;
 
-    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id });
+    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id, prioridad });
 
     const result = await pool.query(
       'INSERT INTO reportes (titulo, descripcion, estado, prioridad, usuario_id, empresa_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',

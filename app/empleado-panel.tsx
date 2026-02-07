@@ -90,6 +90,7 @@ function EmpleadoPanelContent() {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [showConfirmarAnalisis, setShowConfirmarAnalisis] = useState(false);
+  const [showConfirmarFinalizarModal, setShowConfirmarFinalizarModal] = useState(false);
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -488,6 +489,46 @@ function EmpleadoPanelContent() {
       showToast('Error al guardar la cotización', 'error');
     } finally {
       setGuardandoCotizacion(false);
+    }
+  };
+
+  const handleFinalizarTrabajo = async () => {
+    if (!reporteSeleccionado?.id) return;
+
+    setGuardandoFase2(true);
+    setShowConfirmarFinalizarModal(false);
+
+    try {
+      const fase2Data = {
+        revision,
+        recomendaciones,
+        reparacion,
+        recomendaciones_adicionales: recomendacionesAdicionales,
+        materiales_refacciones: materialesRefacciones,
+      };
+
+      console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
+
+      const updateResult = await actualizarEstadoReporteAsignado(
+        reporteSeleccionado.id,
+        'finalizado_por_tecnico',
+        undefined,
+        undefined,
+        fase2Data
+      );
+
+      if (updateResult.success) {
+        showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
+        cerrarModalReporteDetalle();
+        cargarReportes();
+      } else {
+        showToast('Error al guardar el trabajo: ' + updateResult.error, 'error');
+      }
+    } catch (error) {
+      console.error('[EMPLEADO-FASE2] Error:', error);
+      showToast('Error inesperado al guardar el trabajo', 'error');
+    } finally {
+      setGuardandoFase2(false);
     }
   };
 
@@ -1411,6 +1452,32 @@ function EmpleadoPanelContent() {
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
+              {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
+                <LinearGradient
+                  colors={['#10b981', '#06b6d4']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.detailActionButton}
+                >
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!revision.trim() || !recomendaciones.trim() || !reparacion.trim()) {
+                        showToast('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación', 'warning');
+                        return;
+                      }
+                      setShowConfirmarFinalizarModal(true);
+                    }}
+                    disabled={guardandoFase2}
+                    activeOpacity={0.85}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                      {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              )}
+
               {reporteSeleccionado.estado === 'asignado' && (
                 <LinearGradient
                   colors={['#d97706', '#f59e0b']}
@@ -1475,65 +1542,7 @@ function EmpleadoPanelContent() {
                 </LinearGradient>
               )}
 
-              {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
-                <LinearGradient
-                  colors={['#10b981', '#06b6d4']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
-                >
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (!revision.trim() || !recomendaciones.trim() || !reparacion.trim()) {
-                        showToast('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación', 'warning');
-                        return;
-                      }
-
-                      // PASO 3: Guardar Fase 2 primero
-                      const fase2Data = {
-                        revision,
-                        recomendaciones,
-                        reparacion,
-                        recomendaciones_adicionales: recomendacionesAdicionales,
-                        materiales_refacciones: materialesRefacciones,
-                      };
-
-                      console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
-
-                      // Actualizar el reporte con datos de Fase 2 y cambiar estado a finalizado_por_tecnico
-                      const updateResult = await actualizarEstadoReporteAsignado(
-                        reporteSeleccionado.id,
-                        'finalizado_por_tecnico', // Cambiar estado a finalizado por técnico
-                        undefined, // descripcionTrabajo (ya fue enviado en Fase 1)
-                        undefined, // precioCotizacion
-                        fase2Data  // Datos completos de Fase 2
-                      );
-
-                      if (!updateResult.success) {
-                        console.error('[EMPLEADO-FASE2] Error al guardar:', updateResult.error);
-                        showToast('Error al guardar el trabajo: ' + updateResult.error, 'error');
-                        return;
-                      }
-
-                      // Éxito: mostrar mensaje y recargar
-                      console.log('[EMPLEADO-FASE2] ✓ Trabajo guardado exitosamente');
-                      showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
-
-                      // Limpiar y cerrar modal
-                      cerrarModalReporteDetalle();
-
-                      // Recargar lista de reportes
-                      cargarReportes();
-                    }}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      Finalizar Trabajo
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              )}
+              {/* Botón de Finalizar Trabajo movido arriba para consistencia con el modal de cierre */}
             </View>
           </View>
         </View>
@@ -1798,46 +1807,77 @@ function EmpleadoPanelContent() {
                 setShowArchivoModal(false);
                 setArchivoVisualizando(null);
               }}
-              activeOpacity={0.7}
             >
-              <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
+              <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
-              {archivoVisualizando.tipo === 'foto' ? (
-                <Image
-                  source={{ uri: archivoVisualizando.url }}
-                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                  resizeMode="contain"
-                />
-              ) : Platform.OS === 'web' ? (
-                <video
-                  src={archivoVisualizando.url}
-                  controls
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: '#000'
-                  }}
-                />
-              ) : (
-                <Video
-                  source={{ uri: archivoVisualizando.url }}
-                  rate={1.0}
-                  volume={1.0}
-                  isMuted={false}
-                  resizeMode="cover"
-                  useNativeControls
-                  style={{ width: '100%', height: '100%' }}
-                />
-              )}
-            </View>
+            {archivoVisualizando.tipo_archivo === 'imagen' || archivoVisualizando.tipo_archivo?.startsWith('image/') ? (
+              <Image
+                source={{ uri: getProxyUrl(archivoVisualizando.archivo_url || archivoVisualizando.url) }}
+                style={{ width: '100%', height: '80%', borderRadius: 8 }}
+                resizeMode="contain"
+              />
+            ) : archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/') ? (
+              <Video
+                source={{ uri: getProxyUrl(archivoVisualizando.archivo_url || archivoVisualizando.url) }}
+                style={{ width: '100%', height: '80%', borderRadius: 8 }}
+                useNativeControls
+                resizeMode="contain"
+                shouldPlay
+              />
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <Ionicons name="document" size={80} color="#94a3b8" />
+                <Text style={{ color: '#fff', marginTop: 20, fontFamily, fontSize: 16 }}>
+                  Este archivo no se puede previsualizar
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       )}
 
-      {/* Toast Personalizado */}
+      {showConfirmarFinalizarModal && (
+        <View style={styles.overlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: '#10b981' }]}>
+                <Ionicons name="cloud-upload-outline" size={24} color="#10b981" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Envío</Text>
+            </View>
+            <Text style={[styles.modalBodyText, { fontFamily }]}>
+              ¿Estás seguro de que deseas finalizar este trabajo y enviar el reporte? No podrás editarlo después de enviarlo.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => setShowConfirmarFinalizarModal(false)}
+                disabled={guardandoFase2}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#10b981', '#06b6d4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={handleFinalizarTrabajo}
+                  disabled={guardandoFase2}
+                  activeOpacity={0.85}
+                  style={{ width: '100%', alignItems: 'center' }}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {guardandoFase2 ? 'Enviando...' : 'Sí, finalizar'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
       {toastMessage && (
         <View
           style={{

@@ -44,7 +44,7 @@ export default function GenerarReporteScreen() {
   const [equipoModelo, setEquipoModelo] = useState('');
   const [equipoSerie, setEquipoSerie] = useState('');
   const [comentario, setComentario] = useState('');
-  const [prioridad, setPrioridad] = useState<'baja' | 'media' | 'urgente'>('media');
+  const [prioridad, setPrioridad] = useState<'baja' | 'media' | 'alta'>('media');
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [video, setVideo] = useState<string | null>(null);
@@ -246,7 +246,7 @@ export default function GenerarReporteScreen() {
   const prioridades = [
     { value: 'baja', label: 'Baja', color: 'bg-green-500' },
     { value: 'media', label: 'Media', color: 'bg-amber-500' },
-    { value: 'urgente', label: 'Urgente', color: 'bg-red-500' },
+    { value: 'alta', label: 'Urgente', color: 'bg-red-500' },
   ] as const;
 
   return (
@@ -434,7 +434,7 @@ export default function GenerarReporteScreen() {
                 style={styles.priorityButton}
               >
                 <View style={styles.priorityButtonContent}>
-                  <View style={[styles.priorityDot, { backgroundColor: prioridad === 'urgente' ? '#ef4444' : prioridad === 'media' ? '#f59e0b' : '#22c55e' }]} />
+                  <View style={[styles.priorityDot, { backgroundColor: prioridad === 'alta' ? '#ef4444' : prioridad === 'media' ? '#f59e0b' : '#22c55e' }]} />
                   <Text style={[styles.priorityText, { fontFamily, textTransform: 'capitalize' }]}>{prioridad}</Text>
                 </View>
                 <Ionicons name="chevron-down" size={16} color="#475569" />
@@ -451,7 +451,7 @@ export default function GenerarReporteScreen() {
                       }}
                       style={[styles.priorityOption, index < prioridades.length - 1 && styles.priorityOptionBorder]}
                     >
-                      <View style={[styles.priorityDot, { backgroundColor: p.value === 'urgente' ? '#ef4444' : p.value === 'media' ? '#f59e0b' : '#22c55e' }]} />
+                      <View style={[styles.priorityDot, { backgroundColor: p.value === 'alta' ? '#ef4444' : p.value === 'media' ? '#f59e0b' : '#22c55e' }]} />
                       <Text style={[styles.priorityOptionText, { fontFamily }]}>{p.label}</Text>
                     </TouchableOpacity>
                   ))}

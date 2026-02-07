@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
@@ -230,6 +230,9 @@ function AdminPanelContent() {
 
   // Estados para confirmación de creación de tarea
   const [showConfirmarCrearTareaModal, setShowConfirmarCrearTareaModal] = useState(false);
+
+  // Estados para confirmación de asignación de reporte
+  const [showConfirmarAsignacionModal, setShowConfirmarAsignacionModal] = useState(false);
 
   // Estados para confirmación de creación de cuenta
   const [showConfirmarCrearCuentaModal, setShowConfirmarCrearCuentaModal] = useState(false);
@@ -1174,8 +1177,15 @@ function AdminPanelContent() {
       return;
     }
 
+    // Si aún no se ha mostrado el modal de confirmación, mostrarlo
+    if (!showConfirmarAsignacionModal) {
+      setShowConfirmarAsignacionModal(true);
+      return;
+    }
+
     setAsignandoReporte(true);
     setAsignarError(null);
+    setShowConfirmarAsignacionModal(false); // Cerrar el modal de confirmación
 
     try {
       // Obtener ID del empleado
@@ -1711,6 +1721,7 @@ function AdminPanelContent() {
       </ScrollView>
 
       {/* Todos los modales y overlays van aquí */}
+
 
       {showLogout && (
         <View style={styles.overlay}>
@@ -2270,6 +2281,7 @@ function AdminPanelContent() {
                     <View style={styles.filtroChips}>
                       {[
                         { value: 'pendiente', label: 'En espera', icon: 'time-outline', color: '#f59e0b' },
+                        { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
                         { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
                       ].map((estado) => {
                         const isActive = filtrosEstado.includes(estado.value);
@@ -2308,7 +2320,7 @@ function AdminPanelContent() {
                       {[
                         { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
                         { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
-                        { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                        { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
                       ].map((prioridad) => {
                         const isActive = filtrosPrioridad.includes(prioridad.value);
                         return (
@@ -5624,6 +5636,47 @@ function AdminPanelContent() {
           </View>
         )
       }
+
+      {showConfirmarAsignacionModal && (
+        <View style={styles.overlayHeavy}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                <Ionicons name="help-circle-outline" size={22} color="#3b82f6" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Asignación</Text>
+            </View>
+            <Text style={[styles.modalBodyText, { fontFamily, textAlign: 'center', marginVertical: 10 }]}>
+              ¿Estás seguro de que deseas asignar este reporte a {empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre || selectedEmpleadoReporte}?
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => setShowConfirmarAsignacionModal(false)}
+                disabled={asignandoReporte}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#3b82f6', '#1e40af']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={handleAsignarReporte}
+                  disabled={asignandoReporte}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {asignandoReporte ? 'Asignando...' : 'Sí, Asignar'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView >
   );
 }

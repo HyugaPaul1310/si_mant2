@@ -959,21 +959,30 @@ function ClientePanelContent() {
   const activos = useMemo(() =>
     reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      // Se quita de seguimiento si está terminado, en cotización, ya cotizado o cerrado
-      return st !== 'terminado' && st !== 'en_cotizacion' && st !== 'cotizado' && st !== 'cerrado';
+      // Solo quitamos terminado/cerrado definitivamente de la vista principal
+      // En cotización debe aparecer en seguimiento
+      return st !== 'terminado' && st !== 'cerrado' && st !== 'finalizado';
     }),
     [reportes]
   );
+
+  const normalizeStatus = (estado: string) => {
+    const lower = (estado || '').toLowerCase();
+    // Mapa de normalización
+    if (lower.includes('espera') || lower.includes('pendiente')) return 'en_espera';
+    if (lower.includes('asignado')) return 'asignado';
+    if (lower.includes('cotiza') || lower.includes('confirmacion')) return 'en_cotizacion';
+    if (lower.includes('ejecuci') || lower.includes('proceso') || lower.includes('aceptado')) return 'en_ejecucion';
+    if (lower.includes('cerrado') || lower.includes('terminado') || lower.includes('finalizado') || lower.includes('listo') || lower.includes('encuesta')) return 'cerrado';
+    return 'en_espera'; // Default
+  };
 
   const activosFiltrados = useMemo(() => {
     let lista = [...activos];
 
     if (filtroEstado.length > 0) {
       lista = lista.filter((r) => {
-        let key = (r.estado || 'pendiente').toLowerCase();
-        if (key === 'en_proceso') key = 'en proceso';
-        if (key === 'en_espera') key = 'en espera';
-        if (key === 'en_cotizacion') key = 'en cotizacion';
+        const key = normalizeStatus(r.estado);
         return filtroEstado.includes(key);
       });
     }
@@ -991,9 +1000,7 @@ function ClientePanelContent() {
   const activosPorEstado = useMemo(() => {
     const grupos: Record<string, any[]> = {};
     activosFiltrados.forEach((r) => {
-      let key = (r.estado || 'pendiente').toLowerCase();
-      if (key === 'en_proceso') key = 'en proceso';
-      if (key === 'en_espera') key = 'en espera';
+      const key = normalizeStatus(r.estado);
       if (!grupos[key]) grupos[key] = [];
       grupos[key].push(r);
     });
@@ -1021,9 +1028,9 @@ function ClientePanelContent() {
     const estadoText = estadoStyles.text;
     const estadoBorder = estadoStyles.border;
 
-    const prioridadBg = rep.prioridad === 'urgente' ? '#ef444433' : rep.prioridad === 'media' ? '#f59e0b33' : '#10b98133';
-    const prioridadText = rep.prioridad === 'urgente' ? '#fca5a5' : rep.prioridad === 'media' ? '#fcd34d' : '#6ee7b7';
-    const prioridadBorder = rep.prioridad === 'urgente' ? '#ef444466' : rep.prioridad === 'media' ? '#f59e0b66' : '#10b98166';
+    const prioridadBg = (rep.prioridad === 'alta' || rep.prioridad === 'urgente') ? '#ef444433' : rep.prioridad === 'media' ? '#f59e0b33' : '#10b98133';
+    const prioridadText = (rep.prioridad === 'alta' || rep.prioridad === 'urgente') ? '#fca5a5' : rep.prioridad === 'media' ? '#fcd34d' : '#6ee7b7';
+    const prioridadBorder = (rep.prioridad === 'alta' || rep.prioridad === 'urgente') ? '#ef444466' : rep.prioridad === 'media' ? '#f59e0b66' : '#10b98166';
 
     const fecha = rep.created_at ? new Date(rep.created_at).toLocaleString() : isSample ? 'Hace un momento' : '';
 
@@ -1500,10 +1507,10 @@ function ClientePanelContent() {
                       <View style={styles.filtroChips}>
                         {[
                           { value: 'en_espera', label: 'En Espera', icon: 'time-outline', color: '#eab308' },
-                          { value: 'asignado', label: 'Asignado', icon: 'person-outline', color: '#06b6d4' },
+                          { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
                           { value: 'en_cotizacion', label: 'En Cotización', icon: 'calculator-outline', color: '#f59e0b' },
                           { value: 'en_ejecucion', label: 'En Ejecución', icon: 'construct-outline', color: '#3b82f6' },
-                          { value: 'cerrado', label: 'Cerrado', icon: 'checkmark-circle-outline', color: '#10b981' },
+                          { value: 'cerrado', label: 'Por Revisar', icon: 'checkmark-circle-outline', color: '#10b981' },
                         ].map((estado) => {
                           const isActive = filtroEstado.includes(estado.value);
                           return (
@@ -1539,7 +1546,7 @@ function ClientePanelContent() {
                         {[
                           { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
                           { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
-                          { value: 'urgente', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                          { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
                         ].map((prioridad) => {
                           const isActive = filtroPrioridad.includes(prioridad.value);
                           return (
