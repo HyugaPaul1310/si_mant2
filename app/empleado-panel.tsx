@@ -1,11 +1,11 @@
 // @ts-nocheck
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarEstadoTareaBackend,
-    obtenerArchivosReporteBackend,
-    obtenerInventarioEmpleadoBackend,
-    obtenerReportesAsignados,
-    obtenerTareasEmpleadoBackend
+  actualizarEstadoReporteAsignado,
+  actualizarEstadoTareaBackend,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesAsignados,
+  obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
@@ -17,16 +17,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -1803,27 +1803,36 @@ function EmpleadoPanelContent() {
               <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
             </TouchableOpacity>
 
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', paddingBottom: 60 }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
               {archivoVisualizando.tipo === 'foto' ? (
                 <Image
                   source={{ uri: archivoVisualizando.url }}
                   style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
                   resizeMode="contain"
                 />
+              ) : Platform.OS === 'web' ? (
+                <video
+                  src={archivoVisualizando.url}
+                  controls
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#000'
+                  }}
+                />
               ) : (
                 <Video
                   source={{ uri: archivoVisualizando.url }}
-                  style={{ width: '100%', height: '100%' }}
+                  rate={1.0}
+                  volume={1.0}
+                  isMuted={false}
+                  resizeMode="cover"
                   useNativeControls
-                  resizeMode="contain"
-                  isLooping
+                  style={{ width: '100%', height: '100%' }}
                 />
               )}
             </View>
-
-            <Text style={[styles.archivoModalName, isMobile && styles.archivoModalNameMobile, { fontFamily }]}>
-              {archivoVisualizando.nombre}
-            </Text>
           </View>
         </View>
       )}

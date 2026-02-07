@@ -2857,7 +2857,11 @@ function AdminPanelContent() {
                     <TextInput
                       style={[{ flex: 1, color: '#fff', fontSize: 18, fontWeight: '600' }, { fontFamily }]}
                       value={precioCotizacion}
-                      onChangeText={setPrecioCotizacion}
+                      onChangeText={(text) => {
+                        const numeric = text.replace(/[^0-9.]/g, '');
+                        if ((numeric.match(/\./g) || []).length > 1) return;
+                        setPrecioCotizacion(numeric);
+                      }}
                       placeholder="0.00"
                       placeholderTextColor="#475569"
                       keyboardType="decimal-pad"
@@ -3699,11 +3703,11 @@ function AdminPanelContent() {
         )
       }
 
-      {/* Modal para visualizar archivo en grande */}
+      {/* Modal para visualizar archivo en grande - Mejorado */}
       {
         showArchivoModal && archivoVisualizando && (
-          <View style={styles.overlayHeavy}>
-            <View style={styles.archivoModalContent}>
+          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 70 }]}>
+            <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
               <TouchableOpacity
                 onPress={() => {
                   setShowArchivoModal(false);
@@ -3720,21 +3724,28 @@ function AdminPanelContent() {
                   style={styles.archivoModalImage}
                   resizeMode="contain"
                 />
+              ) : Platform.OS === 'web' ? (
+                <video
+                  src={archivoVisualizando.url}
+                  controls
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    backgroundColor: '#000'
+                  }}
+                />
               ) : (
                 <Video
                   source={{ uri: archivoVisualizando.url }}
                   rate={1.0}
                   volume={1.0}
                   isMuted={false}
-                  resizeMode="contain"
+                  resizeMode="cover"
                   useNativeControls
-                  style={[styles.archivoModalVideo, { aspectRatio: 16 / 9, maxHeight: '85vh' }]}
+                  style={styles.archivoModalVideo}
                 />
               )}
-
-              <Text style={[styles.archivoModalName, { fontFamily }]}>
-                {archivoVisualizando.nombre}
-              </Text>
             </View>
           </View>
         )
@@ -6903,5 +6914,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  archivoModalContent: {
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    padding: 20,
+    maxWidth: '95%',
+    maxHeight: '95%',
+    width: '90%',
+    height: '90%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    flexDirection: 'column',
+  },
+  archivoModalClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 50,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  archivoModalImage: {
+    width: '100%',
+    flex: 1,
+    borderRadius: 12,
+  },
+  archivoModalVideo: {
+    width: '100%',
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: '#000',
+  },
+  archivoModalName: {
+    color: '#f1f5f9',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalOverlayMobile: {
+    padding: 12,
   },
 });

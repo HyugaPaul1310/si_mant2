@@ -2481,7 +2481,7 @@ function ClientePanelContent() {
       {/* Modal para visualizar archivo completo */}
       {
         showArchivoModal && archivoVisualizando && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000b3', zIndex: 70, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 70 }]}>
             <View style={[styles.archivoModalContent, isMobile && styles.archivoModalContentMobile, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
               <TouchableOpacity
                 style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
@@ -2494,27 +2494,36 @@ function ClientePanelContent() {
                 <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
               </TouchableOpacity>
 
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', paddingBottom: 60 }}>
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
                 {archivoVisualizando.tipo === 'foto' ? (
                   <Image
                     source={{ uri: archivoVisualizando.url }}
                     style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
                     resizeMode="contain"
                   />
+                ) : Platform.OS === 'web' ? (
+                  <video
+                    src={archivoVisualizando.url}
+                    controls
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      backgroundColor: '#000'
+                    }}
+                  />
                 ) : (
                   <Video
                     source={{ uri: archivoVisualizando.url }}
-                    style={{ width: '100%', height: '100%' }}
+                    rate={1.0}
+                    volume={1.0}
+                    isMuted={false}
+                    resizeMode="cover"
                     useNativeControls
-                    resizeMode="contain"
-                    isLooping
+                    style={{ width: '100%', height: '100%' }}
                   />
                 )}
               </View>
-
-              <Text style={[styles.archivoModalName, isMobile && styles.archivoModalNameMobile, { fontFamily }]}>
-                {archivoVisualizando.nombre}
-              </Text>
             </View>
           </View>
         )
@@ -3673,6 +3682,20 @@ const styles = StyleSheet.create({
   },
   archivoModalNameMobile: {
     fontSize: 12,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalOverlayMobile: {
+    padding: 12,
   },
 });
 
