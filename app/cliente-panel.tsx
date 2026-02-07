@@ -217,9 +217,9 @@ function ClientePanelContent() {
   );
 
   const cargarReportes = useCallback(
-    async (email?: string) => {
+    async (email?: string, silent: boolean = false) => {
       if (!email) return;
-      setLoadingReportes(true);
+      if (!silent) setLoadingReportes(true);
       setErrorReportes('');
       const { success, data, error } = await obtenerReportesCliente(email);
       console.log('[CLIENTE-PANEL] cargarReportes respuesta:', { success, dataLength: data?.length, firstItem: data?.[0] });
@@ -258,7 +258,7 @@ function ClientePanelContent() {
         // Verificar encuestas existentes
         verificarEncuestas(reportesMapeados);
       }
-      setLoadingReportes(false);
+      if (!silent) setLoadingReportes(false);
       return data || [];
     },
     [verificarEncuestas]
@@ -271,13 +271,13 @@ function ClientePanelContent() {
   };
 
   const cargarCotizaciones = useCallback(
-    async (email?: string) => {
+    async (email?: string, silent: boolean = false) => {
       if (!email) {
         console.log('[CLIENTE-PANEL] No hay email para cargar cotizaciones');
         return;
       }
       console.log('[CLIENTE-PANEL] Cargando cotizaciones para email:', email);
-      setLoadingCotizaciones(true);
+      if (!silent) setLoadingCotizaciones(true);
       try {
         console.log('[CLIENTE-PANEL] Llamando a obtenerReportesCliente');
         const resultado = await obtenerReportesCliente(email);
@@ -339,7 +339,7 @@ function ClientePanelContent() {
         console.error('[CLIENTE-PANEL] Exception:', error);
         setCotizaciones([]);
       } finally {
-        setLoadingCotizaciones(false);
+        if (!silent) setLoadingCotizaciones(false);
       }
     },
     []
@@ -347,7 +347,7 @@ function ClientePanelContent() {
 
   // PASO 4: Cargar reportes finalizados por técnico (esperando confirmación del cliente)
   const cargarReportesFinalizados = useCallback(
-    async (email?: string) => {
+    async (email?: string, silent: boolean = false) => {
       if (!email) {
         console.log('[CLIENTE-CARGAR-FINALIZADOS] Sin email');
         return [];
@@ -403,6 +403,20 @@ function ClientePanelContent() {
     },
     []
   );
+
+  // Polling para actualización en tiempo real (cada 10 segundos)
+  useEffect(() => {
+    if (!usuario?.email) return;
+
+    const interval = setInterval(() => {
+      console.log('[CLIENTE-POLLING] Actualizando datos (silent)...');
+      cargarReportes(usuario.email, true);
+      cargarCotizaciones(usuario.email, true);
+      cargarReportesFinalizados(usuario.email, true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [usuario?.email, cargarReportes, cargarCotizaciones, cargarReportesFinalizados]);
 
   // Función para generar PDF del reporte
   const generarPDF = async (reporte: any) => {

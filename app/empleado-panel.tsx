@@ -188,9 +188,9 @@ function EmpleadoPanelContent() {
   }, [reporteSeleccionado]);
 
 
-  const cargarHerramientas = async () => {
+  const cargarHerramientas = async (silent: boolean = false) => {
     if (!usuario?.id) return;
-    setLoadingHerramientas(true);
+    if (!silent) setLoadingHerramientas(true);
     try {
       const { success, data } = await obtenerInventarioEmpleadoBackend(usuario.id.toString());
       if (success) {
@@ -200,13 +200,13 @@ function EmpleadoPanelContent() {
     } catch (error) {
       console.error('Error cargando herramientas:', error);
     } finally {
-      setLoadingHerramientas(false);
+      if (!silent) setLoadingHerramientas(false);
     }
   };
 
-  const cargarTareas = async () => {
+  const cargarTareas = async (silent: boolean = false) => {
     if (!usuario?.email) return;
-    setLoadingTareas(true);
+    if (!silent) setLoadingTareas(true);
     try {
       const { success, data } = await obtenerTareasEmpleadoBackend(usuario.email);
       if (success) {
@@ -221,7 +221,7 @@ function EmpleadoPanelContent() {
     } catch (error) {
       console.error('Error cargando tareas:', error);
     } finally {
-      setLoadingTareas(false);
+      if (!silent) setLoadingTareas(false);
     }
   };
 
@@ -271,9 +271,9 @@ function EmpleadoPanelContent() {
     }
   };
 
-  const cargarReportes = async () => {
+  const cargarReportes = async (silent: boolean = false) => {
     if (!usuario?.email) return;
-    setLoadingReportes(true);
+    if (!silent) setLoadingReportes(true);
     try {
       const { success, data } = await obtenerReportesAsignados(usuario.email);
       if (success) {
@@ -325,9 +325,23 @@ function EmpleadoPanelContent() {
     } catch (error) {
       console.error('Error cargando reportes:', error);
     } finally {
-      setLoadingReportes(false);
+      if (!silent) setLoadingReportes(false);
     }
   };
+
+  // Polling para actualización en tiempo real (cada 10 segundos)
+  useEffect(() => {
+    if (!usuario?.email) return;
+
+    const interval = setInterval(() => {
+      console.log('[EMPLEADO-POLLING] Actualizando datos (silent)...');
+      cargarTareas(true);
+      cargarReportes(true);
+      cargarHerramientas(true);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [usuario?.email]);
 
   const cargarReportesTerminados = async () => {
     if (!usuario?.email) return;

@@ -709,8 +709,19 @@ function AdminPanelContent() {
       filtrados = filtrados.filter((r) => {
         const estado = (r.estado || '').toLowerCase();
         return filtrosEstado.some(f => {
-          if (f === 'en_proceso') return estado === 'en_proceso';
-          if (f === 'en espera') return estado === 'en espera';
+          if (f === 'en_espera') {
+            return estado === 'pendiente' || estado === 'en_espera' || estado === 'en espera';
+          }
+          if (f === 'asignado') {
+            return estado === 'asignado';
+          }
+          if (f === 'en_cotizacion') {
+            return estado === 'en_cotizacion' || estado === 'en cotizacion' || estado === 'cotizado' || estado === 'en_espera_confirmacion' || estado === 'en espera confirmacion';
+          }
+          if (f === 'en_ejecucion') {
+            return estado === 'en_proceso' || estado === 'en proceso' || estado === 'en_ejecucion' || estado === 'en ejecucion' ||
+              estado === 'aceptado_por_cliente' || estado === 'finalizado_por_tecnico' || estado === 'listo_para_encuesta';
+          }
           return estado === f;
         });
       });
@@ -904,7 +915,7 @@ function AdminPanelContent() {
     },
     {
       title: 'Reportes Finalizados (Empleado)',
-      description: 'Revisar trabajos completados por técnicos',
+      description: 'Confirma los reportes finalizados por el empleado',
       gradient: ['#831843', '#db2777'] as const, // Deep Pink
       iconName: 'checkbox-outline',
       badge: finalizadosCount, // Badge dinámico
@@ -2280,9 +2291,10 @@ function AdminPanelContent() {
                     </Text>
                     <View style={styles.filtroChips}>
                       {[
-                        { value: 'pendiente', label: 'En espera', icon: 'time-outline', color: '#f59e0b' },
+                        { value: 'en_espera', label: 'En espera', icon: 'time-outline', color: '#f59e0b' },
                         { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
-                        { value: 'en_proceso', label: 'En proceso', icon: 'hourglass-outline', color: '#3b82f6' },
+                        { value: 'en_cotizacion', label: 'En cotización', icon: 'calculator-outline', color: '#8b5cf6' },
+                        { value: 'en_ejecucion', label: 'En ejecución', icon: 'construct-outline', color: '#3b82f6' },
                       ].map((estado) => {
                         const isActive = filtrosEstado.includes(estado.value);
                         return (
