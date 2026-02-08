@@ -560,37 +560,30 @@ function EmpleadoPanelContent() {
     {
       label: 'Tareas',
       value: tareas,
-      iconBg: '#9333ea',
+      iconBg: '#312e81', // Indigo
       iconName: 'checkmark-circle-outline' as const,
-      accent: '#c084fc',
+      accent: '#4f46e5',
     },
     {
       label: 'Reportes',
       value: reportes,
-      iconBg: '#b45309',
+      iconBg: '#1e3a8a', // Blue
       iconName: 'document-text-outline' as const,
-      accent: '#d97706',
-    },
-    {
-      label: 'Reportes Terminados',
-      value: reportesTerminados,
-      iconBg: '#047857',
-      iconName: 'checkmark-done-outline' as const,
-      accent: '#10b981',
+      accent: '#3b82f6',
     },
     {
       label: 'Tareas Terminadas',
       value: tareasTerminadas,
-      iconBg: '#1e40af',
-      iconName: 'star-outline' as const,
-      accent: '#3b82f6',
+      iconBg: '#047857', // Emerald
+      iconName: 'archive-outline' as const,
+      accent: '#10b981',
     },
     {
       label: 'Herramientas',
       value: herramientas,
-      iconBg: '#be185d',
+      iconBg: '#134e4a', // Teal
       iconName: 'construct-outline' as const,
-      accent: '#ec4899',
+      accent: '#0d9488',
     },
   ];
 
@@ -598,22 +591,15 @@ function EmpleadoPanelContent() {
     {
       title: 'Reportes',
       description: 'Crear y visualizar reportes',
-      gradientStart: '#9333ea',
-      gradientEnd: '#a78bfa',
+      gradientStart: '#1e3a8a',
+      gradientEnd: '#3b82f6',
       iconName: 'document-text' as const,
-    },
-    {
-      title: 'Historial de Reportes',
-      description: 'Consultar reportes anteriores',
-      gradientStart: '#b45309',
-      gradientEnd: '#d97706',
-      iconName: 'time' as const,
     },
     {
       title: 'Tareas',
       description: 'Ver mis tareas asignadas',
-      gradientStart: '#1e40af',
-      gradientEnd: '#3b82f6',
+      gradientStart: '#312e81',
+      gradientEnd: '#4f46e5',
       iconName: 'checkmark-circle' as const,
     },
     {
@@ -626,8 +612,8 @@ function EmpleadoPanelContent() {
     {
       title: 'Inventario',
       description: 'Ver mis herramientas asignadas',
-      gradientStart: '#be185d',
-      gradientEnd: '#db2777',
+      gradientStart: '#134e4a',
+      gradientEnd: '#0d9488',
       iconName: 'construct' as const,
     },
   ];
@@ -641,9 +627,6 @@ function EmpleadoPanelContent() {
     } else if (title === 'Reportes') {
       cargarReportes();
       setShowReportesModal(true);
-    } else if (title === 'Historial de Reportes') {
-      cargarReportesTerminados();
-      setShowHistorialReportesModal(true);
     } else if (title === 'Inventario') {
       cargarHerramientas();
       setShowInventarioModal(true);

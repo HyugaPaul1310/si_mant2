@@ -163,6 +163,22 @@ function AdminPanelContent() {
   const [showEncuestasModal, setShowEncuestasModal] = useState(false);
   const [selectedEncuesta, setSelectedEncuesta] = useState<any | null>(null);
   const [showEncuestaDetailModal, setShowEncuestaDetailModal] = useState(false);
+  const [filtroEmpleadoEncuesta, setFiltroEmpleadoEncuesta] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+
+  const encuestasFiltradas = useMemo(() => {
+    if (filtroEmpleadoEncuesta.trim() === '') {
+      return encuestas;
+    }
+    const search = filtroEmpleadoEncuesta.toLowerCase();
+    return encuestas.filter((e) => {
+      const nombre = (e.empleado_nombre || '').toLowerCase();
+      const email = (e.empleado_email || '').toLowerCase();
+      // También buscar por empresa
+      const empresa = (e.empresa || '').toLowerCase();
+      return nombre.includes(search) || email.includes(search) || empresa.includes(search);
+    });
+  }, [encuestas, filtroEmpleadoEncuesta]);
 
   // Estados para tareas historial
   const [tareas, setTareas] = useState<any[]>([]);
@@ -726,6 +742,14 @@ function AdminPanelContent() {
           }
           return estado === f;
         });
+      });
+    }
+
+    // Filtrar por prioridad
+    if (filtrosPrioridad.length > 0) {
+      filtrados = filtrados.filter((r) => {
+        const prioridad = (r.prioridad || 'media').toLowerCase();
+        return filtrosPrioridad.includes(prioridad);
       });
     }
 
@@ -1489,6 +1513,30 @@ function AdminPanelContent() {
                 </TouchableOpacity>
               </View>
 
+              <View style={styles.searchFilterContainerPro}>
+                <View style={styles.searchFilterLabelPro}>
+                  <Ionicons name="filter-circle-outline" size={16} color="#06b6d4" />
+                  <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Filtrar por empleado</Text>
+                </View>
+                <View style={[styles.searchFilterInputWrapperPro, isFocused && styles.searchFilterInputWrapperFocused]}>
+                  <Ionicons name="search-outline" size={20} color="#64748b" />
+                  <TextInput
+                    style={[styles.searchInputPro, { fontFamily }]}
+                    placeholder="Buscar por nombre, correo o empresa..."
+                    placeholderTextColor="#64748b"
+                    value={filtroEmpleadoEncuesta}
+                    onChangeText={setFiltroEmpleadoEncuesta}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                  />
+                  {filtroEmpleadoEncuesta.length > 0 && (
+                    <TouchableOpacity onPress={() => setFiltroEmpleadoEncuesta('')} style={{ padding: 4 }}>
+                      <Ionicons name="close-circle" size={20} color="#94a3b8" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
               {loadingEncuestas && (
                 <View style={styles.infoBox}>
                   <Text style={[styles.infoText, { fontFamily }]}>Cargando encuestas...</Text>
@@ -1513,10 +1561,22 @@ function AdminPanelContent() {
                 </View>
               ) : null}
 
-              {!loadingEncuestas && !errorEncuestas && encuestas.length > 0 ? (
+              {!loadingEncuestas && !errorEncuestas && encuestas.length > 0 && encuestasFiltradas.length === 0 ? (
+                <View style={styles.noResultadosContainer}>
+                  <Ionicons name="search-outline" size={48} color="#475569" />
+                  <Text style={[styles.noResultadosTitle, { fontFamily }]}>
+                    No se encontraron resultados
+                  </Text>
+                  <Text style={[styles.noResultadosText, { fontFamily }]}>
+                    Intenta buscar con otros términos.
+                  </Text>
+                </View>
+              ) : null}
+
+              {!loadingEncuestas && !errorEncuestas && encuestasFiltradas.length > 0 ? (
                 <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
                   <View style={styles.listSpacing}>
-                    {encuestas.map((encuesta: any) => (
+                    {encuestasFiltradas.map((encuesta: any) => (
                       <TouchableOpacity
                         key={encuesta.id}
                         style={styles.reportCard}
