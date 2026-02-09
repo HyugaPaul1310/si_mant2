@@ -1406,7 +1406,7 @@ function EmpleadoPanelContent() {
                             onPress={() => {
                               setArchivoVisualizando({
                                 url: proxyUrl,
-                                tipo: archivo.tipo_archivo,
+                                tipo_archivo: archivo.tipo_archivo,
                                 nombre: archivo.nombre_original || 'Archivo'
                               });
                               setShowArchivoModal(true);
@@ -1808,28 +1808,41 @@ function EmpleadoPanelContent() {
               <Ionicons name="close" size={28} color="#fff" />
             </TouchableOpacity>
 
-            {archivoVisualizando.tipo_archivo === 'imagen' || archivoVisualizando.tipo_archivo?.startsWith('image/') ? (
-              <Image
-                source={{ uri: getProxyUrl(archivoVisualizando.archivo_url || archivoVisualizando.url) }}
-                style={{ width: '100%', height: '80%', borderRadius: 8 }}
-                resizeMode="contain"
-              />
-            ) : archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/') ? (
-              <Video
-                source={{ uri: getProxyUrl(archivoVisualizando.archivo_url || archivoVisualizando.url) }}
-                style={{ width: '100%', height: '80%', borderRadius: 8 }}
-                useNativeControls
-                resizeMode="contain"
-                shouldPlay
-              />
-            ) : (
-              <View style={{ alignItems: 'center' }}>
-                <Ionicons name="document" size={80} color="#94a3b8" />
-                <Text style={{ color: '#fff', marginTop: 20, fontFamily, fontSize: 16 }}>
-                  Este archivo no se puede previsualizar
-                </Text>
-              </View>
-            )}
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+              {archivoVisualizando.tipo_archivo === 'imagen' || archivoVisualizando.tipo_archivo === 'foto' || archivoVisualizando.tipo_archivo?.startsWith('image/') ? (
+                <Image
+                  source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
+                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                  resizeMode="contain"
+                />
+              ) : Platform.OS === 'web' && (archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/')) ? (
+                <video
+                  src={archivoVisualizando.url || archivoVisualizando.uri}
+                  controls
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    backgroundColor: '#000'
+                  }}
+                />
+              ) : archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/') ? (
+                <Video
+                  source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
+                  style={{ width: '100%', height: '100%', borderRadius: 8, backgroundColor: '#000' }}
+                  useNativeControls
+                  resizeMode="contain"
+                  shouldPlay
+                />
+              ) : (
+                <View style={{ alignItems: 'center' }}>
+                  <Ionicons name="document" size={80} color="#94a3b8" />
+                  <Text style={{ color: '#fff', marginTop: 20, fontFamily, fontSize: 16 }}>
+                    Este archivo no se puede previsualizar
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       )}
