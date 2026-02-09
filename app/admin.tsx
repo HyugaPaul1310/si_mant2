@@ -1488,7 +1488,7 @@ function AdminPanelContent() {
           {/* TAB 3: ENCUESTAS */}
           {activeTab === 'encuestas' && (
             <View style={styles.tabContent}>
-              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
                   <Text style={[styles.sectionSubtitle, { fontFamily }]}>Estadísticas de satisfacción</Text>
@@ -1497,19 +1497,18 @@ function AdminPanelContent() {
                   onPress={cargarEncuestasData}
                   style={{
                     backgroundColor: '#1e293b',
-                    marginTop: 20,
-                    padding: 20,
+                    padding: 0,
                     borderRadius: 8,
                     borderWidth: 1,
                     borderColor: '#334155',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: 32,
-                    height: 32
+                    width: 36,
+                    height: 36
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh-outline" size={16} color="#22d3ee" />
+                  <Ionicons name="refresh-outline" size={18} color="#22d3ee" />
                 </TouchableOpacity>
               </View>
 
@@ -4488,14 +4487,24 @@ function AdminPanelContent() {
               colors={['#1e293b', '#0f172a']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile, { borderBottomWidth: 1, borderBottomColor: '#334155' }]}
+              style={[
+                styles.largeModalHeader,
+                isMobile && styles.largeModalHeaderMobile,
+                {
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#334155',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: isMobile ? 'flex-start' : 'center',
+                  gap: isMobile ? 12 : 12
+                }
+              ]}
             >
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, width: '100%' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                   <View style={{ backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 8, padding: 8 }}>
                     <Ionicons name="list-outline" size={24} color="#94a3b8" />
                   </View>
-                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800' }]}>
+                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800', flexShrink: 1 }]}>
                     Historial de Tareas
                   </Text>
                 </View>
@@ -4503,7 +4512,7 @@ function AdminPanelContent() {
                   Todas las tareas creadas
                 </Text>
               </View>
-              <View style={styles.largeModalActions}>
+              <View style={[styles.largeModalActions, isMobile && { width: '100%', justifyContent: 'space-between', marginTop: 4 }]}>
                 <TouchableOpacity
                   onPress={async () => {
                     setLoadingTareas(true);
@@ -4512,12 +4521,12 @@ function AdminPanelContent() {
                     else setTareas(data || []);
                     setLoadingTareas(false);
                   }}
-                  style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                  style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6, flex: isMobile ? 1 : 0, justifyContent: 'center' }]}
                 >
                   <Ionicons name="refresh" size={16} color="#67e8f9" />
                   <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={styles.closeButton}>
+                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={[styles.closeButton, isMobile && { alignSelf: 'flex-end' }]}>
                   <Ionicons name="close" size={20} color="#cbd5e1" />
                 </TouchableOpacity>
               </View>
@@ -4710,42 +4719,42 @@ function AdminPanelContent() {
                   <TouchableOpacity
                     onPress={() => setFiltroEstado('todos')}
                     style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: isMobile ? 2 : 12, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
                       filtroEstado === 'todos'
                         ? { backgroundColor: '#1e40af', borderColor: '#2563eb' }
                         : { backgroundColor: '#1e293b', borderColor: '#334155' }
                     ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'todos' ? '#93c5fd' : '#94a3b8' }, { fontFamily }]}>
+                    <Text style={[{ fontSize: isMobile ? 11 : 13, fontWeight: '600', color: filtroEstado === 'todos' ? '#93c5fd' : '#94a3b8', textAlign: 'center' }, { fontFamily }]}>
                       Todos
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setFiltroEstado('activo')}
                     style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: isMobile ? 2 : 12, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
                       filtroEstado === 'activo'
                         ? { backgroundColor: '#065f46', borderColor: '#059669' }
                         : { backgroundColor: '#1e293b', borderColor: '#334155' }
                     ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'activo' ? '#6ee7b7' : '#94a3b8' }, { fontFamily }]}>
+                    <Text style={[{ fontSize: isMobile ? 11 : 13, fontWeight: '600', color: filtroEstado === 'activo' ? '#6ee7b7' : '#94a3b8', textAlign: 'center' }, { fontFamily }]}>
                       Activos
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setFiltroEstado('inactivo')}
                     style={[
-                      { flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, alignItems: 'center' },
+                      { flex: 1, paddingVertical: 10, paddingHorizontal: isMobile ? 2 : 12, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
                       filtroEstado === 'inactivo'
                         ? { backgroundColor: '#7f1d1d', borderColor: '#991b1b' }
                         : { backgroundColor: '#1e293b', borderColor: '#334155' }
                     ]}
                     activeOpacity={0.7}
                   >
-                    <Text style={[{ fontSize: 13, fontWeight: '600', color: filtroEstado === 'inactivo' ? '#fca5a5' : '#94a3b8' }, { fontFamily }]}>
+                    <Text style={[{ fontSize: isMobile ? 11 : 13, fontWeight: '600', color: filtroEstado === 'inactivo' ? '#fca5a5' : '#94a3b8', textAlign: 'center' }, { fontFamily }]}>
                       Inactivos
                     </Text>
                   </TouchableOpacity>
@@ -4796,7 +4805,7 @@ function AdminPanelContent() {
                             {/* Header con nombre y badge de rol */}
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
                               <View style={{ flex: 1, marginRight: 12 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                                <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 4 : 10, marginBottom: 8 }}>
                                   <Text style={[styles.userNamePro, { fontFamily }]}>
                                     {user.nombre} {user.apellido}
                                   </Text>
@@ -5453,18 +5462,19 @@ function AdminPanelContent() {
                           key={index}
                           style={[
                             styles.modalTableRow,
-                            index === inventarioEmpleado.length - 1 && { borderBottomWidth: 0 }
+                            index === inventarioEmpleado.length - 1 && { borderBottomWidth: 0 },
+                            isMobile && { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 16 }
                           ]}
                         >
-                          <View style={{ flex: 2 }}>
-                            <Text style={[styles.modalCellText, { fontFamily }]} numberOfLines={1}>
+                          <View style={{ flex: 2, marginBottom: isMobile ? 12 : 0 }}>
+                            <Text style={[styles.modalCellText, { fontFamily, fontSize: isMobile ? 15 : 13 }]} numberOfLines={1}>
                               {herramienta.herramienta_nombre}
                             </Text>
                             {isMobile && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
                                 <Text style={[styles.modalCellSubText, { fontFamily }]}>Cantidad: {herramienta.cantidad}</Text>
                                 <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#475569' }} />
-                                <Text style={[styles.modalCellSubText, { color: estadoColor, fontWeight: '700', fontSize: 10, fontFamily }]}>
+                                <Text style={[styles.modalCellSubText, { color: estadoColor, fontWeight: '700', fontSize: 11, fontFamily }]}>
                                   {estadoLabel.toUpperCase()}
                                 </Text>
                               </View>
@@ -5492,11 +5502,11 @@ function AdminPanelContent() {
                             </View>
                           )}
 
-                          <View style={{ flex: 2.5, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+                          <View style={{ flex: 2.5, flexDirection: 'row', justifyContent: isMobile ? 'space-between' : 'center', gap: 6 }}>
                             {herramienta.estado === 'asignada' ? (
                               <>
                                 <TouchableOpacity
-                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }]}
+                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }, isMobile && { flex: 1 }]}
                                   onPress={async () => {
                                     const { success } = await marcarHerramientaComoDevueltaBackend(herramienta.id);
                                     if (success) {
@@ -5510,7 +5520,7 @@ function AdminPanelContent() {
                                   <Ionicons name="return-down-back" size={12} color="#10b981" style={{ marginLeft: 4 }} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }, isMobile && { flex: 1 }]}
                                   onPress={async () => {
                                     const { success } = await marcarHerramientaComoPerdidaBackend(herramienta.id);
                                     if (success) {
@@ -5525,7 +5535,7 @@ function AdminPanelContent() {
                                 </TouchableOpacity>
                               </>
                             ) : (
-                              <View style={{ height: 32, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <View style={{ height: 32, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: isMobile ? 'flex-end' : 'flex-start', width: isMobile ? '100%' : 'auto' }}>
                                 <Ionicons name="checkmark-done" size={16} color="#475569" />
                                 <Text style={[{ color: '#475569', fontSize: 11, fontWeight: '600' }, { fontFamily }]}>Completado</Text>
                               </View>
@@ -6882,7 +6892,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  reportHeaderMobile: { gap: 8, paddingRight: 0 },
+  reportHeaderMobile: {
+    gap: 8,
+    paddingRight: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
   reportHeaderText: { flex: 1, paddingRight: 12 },
   reportTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
   reportTitleMobile: { fontSize: 14, fontWeight: '600' },
