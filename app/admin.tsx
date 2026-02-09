@@ -83,6 +83,9 @@ function AdminPanelContent() {
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [showArchivoModal, setShowArchivoModal] = useState(false);
   const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
+
+
+
   const [showTareasModal, setShowTareasModal] = useState(false);
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [selectedEmpleado, setSelectedEmpleado] = useState<string>('');
@@ -7280,6 +7283,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     flexDirection: 'column',
+  },
+  archivoModalContentMobile: {
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+    padding: 0,
   },
   archivoModalClose: {
     position: 'absolute',

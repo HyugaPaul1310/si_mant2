@@ -38,6 +38,7 @@ type Empleado = {
 
 function EmpleadoPanelContent() {
   const router = useRouter();
+
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
@@ -91,6 +92,8 @@ function EmpleadoPanelContent() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [showConfirmarAnalisis, setShowConfirmarAnalisis] = useState(false);
   const [showConfirmarFinalizarModal, setShowConfirmarFinalizarModal] = useState(false);
+
+
 
   useEffect(() => {
     const obtenerUsuario = async () => {
@@ -1797,7 +1800,7 @@ function EmpleadoPanelContent() {
 
       {showArchivoModal && archivoVisualizando && (
         <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
-          <View style={[styles.archivoModalContent, isMobile && styles.archivoModalContentMobile, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
+          <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
             <TouchableOpacity
               style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
               onPress={() => {
@@ -1822,7 +1825,7 @@ function EmpleadoPanelContent() {
                   style={{
                     width: '100%',
                     height: '100%',
-                    objectFit: 'contain',
+                    objectFit: 'cover',
                     backgroundColor: '#000'
                   }}
                 />
@@ -1831,7 +1834,7 @@ function EmpleadoPanelContent() {
                   source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
                   style={{ width: '100%', height: '100%', borderRadius: 8, backgroundColor: '#000' }}
                   useNativeControls
-                  resizeMode="contain"
+                  resizeMode="cover"
                   shouldPlay
                 />
               ) : (
@@ -2859,10 +2862,13 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   archivoModalContentMobile: {
-    borderRadius: 12,
-    padding: 16,
-    width: '95%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+    padding: 0,
   },
   archivoModalClose: {
     position: 'absolute',

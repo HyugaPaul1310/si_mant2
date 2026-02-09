@@ -80,6 +80,9 @@ function ClientePanelContent() {
   // Modal de éxito para encuesta
   const [showEncuestaSuccessModal, setShowEncuestaSuccessModal] = useState(false);
 
+  // Efecto para rotar pantalla en móvil al abrir modal de archivo
+
+
   // Cargar encuestas enviadas desde AsyncStorage al iniciar
   useEffect(() => {
     const cargarEncuestasEnviadas = async () => {
@@ -2503,7 +2506,7 @@ function ClientePanelContent() {
       {
         showArchivoModal && archivoVisualizando && (
           <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 70 }]}>
-            <View style={[styles.archivoModalContent, isMobile && styles.archivoModalContentMobile, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
+            <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
               <TouchableOpacity
                 style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
                 onPress={() => {
@@ -3674,10 +3677,13 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   archivoModalContentMobile: {
-    borderRadius: 12,
-    padding: 16,
-    width: '95%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
+    maxWidth: '100%',
+    maxHeight: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+    padding: 0,
   },
   archivoModalClose: {
     position: 'absolute',
