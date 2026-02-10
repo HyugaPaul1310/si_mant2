@@ -20,7 +20,8 @@ ADD COLUMN IF NOT EXISTS `usuario_nombre` VARCHAR(255) DEFAULT NULL AFTER `usuar
 ADD COLUMN IF NOT EXISTS `equipo_descripcion` VARCHAR(255) DEFAULT NULL AFTER `usuario_nombre`,
 ADD COLUMN IF NOT EXISTS `sucursal` VARCHAR(255) DEFAULT NULL AFTER `equipo_descripcion`,
 ADD COLUMN IF NOT EXISTS `comentario` LONGTEXT DEFAULT NULL AFTER `sucursal`,
-ADD COLUMN IF NOT EXISTS `empresa` VARCHAR(255) DEFAULT NULL AFTER `comentario`;
+ADD COLUMN IF NOT EXISTS `empresa` VARCHAR(255) DEFAULT NULL AFTER `comentario`,
+ADD COLUMN IF NOT EXISTS `cotizacion_explicacion` LONGTEXT DEFAULT NULL AFTER `empresa`;
 
 -- Actualizar ENUM de estado si es necesario (agregar estados faltantes)
 -- Si los estados están incompletos, ejecuta esto:
@@ -39,6 +40,7 @@ ALTER TABLE `reportes` MODIFY COLUMN `estado` ENUM(
   'finalizado',
   'en_espera',
   'en_espera_confirmacion',
+  'cotizacionnueva',
   'rechazado',
   'cerrado'
 ) DEFAULT 'pendiente';

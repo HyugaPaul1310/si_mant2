@@ -114,12 +114,30 @@ router.post('/', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     console.log('[DEBUG-PUT] REQ.BODY:', JSON.stringify(req.body, null, 2));
-    const { titulo, descripcion, estado, prioridad, precioCotizacion, precio_cotizacion } = req.body;
+    const { titulo, descripcion, estado, prioridad, precioCotizacion, precio_cotizacion, cotizacion_explicacion } = req.body;
+
+    const [estadoActualRows] = await pool.query(
+      'SELECT estado, cotizacion_explicacion FROM reportes WHERE id = ?',
+      [req.params.id]
+    );
+    const estadoActual = estadoActualRows?.[0]?.estado;
+    const cotizacionExplicacion = estadoActualRows?.[0]?.cotizacion_explicacion;
 
     const updateData = {};
     if (titulo !== undefined) updateData.titulo = titulo;
     if (descripcion !== undefined) updateData.descripcion = descripcion;
-    if (estado !== undefined) updateData.estado = estado;
+    if (estado !== undefined) {
+      if (estadoActual === 'cancelado' && estado !== 'cancelado') {
+        console.log('[DEBUG-PUT] Estado cancelado bloquea cambio a:', estado);
+      } else if (estadoActual === 'cotizacionnueva' && (estado === 'rechazado' || estado === 'en_espera' || estado === 'pendiente')) {
+        updateData.estado = 'rechazado';
+        if (req.body.motivo_cancelacion === undefined) {
+          updateData.motivo_cancelacion = 'Rechazo de cotizacion nueva';
+        }
+      } else {
+        updateData.estado = estado;
+      }
+    }
     if (prioridad !== undefined) updateData.prioridad = prioridad;
 
     // Handle both naming conventions for price
@@ -134,6 +152,11 @@ router.put('/:id', verifyToken, async (req, res) => {
     if (req.body.motivo_cancelacion !== undefined) {
       updateData.motivo_cancelacion = req.body.motivo_cancelacion;
       console.log('[DEBUG-PUT] motivo_cancelacion:', req.body.motivo_cancelacion);
+    }
+
+    if (cotizacion_explicacion !== undefined) {
+      updateData.cotizacion_explicacion = cotizacion_explicacion;
+      console.log('[DEBUG-PUT] cotizacion_explicacion:', cotizacion_explicacion);
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -382,15 +405,39 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
 
     console.log('[BACKEND-ESTADO] Datos recibidos:', { estado, descripcionTrabajo, precioCotizacion, reporteId: req.params.id });
 
+    const [estadoActualRows] = await pool.query(
+      'SELECT estado, cotizacion_explicacion FROM reportes WHERE id = ?',
+      [req.params.id]
+    );
+    const estadoActual = estadoActualRows?.[0]?.estado;
+    const cotizacionExplicacion = estadoActualRows?.[0]?.cotizacion_explicacion;
+
     // Construir query dinámicamente según qué datos se envían
     let query = 'UPDATE reportes SET';
     const params = [];
     let setClauses = [];
 
     if (estado) {
-      console.log('[BACKEND-ESTADO] Actualizando estado a:', estado);
-      setClauses.push('estado = ?');
-      params.push(estado);
+      let estadoFinal = estado;
+      let setMotivoAuto = false;
+      if (estadoActual === 'cancelado' && estado !== 'cancelado') {
+        console.log('[BACKEND-ESTADO] Estado cancelado bloquea cambio a:', estado);
+        estadoFinal = null;
+      } else if (estadoActual === 'cotizacionnueva' && (estado === 'rechazado' || estado === 'en_espera' || estado === 'pendiente')) {
+        estadoFinal = 'rechazado';
+        setMotivoAuto = req.body.motivo_cancelacion === undefined;
+      }
+
+      if (estadoFinal) {
+        console.log('[BACKEND-ESTADO] Actualizando estado a:', estadoFinal);
+        setClauses.push('estado = ?');
+        params.push(estadoFinal);
+      }
+
+      if (setMotivoAuto) {
+        setClauses.push('motivo_cancelacion = ?');
+        params.push('Rechazo de cotizacion nueva');
+      }
     }
 
     if (descripcionTrabajo) {

@@ -12,11 +12,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  actualizarReporteBackend,
-  apiCall,
-  obtenerArchivosReporteBackend,
-  obtenerReportesCliente,
-  verificarEncuestaExiste
+    actualizarReporteBackend,
+    apiCall,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente,
+    verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -91,6 +91,8 @@ function ClientePanelContent() {
   const [encuestasEnviadas, setEncuestasEnviadas] = useState<Set<number>>(new Set());
   // Estado para rastrear encuestas confirmadas en BD
   const [encuestasRespondidas, setEncuestasRespondidas] = useState<Set<number>>(new Set());
+  // Cache local para reportes cancelados por segunda cotizacion
+  const [canceladosLocal, setCanceladosLocal] = useState<Set<number>>(new Set());
   // Modal de éxito para encuesta
   const [showEncuestaSuccessModal, setShowEncuestaSuccessModal] = useState(false);
 
@@ -118,6 +120,21 @@ function ClientePanelContent() {
       }
     };
     cargarEncuestasEnviadas();
+  }, []);
+
+  useEffect(() => {
+    const cargarCanceladosLocal = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('reportes_cancelados_local');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          setCanceladosLocal(new Set(ids));
+        }
+      } catch (e) {
+        console.error('Error al cargar cancelados local:', e);
+      }
+    };
+    cargarCanceladosLocal();
   }, []);
 
 
@@ -263,8 +280,12 @@ function ClientePanelContent() {
           const comentarioMatch = desc.match(/Comentario:\s*([^\n]+)/i);
           if (comentarioMatch) comentario = comentarioMatch[1].trim();
 
+          const idNum = Number(r.id);
+          const estadoOverride = canceladosLocal.has(idNum) ? 'rechazado' : r.estado;
+
           return {
             ...r,
+            estado: estadoOverride,
             equipo_descripcion,
             sucursal,
             comentario: comentario || 'Sin comentarios'
@@ -272,7 +293,7 @@ function ClientePanelContent() {
         });
 
         const reportesActivos = reportesMapeados.filter((r: any) =>
-          r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente' && r.estado !== 'cancelado'
+          r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente' && r.estado !== 'cancelado' && r.estado !== 'rechazado'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
         console.log('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
@@ -285,7 +306,7 @@ function ClientePanelContent() {
       if (!silent) setLoadingReportes(false);
       return data || [];
     },
-    [verificarEncuestas]
+    [verificarEncuestas, canceladosLocal]
   );
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
@@ -318,9 +339,13 @@ function ClientePanelContent() {
 
           // Filtrar reportes en proceso de cotización o ya cotizados
           const cotizacionesFiltradas = resultado.data.filter((r: any) => {
+            const idNum = Number(r.id);
+            if (canceladosLocal.has(idNum)) return false;
+
             const estadoValido = r.estado === 'cotizado' ||
               r.estado === 'en_espera_confirmacion' ||
-              r.estado === 'en_cotizacion';
+              r.estado === 'en_cotizacion' ||
+              r.estado === 'cotizacionnueva';
 
             if (!estadoValido) console.log(`[FILTRO] Reporte ${r.id}: estado inválido (${r.estado})`);
 
@@ -366,7 +391,7 @@ function ClientePanelContent() {
         if (!silent) setLoadingCotizaciones(false);
       }
     },
-    []
+    [canceladosLocal]
   );
 
   // PASO 4: Cargar reportes finalizados por técnico (esperando confirmación del cliente)
@@ -397,8 +422,13 @@ function ClientePanelContent() {
           // FILTRO: SOLO mostrar reportes cerrados definitivamente
           // - cerrado: Admin confirmó el cierre definitivo del reporte
 
-          const finalizados = resultado.data.filter((r: any) =>
-            r.estado === 'cerrado' || r.estado === 'cerrado_por_cliente'
+          const dataConOverride = (resultado.data || []).map((r: any) => {
+            const idNum = Number(r.id);
+            return canceladosLocal.has(idNum) ? { ...r, estado: 'rechazado' } : r;
+          });
+
+          const finalizados = dataConOverride.filter((r: any) =>
+            r.estado === 'cerrado' || r.estado === 'cerrado_por_cliente' || r.estado === 'cancelado' || r.estado === 'rechazado'
           );
 
           console.log('[CLIENTE-CARGAR-FINALIZADOS] Finalizados encontrados:', finalizados.length);
@@ -412,8 +442,18 @@ function ClientePanelContent() {
             console.log('[CLIENTE-CARGAR-FINALIZADOS] Estados de otros:', otros.map((r: any) => r.estado));
           }
 
-          setReportesFinalizados(finalizados);
-          return finalizados;
+          const finalizadosVisibles = finalizados.map((r: any) => {
+            if (r.estado === 'cancelado') {
+              return { ...r, estado: 'rechazado', esCancelado: true };
+            }
+            if (r.estado === 'rechazado') {
+              return { ...r, esCancelado: true };
+            }
+            return r;
+          });
+
+          setReportesFinalizados(finalizadosVisibles);
+          return finalizadosVisibles;
         } else {
           console.log('[CLIENTE-CARGAR-FINALIZADOS] Error en respuesta:', resultado);
           setReportesFinalizados([]);
@@ -425,7 +465,7 @@ function ClientePanelContent() {
         return [];
       }
     },
-    []
+    [canceladosLocal]
   );
 
   // Polling para actualización en tiempo real (cada 10 segundos)
@@ -2170,8 +2210,10 @@ function ClientePanelContent() {
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-              {/* Botón Responder Encuesta - solo para reportes cerrados/terminados que NO han enviado encuesta */}
+              {/* Botón Responder Encuesta - solo cuando hubo trabajo y no fue cancelado */}
               {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'terminado') &&
+                selectedReporte.estado !== 'cancelado' &&
+                !selectedReporte.esCancelado &&
                 !encuestasEnviadas.has(selectedReporte.id) &&
                 !encuestasRespondidas.has(selectedReporte.id) && (
                   <TouchableOpacity
@@ -2415,11 +2457,6 @@ function ClientePanelContent() {
                                 return null;
                               })()}
 
-                              {/* 3. Quién cotizó (solo primer nombre) */}
-                              <Text style={[styles.reportSubtitle, { fontFamily, color: '#64748b' }]} numberOfLines={1}>
-                                Cotizado por: {cot.empleado_nombre ? cot.empleado_nombre.split(' ')[0] : 'Técnico'}
-                              </Text>
-
                               {/* Fecha */}
                               <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
                                 {new Date(cot.created_at).toLocaleDateString('es-ES')}
@@ -2577,6 +2614,13 @@ function ClientePanelContent() {
                       </Text>
                     </View>
 
+                    {cotizacionSeleccionada.cotizacion_explicacion && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>Explicación de la Cotización</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.cotizacion_explicacion}</Text>
+                      </View>
+                    )}
+
                   </View>
 
                   {/* PDF de la cotización */}
@@ -2615,7 +2659,7 @@ function ClientePanelContent() {
                   )}
 
                   {/* Acciones */}
-                  {(cotizacionSeleccionada.estado === 'cotizado' || cotizacionSeleccionada.estado === 'en_espera_confirmacion') && (
+                  {(cotizacionSeleccionada.estado === 'cotizado' || cotizacionSeleccionada.estado === 'en_espera_confirmacion' || cotizacionSeleccionada.estado === 'cotizacionnueva') && (
                     <View style={styles.detailActions}>
                       <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#10b981' }]}
@@ -2908,7 +2952,11 @@ function ClientePanelContent() {
                 </View>
               </View>
 
-              {stepRechazo === 1 ? (
+              {reporteARechazar?.estado === 'cotizacionnueva' ? (
+                <Text style={{ fontFamily, color: '#94a3b8', fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
+                  Al cancelar, el reporte quedará en estado cancelado y ya no aparecerá en seguimiento. Esta acción no se puede deshacer.
+                </Text>
+              ) : stepRechazo === 1 ? (
                 <Text style={{ fontFamily, color: '#94a3b8', fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
                   ¿Estás seguro de que deseas cancelar este reporte? Esta acción no se puede deshacer y el reporte se eliminará de su seguimiento.
                 </Text>
@@ -2954,6 +3002,8 @@ function ClientePanelContent() {
                   onPress={() => {
                     setShowConfirmarRechazoModal(false);
                     setReporteARechazar(null);
+                    setMotivoRechazo('');
+                    setStepRechazo(1);
                   }}
                 >
                   <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>No, Volver</Text>
@@ -2974,25 +3024,32 @@ function ClientePanelContent() {
                   }}
                   onPress={async () => {
                     if (!reporteARechazar) return;
+                    const esSegundaCotizacion = reporteARechazar.estado === 'cotizacionnueva';
 
-                    if (stepRechazo === 1) {
+                    if (stepRechazo === 1 && !esSegundaCotizacion) {
                       setStepRechazo(2);
                       return;
                     }
 
-                    if (!motivoRechazo.trim()) {
+                    if (!esSegundaCotizacion && !motivoRechazo.trim()) {
                       showToast('Por favor ingresa un motivo', 'warning');
                       return;
                     }
 
                     setRechazandoReporte(true);
                     try {
-                      console.log('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a cancelado');
-                      const resultado = await actualizarReporteBackend(reporteARechazar.id, {
-                        estado: 'rechazado',
-                        motivo_cancelacion: motivoRechazo.trim(),
+                      console.log('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado');
+                      const estadoRechazo = 'rechazado';
+                      const payload: any = {
+                        estado: estadoRechazo,
                         precio_cotizacion: 0
-                      });
+                      };
+                      if (esSegundaCotizacion) {
+                        payload.motivo_cancelacion = 'Rechazo de cotizacion nueva';
+                      } else {
+                        payload.motivo_cancelacion = motivoRechazo.trim();
+                      }
+                      const resultado = await actualizarReporteBackend(reporteARechazar.id, payload);
 
                       if (!resultado.success) {
                         showToast(resultado.error || 'Error al rechazar', 'error');
@@ -3009,6 +3066,19 @@ function ClientePanelContent() {
                       // Recargar datos
                       cargarReportes(usuario?.email);
                       cargarCotizaciones(usuario?.email);
+                      if (esSegundaCotizacion) {
+                        setCanceladosLocal((prev) => {
+                          const next = new Set(prev);
+                          next.add(Number(reporteARechazar.id));
+                          AsyncStorage.setItem('reportes_cancelados_local', JSON.stringify(Array.from(next)));
+                          return next;
+                        });
+                        setCotizaciones((prev) => prev.filter((c) => c.id !== reporteARechazar.id));
+                        setReportesFinalizados((prev) => [
+                          { ...reporteARechazar, estado: 'rechazado', esCancelado: true },
+                          ...prev.filter((r) => r.id !== reporteARechazar.id)
+                        ]);
+                      }
                       setShowCotizacionDetalleModal(false);
 
                     } catch (error) {
@@ -3021,7 +3091,11 @@ function ClientePanelContent() {
                   disabled={rechazandoReporte}
                 >
                   <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>
-                    {rechazandoReporte ? 'Procesando...' : (stepRechazo === 1 ? 'Sí, continuar' : 'Confirmar Cancelación')}
+                    {rechazandoReporte
+                      ? 'Procesando...'
+                      : (reporteARechazar?.estado === 'cotizacionnueva'
+                        ? 'Sí, cancelar'
+                        : (stepRechazo === 1 ? 'Sí, continuar' : 'Confirmar Cancelación'))}
                   </Text>
                 </TouchableOpacity>
               </View>

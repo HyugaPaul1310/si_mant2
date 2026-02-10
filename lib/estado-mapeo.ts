@@ -19,6 +19,7 @@ export const estadoMapeo: Record<string, string> = {
   'cotizado': 'En Cotización',
   'en_espera_confirmacion': 'Pendiente de Confirmación',
   'en espera confirmacion': 'Pendiente de Confirmación',
+  'cotizacionnueva': 'Cotización Nueva',
 
   // Flujo de ejecución
   'en_proceso': 'En Proceso',
@@ -61,6 +62,7 @@ export const obtenerColorEstado = (estado: string): string => {
     'En Espera': '#f59e0b',      // Amarillo/Naranja
     'Asignado': '#06b6d4',       // Cyan
     'En Cotización': '#ec4899',  // Rosa
+    'Cotización Nueva': '#f59e0b', // Naranja
     'Pendiente de Confirmación': '#f59e0b', // Naranja (como En Espera pero con otro ícono)
     'En Ejecución': '#10b981',   // Verde
     'Por Revisar': '#8b5cf6',    // Violeta
@@ -81,6 +83,7 @@ export const obtenerIconoEstado = (estado: string): string => {
     'En Espera': 'hourglass-outline',
     'Asignado': 'person-add-outline',
     'En Cotización': 'calculator-outline',
+    'Cotización Nueva': 'pricetag-outline',
     'Pendiente de Confirmación': 'time-outline',
     'En Ejecución': 'hammer-outline',
     'Por Revisar': 'checkbox-outline',

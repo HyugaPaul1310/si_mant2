@@ -1,5 +1,5 @@
 ﻿// @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -13,20 +13,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Image,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Easing,
+    Image,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,6 +49,19 @@ function AdminPanelContent() {
   const [usuario, setUsuario] = useState<Admin | null>(null);
   // Contadores dinámicos basados en los reportes
   const [showLogout, setShowLogout] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    general: ''
+  });
+  const [loadingPassword, setLoadingPassword] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newUserCompany, setNewUserCompany] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -174,6 +188,11 @@ function AdminPanelContent() {
   const [showConfirmarCotizacionModal, setShowConfirmarCotizacionModal] = useState(false);
   const [archivoCotizacion, setArchivoCotizacion] = useState<any | null>(null);
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
+  const [showEditarCotizacionModal, setShowEditarCotizacionModal] = useState(false);
+  const [precioCotizacionEdit, setPrecioCotizacionEdit] = useState('');
+  const [explicacionCotizacionEdit, setExplicacionCotizacionEdit] = useState('');
+  const [editandoCotizacion, setEditandoCotizacion] = useState(false);
+  const [editarCotizacionError, setEditarCotizacionError] = useState<string | null>(null);
 
   // Estados para encuestas
   const [encuestas, setEncuestas] = useState<any[]>([]);
@@ -667,11 +686,18 @@ function AdminPanelContent() {
   }, []);
 
   const hoy = useMemo(() => new Date(), []);
+  const esCanceladoLike = (reporte: any) => {
+    const st = (reporte.estado || '').toLowerCase();
+    const motivo = String(reporte.motivo_cancelacion || '').toLowerCase();
+    const rechazoCotizacionNueva = motivo.includes('cotizacion nueva');
+    return st === 'cancelado' || st === 'rechazado' || rechazoCotizacionNueva || ((st === 'pendiente' || st === 'en_espera' || st === 'en espera') && !!reporte.motivo_cancelacion);
+  };
+  const estadoVisual = (reporte: any) => (esCanceladoLike(reporte) ? 'rechazado' : reporte.estado);
   // Agrupación de estados según solicitud
   const reportesEnEsperaCount = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'pendiente' || st === 'en_espera' || st === 'en espera';
+      return (st === 'pendiente' || st === 'en_espera' || st === 'en espera') && !esCanceladoLike(r);
     }).length,
     [reportes]
   );
@@ -704,7 +730,7 @@ function AdminPanelContent() {
   const reportesCerradoCount = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'resuelto' || st === 'encuesta_satisfaccion';
+      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'resuelto' || st === 'encuesta_satisfaccion' || st === 'rechazado' || esCanceladoLike(r);
     }).length,
     [reportes]
   );
@@ -730,7 +756,7 @@ function AdminPanelContent() {
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
       return st !== 'terminado' && st !== 'rechazado' && st !== 'cerrado' &&
-        st !== 'cerrado_por_cliente' && st !== 'resuelto' && st !== 'encuesta_satisfaccion' && st !== 'cancelado';
+        st !== 'cerrado_por_cliente' && st !== 'resuelto' && st !== 'encuesta_satisfaccion' && !esCanceladoLike(r);
     }),
     [reportes]
   );
@@ -739,7 +765,7 @@ function AdminPanelContent() {
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
       return st === 'terminado' || st === 'cerrado' ||
-        st === 'cerrado_por_cliente' || st === 'resuelto' || st === 'encuesta_satisfaccion';
+        st === 'cerrado_por_cliente' || st === 'resuelto' || st === 'encuesta_satisfaccion' || st === 'rechazado' || esCanceladoLike(r);
     }),
     [reportes]
   );
@@ -1363,6 +1389,67 @@ function AdminPanelContent() {
     setShowLogout(true);
   };
 
+  const handleUpdatePassword = async () => {
+    setPasswordErrors({ currentPassword: '', newPassword: '', confirmPassword: '', general: '' });
+    let isValid = true;
+    const newErrors = { currentPassword: '', newPassword: '', confirmPassword: '', general: '' };
+
+    if (!passwordForm.currentPassword) {
+      newErrors.currentPassword = 'La contraseña actual es requerida.';
+      isValid = false;
+    }
+
+    if (!passwordForm.newPassword) {
+      newErrors.newPassword = 'La nueva contraseña es requerida.';
+      isValid = false;
+    } else if (passwordForm.newPassword.length < 6) {
+      newErrors.newPassword = 'Mínimo 6 caracteres.';
+      isValid = false;
+    } else if (passwordForm.newPassword === passwordForm.currentPassword) {
+      newErrors.newPassword = 'Debe ser diferente a la actual.';
+      isValid = false;
+    }
+
+    if (!passwordForm.confirmPassword) {
+      newErrors.confirmPassword = 'Confirma tu nueva contraseña.';
+      isValid = false;
+    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden.';
+      isValid = false;
+    }
+
+    if (!isValid) {
+      setPasswordErrors(newErrors);
+      return;
+    }
+
+    setLoadingPassword(true);
+    try {
+      const response = await apiCall('/auth/change-password', 'PUT', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+
+      if (response.success) {
+        Alert.alert('¡Excelente!', 'Tu contraseña ha sido actualizada correctamente.');
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        if (response.error === 'La contraseña actual es incorrecta') {
+          setPasswordErrors((prev) => ({ ...prev, currentPassword: 'La contraseña actual no es correcta.' }));
+        } else {
+          setPasswordErrors((prev) => ({ ...prev, general: response.error || 'No se pudo actualizar.' }));
+        }
+      }
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setPasswordErrors((prev) => ({ ...prev, general: `Error de conexión: ${errorMessage}` }));
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -1392,6 +1479,12 @@ function AdminPanelContent() {
             </View>
 
             <View style={styles.headerActions}>
+              <TouchableOpacity
+                onPress={() => setShowPasswordModal(true)}
+                style={styles.toggleButton}
+              >
+                <Ionicons name="key-outline" size={18} color="#94a3b8" />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
                 <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
               </TouchableOpacity>
@@ -1805,6 +1898,189 @@ function AdminPanelContent() {
       </ScrollView>
 
       {/* Todos los modales y overlays van aquí */}
+
+
+      {showPasswordModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.modalContainer,
+            {
+              width: isMobile ? '90%' : '400px',
+              maxHeight: 'auto',
+              backgroundColor: '#0f172a',
+              borderWidth: 1,
+              borderColor: '#334155',
+              padding: 0,
+              overflow: 'hidden'
+            }
+          ]}>
+            <LinearGradient
+              colors={['#1e293b', '#0f172a']}
+              style={{ width: '100%', padding: 24 }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                <View>
+                  <Text style={[styles.modalTitle, { fontFamily, fontSize: 20, marginBottom: 4 }]}>Cambiar Contraseña</Text>
+                  <Text style={[styles.modalSubtitle, { fontFamily, color: '#94a3b8' }]}>Actualiza tu clave de acceso</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordErrors({ currentPassword: '', newPassword: '', confirmPassword: '', general: '' });
+                  }}
+                  style={{ padding: 4 }}
+                >
+                  <Ionicons name="close" size={24} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {passwordErrors.general ? (
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 10, borderRadius: 8, marginBottom: 10 }}>
+                  <Text style={{ color: '#f87171', fontFamily, fontSize: 13, textAlign: 'center' }}>{passwordErrors.general}</Text>
+                </View>
+              ) : null}
+
+              <View style={{ gap: 20 }}>
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Contraseña Actual</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.currentPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="lock-closed-outline" size={18} color={passwordErrors.currentPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.currentPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm((prev) => ({ ...prev, currentPassword: text }));
+                        if (passwordErrors.currentPassword) setPasswordErrors((prev) => ({ ...prev, currentPassword: '' }));
+                      }}
+                      placeholder="Ingresa tu contraseña actual"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.currentPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.currentPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Nueva Contraseña</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.newPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="key-outline" size={18} color={passwordErrors.newPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.newPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm((prev) => ({ ...prev, newPassword: text }));
+                        if (passwordErrors.newPassword) setPasswordErrors((prev) => ({ ...prev, newPassword: '' }));
+                      }}
+                      placeholder="Ingresa la nueva contraseña"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.newPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.newPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Confirmar Nueva Contraseña</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.confirmPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color={passwordErrors.confirmPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.confirmPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm((prev) => ({ ...prev, confirmPassword: text }));
+                        if (passwordErrors.confirmPassword) setPasswordErrors((prev) => ({ ...prev, confirmPassword: '' }));
+                      }}
+                      placeholder="Confirma la nueva contraseña"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.confirmPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.confirmPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleUpdatePassword}
+                  disabled={loadingPassword}
+                  style={{
+                    backgroundColor: '#06b6d4',
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    marginTop: 12,
+                    shadowColor: '#06b6d4',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    opacity: loadingPassword ? 0.7 : 1
+                  }}
+                >
+                  {loadingPassword ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={{ fontFamily, color: 'white', fontWeight: '600', fontSize: 16 }}>Actualizar Contraseña</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      )}
 
 
       {showLogout && (
@@ -2508,7 +2784,8 @@ function AdminPanelContent() {
               <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
                 <View style={styles.listSpacing}>
                   {reportesFiltrados.map((rep) => {
-                    const badge = estadoBadgeStyle(rep.estado);
+                    const estado = estadoVisual(rep);
+                    const badge = estadoBadgeStyle(estado);
                     return (
                       <View key={rep.id} style={styles.reportCard}>
                         <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
@@ -2554,13 +2831,13 @@ function AdminPanelContent() {
                               <Ionicons name="eye-outline" size={16} color="#06b6d4" />
                             </TouchableOpacity>
                             <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-                              <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(rep.estado)}</Text>
+                              <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(estado)}</Text>
                             </View>
                           </View>
                         </View>
 
                         <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
+                          {rep.comentario || ''}
                         </Text>
 
                         {/* Removidos botones de cambio manual de estado para automatización */}
@@ -2815,11 +3092,11 @@ function AdminPanelContent() {
                       </View>
 
                       <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                        {rep.comentario || 'Sin comentarios'}
+                        {rep.comentario || ''}
                       </Text>
 
                       <View style={styles.estadoSoloBadge}>
-                        <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(rep.estado)}</Text>
+                        <Text style={[styles.estadoSoloText, { fontFamily }]}>{estadoDisplay(estadoVisual(rep))}</Text>
                       </View>
                     </View>
                   ))}
@@ -2919,7 +3196,7 @@ function AdminPanelContent() {
                       </View>
 
                       <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                        {rep.comentario || 'Sin comentarios'}
+                        {rep.comentario || ''}
                       </Text>
 
                       <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(245, 158, 11, 0.1)', borderLeftWidth: 3, borderLeftColor: '#f59e0b', borderRadius: 6 }}>
@@ -3168,6 +3445,126 @@ function AdminPanelContent() {
         </View>
       )}
 
+      {/* Modal para Editar Cotización */}
+      {showEditarCotizacionModal && reporteACotizar && (
+        <View style={styles.overlayHeavy}>
+          <View style={[styles.detailModal, isMobile && styles.detailModalMobile, { backgroundColor: '#0f172a', borderColor: '#1e293b' }]}>
+            <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1e293b', marginBottom: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', borderRadius: 10, padding: 8, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
+                  <Ionicons name="pencil" size={20} color="#f59e0b" />
+                </View>
+                <View>
+                  <Text style={[{ color: '#fff', fontSize: isMobile ? 18 : 20, fontWeight: '800' }, { fontFamily }]}>Editar Cotización</Text>
+                  <Text style={[{ color: '#64748b', fontSize: isMobile ? 12 : 13, marginTop: 2 }, { fontFamily }]}>Actualizar precio y explicación</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowEditarCotizacionModal(false);
+                  setEditarCotizacionError(null);
+                }}
+                style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(30, 41, 59, 0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={20} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
+              <View style={{ gap: 12 }}>
+                <View style={{ gap: 6 }}>
+                  <Text style={[{ color: '#f8fafc', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Precio nuevo</Text>
+                  <TextInput
+                    value={precioCotizacionEdit}
+                    onChangeText={setPrecioCotizacionEdit}
+                    keyboardType="numeric"
+                    placeholder="Ej. 1500"
+                    placeholderTextColor="#64748b"
+                    style={{
+                      backgroundColor: '#0b1220',
+                      borderWidth: 1,
+                      borderColor: '#1f2937',
+                      borderRadius: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      color: '#e2e8f0',
+                    }}
+                  />
+                </View>
+
+                <View style={{ gap: 6 }}>
+                  <Text style={[{ color: '#f8fafc', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Explicación</Text>
+                  <TextInput
+                    value={explicacionCotizacionEdit}
+                    onChangeText={setExplicacionCotizacionEdit}
+                    placeholder="Escribe la explicación para el cliente"
+                    placeholderTextColor="#64748b"
+                    multiline
+                    style={{
+                      backgroundColor: '#0b1220',
+                      borderWidth: 1,
+                      borderColor: '#1f2937',
+                      borderRadius: 10,
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      color: '#e2e8f0',
+                      minHeight: 90,
+                      textAlignVertical: 'top',
+                    }}
+                  />
+                </View>
+
+                {editarCotizacionError && (
+                  <Text style={{ color: '#ef4444', fontSize: 12 }}>{editarCotizacionError}</Text>
+                )}
+
+                <TouchableOpacity
+                  onPress={async () => {
+                    if (!reporteACotizar) return;
+                    const precioNumerico = parseFloat(precioCotizacionEdit);
+                    if (isNaN(precioNumerico) || precioNumerico <= 0) {
+                      setEditarCotizacionError('Ingresa un precio válido');
+                      return;
+                    }
+
+                    setEditandoCotizacion(true);
+                    setEditarCotizacionError(null);
+                    const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
+                      estado: 'cotizacionnueva',
+                      precioCotizacion: precioNumerico,
+                      cotizacion_explicacion: explicacionCotizacionEdit || null,
+                    });
+
+                    setEditandoCotizacion(false);
+
+                    if (!success) {
+                      setEditarCotizacionError(error || 'No se pudo actualizar la cotización');
+                      return;
+                    }
+
+                    setShowEditarCotizacionModal(false);
+                    setShowReporteDetailModal(false);
+                    setReporteACotizar(null);
+                  }}
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 10,
+                    paddingVertical: 12,
+                    alignItems: 'center',
+                    marginTop: 6,
+                    opacity: editandoCotizacion ? 0.7 : 1,
+                  }}
+                  disabled={editandoCotizacion}
+                >
+                  <Text style={{ color: '#0f172a', fontWeight: '800' }}>{editandoCotizacion ? 'Guardando...' : 'Enviar cotización nueva'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
       {/* Modal de Confirmación Secundaria */}
       {showConfirmarCotizacionModal && reporteACotizar && (
         <View style={[styles.overlayHeavy, { zIndex: 1100 }]}>
@@ -3288,7 +3685,7 @@ function AdminPanelContent() {
                       </View>
 
                       <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                        {rep.comentario || 'Sin comentarios'}
+                        {rep.comentario || ''}
                       </Text>
 
                       <View style={{ backgroundColor: '#fef3c7', borderRadius: 8, padding: 10, marginTop: 10 }}>
@@ -3631,7 +4028,7 @@ function AdminPanelContent() {
                         </View>
 
                         <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
+                          {rep.comentario || ''}
                         </Text>
 
                         <View style={{ backgroundColor: '#d1fae5', borderRadius: 8, padding: 10, marginTop: 10 }}>
@@ -3715,7 +4112,7 @@ function AdminPanelContent() {
                         </View>
 
                         <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
-                          {rep.comentario || 'Sin comentarios'}
+                          {rep.comentario || ''}
                         </Text>
 
                         <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, padding: 10, marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#ef4444' }}>
@@ -3724,6 +4121,35 @@ function AdminPanelContent() {
                             {rep.motivo_cancelacion || 'No se proporcionó un motivo específico.'}
                           </Text>
                         </View>
+
+                        {String(rep.estado || '').toLowerCase() !== 'cotizacionnueva' && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReporteACotizar(rep);
+                              setPrecioCotizacionEdit(String(rep.precio_cotizacion || ''));
+                              setExplicacionCotizacionEdit(rep.cotizacion_explicacion || '');
+                              setEditarCotizacionError(null);
+                              setShowRechazadosModal(false);
+                              setShowEditarCotizacionModal(true);
+                            }}
+                            style={{
+                              marginTop: 10,
+                              alignSelf: 'flex-start',
+                              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                              borderColor: '#f59e0b',
+                              borderWidth: 1,
+                              borderRadius: 8,
+                              paddingVertical: 8,
+                              paddingHorizontal: 12,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <Ionicons name="pencil-outline" size={16} color="#f59e0b" />
+                            <Text style={[{ color: '#fbbf24', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Editar cotización</Text>
+                          </TouchableOpacity>
+                        )}
 
                         <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
                           <Text style={{ color: '#94a3b8', fontSize: 10 }}>
@@ -3817,10 +4243,13 @@ function AdminPanelContent() {
                     <View style={styles.detailValueBox}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>
                         {(() => {
-                          // Extract only the comment part from the combined comentario field
-                          const fullComentario = selectedReporteDetail.comentario || '';
-                          const comentarioMatch = fullComentario.match(/Comentario:\s*(.+?)(?:\n|$)/);
-                          return comentarioMatch ? comentarioMatch[1].trim() : (fullComentario || 'Sin comentarios');
+                          // Extract only the comment part from comentario or descripcion
+                          const comentarioSource = selectedReporteDetail.comentario || '';
+                          const descripcionSource = selectedReporteDetail.descripcion || '';
+                          const comentarioMatch = comentarioSource.match(/Comentario:\s*(.+?)(?:\n|$)/) ||
+                            descripcionSource.match(/Comentario:\s*(.+?)(?:\n|$)/);
+                          if (comentarioMatch) return comentarioMatch[1].trim();
+                          return comentarioSource.trim();
                         })()}
                       </Text>
                     </View>
@@ -3837,25 +4266,31 @@ function AdminPanelContent() {
 
                     <View style={[styles.detailField, styles.detailFieldHalf]}>
                       <Text style={[styles.detailFieldLabel, { fontFamily }]}>Estado</Text>
-                      <View
-                        style={[
-                          styles.detailValueBox,
-                          styles.detailPillBox,
-                          {
-                            backgroundColor: estadoBadgeStyle(selectedReporteDetail.estado).bg,
-                            borderColor: estadoBadgeStyle(selectedReporteDetail.estado).border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.detailPillText,
-                            { fontFamily, color: estadoBadgeStyle(selectedReporteDetail.estado).text },
-                          ]}
-                        >
-                          {estadoDisplay(selectedReporteDetail.estado)}
-                        </Text>
-                      </View>
+                      {(() => {
+                        const estadoDetalle = estadoVisual(selectedReporteDetail);
+                        const badge = estadoBadgeStyle(estadoDetalle);
+                        return (
+                          <View
+                            style={[
+                              styles.detailValueBox,
+                              styles.detailPillBox,
+                              {
+                                backgroundColor: badge.bg,
+                                borderColor: badge.border,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.detailPillText,
+                                { fontFamily, color: badge.text },
+                              ]}
+                            >
+                              {estadoDisplay(estadoDetalle)}
+                            </Text>
+                          </View>
+                        );
+                      })()}
                     </View>
                   </View>
 
@@ -3908,6 +4343,46 @@ function AdminPanelContent() {
                           ${Number(selectedReporteDetail.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                       </View>
+                      {(() => {
+                        const estado = String(selectedReporteDetail.estado || '').toLowerCase();
+                        const puedeEditar =
+                          (estado === 'en_cotizacion' ||
+                            estado === 'en cotizacion' ||
+                            estado === 'cotizado' ||
+                            estado === 'en_espera_confirmacion' ||
+                            estado === 'en espera confirmacion') &&
+                          estado !== 'cotizacionnueva';
+                        if (!puedeEditar) return null;
+                        return (
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReporteACotizar(selectedReporteDetail);
+                              setPrecioCotizacionEdit(String(selectedReporteDetail.precio_cotizacion || ''));
+                              setExplicacionCotizacionEdit(selectedReporteDetail.cotizacion_explicacion || '');
+                              setEditarCotizacionError(null);
+                              setShowReporteDetailModal(false);
+                              setShowCotizacionesModal(false);
+                              setShowRechazadosModal(false);
+                              setShowEditarCotizacionModal(true);
+                            }}
+                            style={{
+                              alignSelf: 'flex-start',
+                              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                              borderColor: '#f59e0b',
+                              borderWidth: 1,
+                              borderRadius: 8,
+                              paddingVertical: 8,
+                              paddingHorizontal: 12,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <Ionicons name="pencil-outline" size={16} color="#f59e0b" />
+                            <Text style={[{ color: '#fbbf24', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Editar cotización</Text>
+                          </TouchableOpacity>
+                        );
+                      })()}
                     </View>
                   )}
 
@@ -6317,7 +6792,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    zIndex: 30,
+    zIndex: 9999,
+    elevation: 9999,
   },
   modalCard: {
     width: '100%',
@@ -6333,6 +6809,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
     shadowOffset: { width: 0, height: 10 },
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 768,
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 16,
+    padding: 20,
   },
   modalCardMobile: {
     maxWidth: '96%',
@@ -6360,6 +6845,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: '700', flexShrink: 1 },
   modalTitleMobile: { fontSize: 16, fontWeight: '600' },
+  modalSubtitle: { color: '#94a3b8', fontSize: 14 },
   modalBodyText: { color: '#cbd5e1', fontSize: 14, marginBottom: 18 },
   modalActions: { flexDirection: 'row', gap: 14, marginTop: 6 },
   modalActionsMobile: { gap: 10, paddingTop: 4 },

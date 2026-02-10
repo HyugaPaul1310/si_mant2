@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 let API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://localhost:5001';
 if (Platform.OS !== 'web') {
   // Para mobile (Android/iOS), usar la IP local
-  API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://192.168.0.182:5001';
+  API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://192.168.1.148:5001';
 }
 
 const CUSTOM_DOMAIN = process.env.EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN || '';
@@ -29,7 +29,7 @@ export function getProxyUrl(cloudflareUrl: string): string {
 
     // Usar el servidor Cloudflare en puerto 5001 como proxy
     // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg
-    const proxyHost = Platform.OS === 'web' ? 'localhost' : '192.168.0.182';
+    const proxyHost = Platform.OS === 'web' ? 'localhost' : '192.168.1.148';
     return `http://${proxyHost}:5001/api/get-file?key=${encodeURIComponent(key)}`;
   } catch (error) {
     console.warn('Error al convertir URL de Cloudflare:', error);
