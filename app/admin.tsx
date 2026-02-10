@@ -3477,7 +3477,12 @@ function AdminPanelContent() {
                   <Text style={[{ color: '#f8fafc', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Precio nuevo</Text>
                   <TextInput
                     value={precioCotizacionEdit}
-                    onChangeText={setPrecioCotizacionEdit}
+                    onChangeText={(text) => {
+                      const sanitized = text.replace(/[^0-9.]/g, '');
+                      const parts = sanitized.split('.');
+                      const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : sanitized;
+                      setPrecioCotizacionEdit(normalized);
+                    }}
                     keyboardType="numeric"
                     placeholder="Ej. 1500"
                     placeholderTextColor="#64748b"
