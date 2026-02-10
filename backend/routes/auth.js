@@ -158,4 +158,42 @@ router.get('/me', require('../middleware/auth').verifyToken, async (req, res) =>
   }
 });
 
+// Cambiar contraseña
+router.put('/change-password', require('../middleware/auth').verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Faltan campos requeridos' });
+    }
+
+    // Obtener contraseña actual del usuario
+    const [users] = await pool.query('SELECT contraseña FROM usuarios WHERE id = ?', [userId]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+
+    const user = users[0];
+
+    // Verificar contraseña actual
+    const validPassword = await bcrypt.compare(currentPassword, user.contraseña);
+    if (!validPassword) {
+      return res.status(401).json({ success: false, error: 'La contraseña actual es incorrecta' });
+    }
+
+    // Encyptar nueva contraseña
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Actualizar en base de datos
+    await pool.query('UPDATE usuarios SET contraseña = ? WHERE id = ?', [hashedPassword, userId]);
+
+    return res.json({ success: true, message: 'Contraseña actualizada exitosamente' });
+
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

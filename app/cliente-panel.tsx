@@ -9,10 +9,11 @@ import * as Print from 'expo-print';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   actualizarReporteBackend,
+  apiCall,
   obtenerArchivosReporteBackend,
   obtenerReportesCliente,
   verificarEncuestaExiste
@@ -40,6 +41,19 @@ function ClientePanelContent() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSeguimientoModal, setShowSeguimientoModal] = useState(false);
   const [showReporteDetail, setShowReporteDetail] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    general: ''
+  });
+  const [loadingPassword, setLoadingPassword] = useState(false);
   const [selectedReporte, setSelectedReporte] = useState<any | null>(null);
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
   const [loadingArchivos, setLoadingArchivos] = useState(false);
@@ -1271,6 +1285,70 @@ function ClientePanelContent() {
     setShowLogout(true);
   };
 
+  const handleUpdatePassword = async () => {
+    // Reset validations
+    setPasswordErrors({ currentPassword: '', newPassword: '', confirmPassword: '', general: '' });
+    let isValid = true;
+    const newErrors = { currentPassword: '', newPassword: '', confirmPassword: '', general: '' };
+
+    if (!passwordForm.currentPassword) {
+      newErrors.currentPassword = 'La contraseña actual es requerida.';
+      isValid = false;
+    }
+
+    if (!passwordForm.newPassword) {
+      newErrors.newPassword = 'La nueva contraseña es requerida.';
+      isValid = false;
+    } else if (passwordForm.newPassword.length < 6) {
+      newErrors.newPassword = 'Mínimo 6 caracteres.';
+      isValid = false;
+    } else if (passwordForm.newPassword === passwordForm.currentPassword) {
+      newErrors.newPassword = 'Debe ser diferente a la actual.';
+      isValid = false;
+    }
+
+    if (!passwordForm.confirmPassword) {
+      newErrors.confirmPassword = 'Confirma tu nueva contraseña.';
+      isValid = false;
+    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden.';
+      isValid = false;
+    }
+
+    if (!isValid) {
+      setPasswordErrors(newErrors);
+      return;
+    }
+
+    setLoadingPassword(true);
+    try {
+      // Usar apiCall del backend-lib que ya maneja la URL y el token
+      const response = await apiCall('/auth/change-password', 'PUT', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+
+      if (response.success) {
+        Alert.alert('¡Excelente!', 'Tu contraseña ha sido actualizada correctamente.');
+        setShowPasswordModal(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        // Manejo específico de errores del backend
+        if (response.error === 'La contraseña actual es incorrecta') {
+          setPasswordErrors(prev => ({ ...prev, currentPassword: 'La contraseña actual no es correcta.' }));
+        } else {
+          setPasswordErrors(prev => ({ ...prev, general: response.error || 'No se pudo actualizar.' }));
+        }
+      }
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      setPasswordErrors(prev => ({ ...prev, general: `Error de conexión: ${errorMessage}` }));
+    } finally {
+      setLoadingPassword(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -1300,6 +1378,12 @@ function ClientePanelContent() {
             </View>
 
             <View style={styles.headerActions}>
+              <TouchableOpacity
+                onPress={() => setShowPasswordModal(true)}
+                style={styles.toggleButton}
+              >
+                <Ionicons name="key-outline" size={18} color="#94a3b8" />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowStats(!showStats)}
                 style={styles.toggleButton}
@@ -1630,6 +1714,188 @@ function ClientePanelContent() {
                 </ScrollView>
               </>
             ) : null}
+          </View>
+        </View>
+      )}
+
+      {showPasswordModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.modalContainer,
+            {
+              width: isMobile ? '90%' : '400px',
+              maxHeight: 'auto',
+              backgroundColor: '#0f172a',
+              borderWidth: 1,
+              borderColor: '#334155',
+              padding: 0,
+              overflow: 'hidden'
+            }
+          ]}>
+            <LinearGradient
+              colors={['#1e293b', '#0f172a']}
+              style={{ width: '100%', padding: 24 }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+                <View>
+                  <Text style={[styles.modalTitle, { fontFamily, fontSize: 20, marginBottom: 4 }]}>Cambiar Contraseña</Text>
+                  <Text style={[styles.modalSubtitle, { fontFamily, color: '#94a3b8' }]}>Actualiza tu clave de acceso</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordErrors({ currentPassword: '', newPassword: '', confirmPassword: '', general: '' });
+                  }}
+                  style={{ padding: 4 }}
+                >
+                  <Ionicons name="close" size={24} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+
+              {passwordErrors.general ? (
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 10, borderRadius: 8, marginBottom: 10 }}>
+                  <Text style={{ color: '#f87171', fontFamily, fontSize: 13, textAlign: 'center' }}>{passwordErrors.general}</Text>
+                </View>
+              ) : null}
+
+              <View style={{ gap: 20 }}>
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Contraseña Actual</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.currentPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="lock-closed-outline" size={18} color={passwordErrors.currentPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.currentPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm(prev => ({ ...prev, currentPassword: text }));
+                        if (passwordErrors.currentPassword) setPasswordErrors(prev => ({ ...prev, currentPassword: '' }));
+                      }}
+                      placeholder="Ingresa tu contraseña actual"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.currentPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.currentPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Nueva Contraseña</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.newPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="key-outline" size={18} color={passwordErrors.newPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.newPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm(prev => ({ ...prev, newPassword: text }));
+                        if (passwordErrors.newPassword) setPasswordErrors(prev => ({ ...prev, newPassword: '' }));
+                      }}
+                      placeholder="Ingresa la nueva contraseña"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.newPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.newPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View>
+                  <Text style={[styles.label, { fontFamily, color: '#e2e8f0', marginBottom: 8, fontSize: 14, fontWeight: '500' }]}>Confirmar Nueva Contraseña</Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#1e293b',
+                    borderWidth: 1,
+                    borderColor: passwordErrors.confirmPassword ? '#ef4444' : '#334155',
+                    borderRadius: 8,
+                    paddingHorizontal: 12
+                  }}>
+                    <Ionicons name="shield-checkmark-outline" size={18} color={passwordErrors.confirmPassword ? '#ef4444' : "#64748b"} style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        fontFamily,
+                        color: 'white',
+                        paddingVertical: 12,
+                        fontSize: 15
+                      }}
+                      secureTextEntry
+                      value={passwordForm.confirmPassword}
+                      onChangeText={(text) => {
+                        setPasswordForm(prev => ({ ...prev, confirmPassword: text }));
+                        if (passwordErrors.confirmPassword) setPasswordErrors(prev => ({ ...prev, confirmPassword: '' }));
+                      }}
+                      placeholder="Confirma la nueva contraseña"
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+                  {passwordErrors.confirmPassword ? (
+                    <Text style={{ color: '#ef4444', fontSize: 12, marginTop: 4, fontFamily, marginLeft: 4 }}>
+                      {passwordErrors.confirmPassword}
+                    </Text>
+                  ) : null}
+                </View>
+
+                <TouchableOpacity
+                  onPress={handleUpdatePassword}
+                  disabled={loadingPassword}
+                  style={{
+                    backgroundColor: '#06b6d4',
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    marginTop: 12,
+                    shadowColor: '#06b6d4',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    opacity: loadingPassword ? 0.7 : 1
+                  }}
+                >
+                  {loadingPassword ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={{ fontFamily, color: 'white', fontWeight: '600', fontSize: 16 }}>Actualizar Contraseña</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
           </View>
         </View>
       )}
