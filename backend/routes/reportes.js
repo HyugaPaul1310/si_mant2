@@ -33,7 +33,8 @@ router.get('/', verifyToken, async (req, res) => {
         e.nombre as empresa,
         SUBSTRING_INDEX(r.titulo, ' - ', 1) as equipo_descripcion,
         TRIM(SUBSTRING(r.titulo, POSITION(' - ' IN r.titulo) + 3)) as sucursal,
-        r.descripcion as comentario
+        r.comentario,
+        r.motivo_cancelacion
       FROM reportes r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN empresas e ON r.empresa_id = e.id
@@ -112,24 +113,40 @@ router.post('/', verifyToken, async (req, res) => {
 // Actualizar reporte
 router.put('/:id', verifyToken, async (req, res) => {
   try {
-    const { titulo, descripcion, estado, prioridad, precioCotizacion } = req.body;
+    console.log('[DEBUG-PUT] REQ.BODY:', JSON.stringify(req.body, null, 2));
+    const { titulo, descripcion, estado, prioridad, precioCotizacion, precio_cotizacion } = req.body;
 
     const updateData = {};
-    if (titulo) updateData.titulo = titulo;
-    if (descripcion) updateData.descripcion = descripcion;
-    if (estado) updateData.estado = estado;
-    if (prioridad) updateData.prioridad = prioridad;
-    if (precioCotizacion) updateData.precio_cotizacion = precioCotizacion;
+    if (titulo !== undefined) updateData.titulo = titulo;
+    if (descripcion !== undefined) updateData.descripcion = descripcion;
+    if (estado !== undefined) updateData.estado = estado;
+    if (prioridad !== undefined) updateData.prioridad = prioridad;
+
+    // Handle both naming conventions for price
+    if (precioCotizacion !== undefined) {
+      updateData.precio_cotizacion = precioCotizacion;
+      console.log('[DEBUG-PUT] precioCotizacion:', precioCotizacion);
+    } else if (precio_cotizacion !== undefined) {
+      updateData.precio_cotizacion = precio_cotizacion;
+      console.log('[DEBUG-PUT] precio_cotizacion:', precio_cotizacion);
+    }
+
+    if (req.body.motivo_cancelacion !== undefined) {
+      updateData.motivo_cancelacion = req.body.motivo_cancelacion;
+      console.log('[DEBUG-PUT] motivo_cancelacion:', req.body.motivo_cancelacion);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No se enviaron datos para actualizar' });
+    }
 
     const query = 'UPDATE reportes SET ' + Object.keys(updateData).map(k => `${k} = ?`).join(', ') + ' WHERE id = ?';
     const values = [...Object.values(updateData), req.params.id];
 
-    console.log('[PUT-REPORTE] Actualizando reporte:', { id: req.params.id, updateData });
     await pool.query(query, values);
 
-    // Obtener el reporte actualizado
+    // Obtener el reporte actualizado para confirmar
     const [reporte] = await pool.query('SELECT * FROM reportes WHERE id = ?', [req.params.id]);
-    console.log('[PUT-REPORTE] Reporte actualizado:', reporte[0]);
 
     return res.json({ success: true, message: 'Reporte actualizado', data: reporte[0] });
   } catch (error) {
@@ -249,7 +266,8 @@ router.get('/empleado', verifyToken, async (req, res) => {
         e.nombre as empresa,
         SUBSTRING_INDEX(r.titulo, ' - ', 1) as equipo_descripcion,
         TRIM(SUBSTRING(r.titulo, POSITION(' - ' IN r.titulo) + 3)) as sucursal,
-        r.descripcion as comentario
+        r.comentario,
+        r.motivo_cancelacion
       FROM reportes r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN empresas e ON r.empresa_id = e.id
@@ -314,7 +332,8 @@ router.get('/cliente', verifyToken, async (req, res) => {
         emp.email as empleado_email,
         SUBSTRING_INDEX(r.titulo, ' - ', 1) as equipo_descripcion,
         TRIM(SUBSTRING(r.titulo, POSITION(' - ' IN r.titulo) + 3)) as sucursal,
-        r.descripcion as comentario
+        r.comentario,
+        r.motivo_cancelacion
       FROM reportes r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN empresas e ON r.empresa_id = e.id
@@ -433,6 +452,11 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
         ? new Date(finalizadoAt)
         : finalizadoAt;
       params.push(cleanDate);
+    }
+
+    if (req.body.motivo_cancelacion !== undefined) {
+      setClauses.push('motivo_cancelacion = ?');
+      params.push(req.body.motivo_cancelacion);
     }
 
     // Validar que al menos un campo se intente actualizar

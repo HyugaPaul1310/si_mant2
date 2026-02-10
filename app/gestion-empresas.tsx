@@ -53,12 +53,23 @@ export default function GestionEmpresasScreen() {
     }
   }, [empresaSeleccionada]);
 
-  const cargarEmpresas = async () => {
+  const cargarEmpresas = async (forceSelect = false) => {
     setCargando(true);
     const res = await obtenerEmpresas();
     if (res.success && res.data) {
       setEmpresas(res.data);
-      if (!empresaSeleccionada && res.data.length > 0) setEmpresaSeleccionada(res.data[0]);
+      // Si se fuerza la selección o si no hay empresa seleccionada actualmente
+      if (forceSelect || (!empresaSeleccionada && res.data.length > 0)) {
+        setEmpresas(res.data); // Asegurar que el estado de empresas esté actualizado antes de seleccionar
+        setEmpresaSeleccionada(res.data.length > 0 ? res.data[0] : null);
+      } else if (empresaSeleccionada) {
+        // Verificar si la empresa seleccionada aún existe en la nueva lista
+        const existe = res.data.find((e: Empresa) => e.id === empresaSeleccionada.id);
+        if (!existe) {
+          // Si no existe (fue borrada por otro medio), seleccionar la primera o null
+          setEmpresaSeleccionada(res.data.length > 0 ? res.data[0] : null);
+        }
+      }
     } else {
       setError(res.error || 'No se pudieron cargar las empresas');
     }
@@ -82,14 +93,42 @@ export default function GestionEmpresasScreen() {
       cancelText: 'Cancelar',
       danger: true,
       onConfirm: async () => {
-        const res = await eliminarEmpresa(empresaSeleccionada.id);
-        if (!res.success) {
-          setError(res.error || 'No se pudo eliminar');
-          return;
+        try {
+          const idEliminado = empresaSeleccionada.id;
+          const res = await eliminarEmpresa(idEliminado);
+          if (!res.success) {
+            setError(res.error || 'No se pudo eliminar');
+            return;
+          }
+
+          // Optimistic Client-Side Update
+          const nuevasEmpresas = empresas.filter(e => e.id !== idEliminado);
+          setEmpresas(nuevasEmpresas);
+
+          if (nuevasEmpresas.length > 0) {
+            setEmpresaSeleccionada(nuevasEmpresas[0]);
+          } else {
+            setEmpresaSeleccionada(null);
+          }
+
+          setSucursales([]);
+
+          // Background sync
+          obtenerEmpresas().then(response => {
+            if (response.success && response.data) {
+              const freshData = response.data.filter((e: Empresa) => e.id !== idEliminado);
+              setEmpresas(freshData);
+              if (!nuevasEmpresas.length && freshData.length > 0) {
+                setEmpresaSeleccionada(freshData[0]);
+              }
+            }
+          });
+        } catch (e) {
+          console.error("Error in delete handler:", e);
+          setError("Error inesperado al eliminar");
+        } finally {
+          // Force modal close is handled by the wrapper, but let's double check logic
         }
-        setEmpresaSeleccionada(null);
-        await cargarEmpresas();
-        setSucursales([]);
       },
     });
   };
@@ -369,8 +408,15 @@ export default function GestionEmpresasScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={async () => {
-                  await confirm.onConfirm();
-                  setConfirm(null);
+                  if (confirm && confirm.onConfirm) {
+                    try {
+                      await confirm.onConfirm();
+                    } catch (e) {
+                      console.error("Error executing confirm action:", e);
+                    } finally {
+                      setConfirm(null);
+                    }
+                  }
                 }}
                 style={confirm.danger ? styles.dangerBtn : styles.primaryBtn}
               >

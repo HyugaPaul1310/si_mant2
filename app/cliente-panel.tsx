@@ -96,6 +96,13 @@ function ClientePanelContent() {
 
   // Efecto para rotar pantalla en móvil al abrir modal de archivo
 
+  // Estado para confirmación de rechazo (custom modal)
+  const [showConfirmarRechazoModal, setShowConfirmarRechazoModal] = useState(false);
+  const [reporteARechazar, setReporteARechazar] = useState<any | null>(null);
+  const [stepRechazo, setStepRechazo] = useState(1); // 1: confirmación, 2: motivo
+  const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [rechazandoReporte, setRechazandoReporte] = useState(false);
+
 
   // Cargar encuestas enviadas desde AsyncStorage al iniciar
   useEffect(() => {
@@ -265,7 +272,7 @@ function ClientePanelContent() {
         });
 
         const reportesActivos = reportesMapeados.filter((r: any) =>
-          r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente'
+          r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente' && r.estado !== 'cancelado'
         );
         console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
         console.log('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
@@ -2420,9 +2427,9 @@ function ClientePanelContent() {
 
                               {/* 4. Precio al final */}
                               <Text style={[styles.reportTitle, { fontFamily, color: '#f59e0b', marginTop: 4, fontSize: 18 }]}>
-                                {cot.precio_cotizacion && cot.precio_cotizacion > 0
+                                {cot.precio_cotizacion && parseFloat(cot.precio_cotizacion) > 0
                                   ? `$${parseFloat(cot.precio_cotizacion).toFixed(2)}`
-                                  : 'Por Cotizar'}
+                                  : '(esperando respuesta)'}
                               </Text>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -2652,46 +2659,12 @@ function ClientePanelContent() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
-                        onPress={async () => {
-                          Alert.alert(
-                            'Rechazar Cotización',
-                            '¿Estás seguro de que deseas rechazar esta cotización? El reporte se dará por finalizado.',
-                            [
-                              { text: 'Cancelar', style: 'cancel' },
-                              {
-                                text: 'Sí, Rechazar',
-                                style: 'destructive',
-                                onPress: async () => {
-                                  try {
-                                    console.log('[CLIENTE] Rechazando cotización, cambiando a rechazado');
-                                    const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, {
-                                      estado: 'rechazado'
-                                    });
-
-                                    if (!resultado.success) {
-                                      showToast('Error al rechazar cotización', 'error');
-                                      return;
-                                    }
-
-                                    // Remover de la lista local
-                                    setCotizaciones((prev) =>
-                                      prev.filter((c) => c.id !== cotizacionSeleccionada.id)
-                                    );
-
-                                    setShowCotizacionDetalleModal(false);
-                                    showToast('Cotización rechazada. El reporte ha sido finalizado.', 'info');
-
-                                    setTimeout(() => {
-                                      cargarCotizaciones(usuario?.email);
-                                    }, 500);
-                                  } catch (error) {
-                                    console.error('[CLIENTE] Error al rechazar:', error);
-                                    showToast('Error al rechazar cotización', 'error');
-                                  }
-                                }
-                              }
-                            ]
-                          );
+                        onPress={() => {
+                          setReporteARechazar(cotizacionSeleccionada);
+                          setReporteARechazar(cotizacionSeleccionada);
+                          setStepRechazo(1);
+                          setMotivoRechazo('');
+                          setShowConfirmarRechazoModal(true);
                         }}
                       >
                         <Ionicons name="close-circle" size={20} color="white" />
@@ -2907,7 +2880,157 @@ function ClientePanelContent() {
           </View>
         )
       }
-      {/* Modal de éxito encuesta */}
+      {/* Modal de Confirmación de Rechazo (Custom) */}
+      {showConfirmarRechazoModal && (
+        <View style={[styles.modalOverlay, { zIndex: 9999 }]}>
+          <View style={[
+            styles.modalContainer,
+            {
+              width: isMobile ? '90%' : '400px',
+              maxHeight: 'auto',
+              backgroundColor: '#0f172a',
+              borderWidth: 1,
+              borderColor: '#334155',
+              padding: 0,
+              overflow: 'hidden'
+            }
+          ]}>
+            <LinearGradient
+              colors={['#1e293b', '#0f172a']}
+              style={{ width: '100%', padding: 24 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 }}>
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', padding: 10, borderRadius: 12 }}>
+                  <Ionicons name="alert-circle" size={28} color="#ef4444" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.modalTitle, { fontFamily, fontSize: 18 }]}>Cancelar Reporte</Text>
+                </View>
+              </View>
+
+              {stepRechazo === 1 ? (
+                <Text style={{ fontFamily, color: '#94a3b8', fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
+                  ¿Estás seguro de que deseas cancelar este reporte? Esta acción no se puede deshacer y el reporte se eliminará de su seguimiento.
+                </Text>
+              ) : (
+                <View style={{ marginBottom: 24 }}>
+                  <Text style={{ fontFamily, color: '#94a3b8', fontSize: 14, marginBottom: 12 }}>
+                    Por favor, indícanos el motivo del rechazo:
+                  </Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: 'rgba(15, 23, 42, 0.4)',
+                      borderWidth: 1,
+                      borderColor: '#334155',
+                      borderRadius: 10,
+                      padding: 14,
+                      color: '#f8fafc',
+                      fontFamily,
+                      fontSize: 14,
+                      minHeight: 100,
+                      textAlignVertical: 'top'
+                    }}
+                    placeholder="Escribe aquí el motivo..."
+                    placeholderTextColor="#64748b"
+                    multiline
+                    value={motivoRechazo}
+                    onChangeText={setMotivoRechazo}
+                    autoFocus
+                  />
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#334155',
+                    backgroundColor: 'transparent',
+                    alignItems: 'center',
+                  }}
+                  onPress={() => {
+                    setShowConfirmarRechazoModal(false);
+                    setReporteARechazar(null);
+                  }}
+                >
+                  <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>No, Volver</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 8,
+                    backgroundColor: '#ef4444',
+                    alignItems: 'center',
+                    shadowColor: '#ef4444',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 4
+                  }}
+                  onPress={async () => {
+                    if (!reporteARechazar) return;
+
+                    if (stepRechazo === 1) {
+                      setStepRechazo(2);
+                      return;
+                    }
+
+                    if (!motivoRechazo.trim()) {
+                      showToast('Por favor ingresa un motivo', 'warning');
+                      return;
+                    }
+
+                    setRechazandoReporte(true);
+                    try {
+                      console.log('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a cancelado');
+                      const resultado = await actualizarReporteBackend(reporteARechazar.id, {
+                        estado: 'rechazado',
+                        motivo_cancelacion: motivoRechazo.trim(),
+                        precio_cotizacion: 0
+                      });
+
+                      if (!resultado.success) {
+                        showToast(resultado.error || 'Error al rechazar', 'error');
+                        setRechazandoReporte(false);
+                        return;
+                      }
+
+                      showToast('Reporte cancelado exitosamente', 'success');
+                      setShowConfirmarRechazoModal(false);
+                      setReporteARechazar(null);
+                      setMotivoRechazo('');
+                      setStepRechazo(1);
+
+                      // Recargar datos
+                      cargarReportes(usuario?.email);
+                      cargarCotizaciones(usuario?.email);
+                      setShowCotizacionDetalleModal(false);
+
+                    } catch (error) {
+                      console.error('[CLIENTE] Error al rechazar:', error);
+                      showToast('Error inesperado al rechazar', 'error');
+                    } finally {
+                      setRechazandoReporte(false);
+                    }
+                  }}
+                  disabled={rechazandoReporte}
+                >
+                  <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>
+                    {rechazandoReporte ? 'Procesando...' : (stepRechazo === 1 ? 'Sí, continuar' : 'Confirmar Cancelación')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      )}
+
+      {/* Modal de Éxito al Responder Encuesta */}
       <Modal
         visible={showEncuestaSuccessModal}
         transparent={true}

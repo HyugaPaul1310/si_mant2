@@ -1,5 +1,5 @@
 ﻿// @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -83,6 +83,8 @@ function AdminPanelContent() {
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [showArchivoModal, setShowArchivoModal] = useState(false);
   const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
+  const [showRechazadosModal, setShowRechazadosModal] = useState(false);
+
 
 
 
@@ -142,6 +144,20 @@ function AdminPanelContent() {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg']
   });
+
+  const rechazadosCount = useMemo(() => {
+    return reportes.filter((r: any) =>
+      (r.estado || '').toLowerCase() === 'cancelado' ||
+      (r.estado || '').toLowerCase() === 'rechazado'
+    ).length;
+  }, [reportes]);
+
+  const reportesRechazados = useMemo(() => {
+    return reportes.filter((r: any) =>
+      (r.estado || '').toLowerCase() === 'cancelado' ||
+      (r.estado || '').toLowerCase() === 'rechazado'
+    );
+  }, [reportes]);
 
   // Estados para cotizaciones pendientes
   const [showCotizacionesModal, setShowCotizacionesModal] = useState(false);
@@ -331,20 +347,25 @@ function AdminPanelContent() {
     cargar();
   }, []);
 
-  // Recargar reportes cuando se abre el modal historial
+  // Recargar reportes cuando se abren ciertos módulos para asegurar datos frescos
   useEffect(() => {
-    if (showHistorialModal) {
+    if (showHistorialModal || showRechazadosModal) {
       const cargar = async () => {
         setLoadingReportes(true);
         setErrorReportes('');
-        const { success, data, error } = await obtenerReportesBackend();
-        if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
-        else setReportes(data || []);
-        setLoadingReportes(false);
+        try {
+          const { success, data, error } = await obtenerReportesBackend();
+          if (!success) setErrorReportes(error || 'No se pudieron cargar los reportes');
+          else setReportes(data || []);
+        } catch (err) {
+          console.error('[ADMIN] Error recargando reportes:', err);
+        } finally {
+          setLoadingReportes(false);
+        }
       };
       cargar();
     }
-  }, [showHistorialModal]);
+  }, [showHistorialModal, showRechazadosModal]);
 
   // Auto-refresh counters (Cotizaciones Pendientes y Finalizados)
   useEffect(() => {
@@ -421,6 +442,7 @@ function AdminPanelContent() {
     };
     cargarCerrados();
   }, []);
+
 
   // PASO 7: Cargar reportes con análisis completado (Cotizaciones Pendientes)
   useEffect(() => {
@@ -682,7 +704,7 @@ function AdminPanelContent() {
   const reportesCerradoCount = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'rechazado' || st === 'resuelto' || st === 'encuesta_satisfaccion';
+      return st === 'cerrado' || st === 'cerrado_por_cliente' || st === 'terminado' || st === 'resuelto' || st === 'encuesta_satisfaccion';
     }).length,
     [reportes]
   );
@@ -708,7 +730,7 @@ function AdminPanelContent() {
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
       return st !== 'terminado' && st !== 'rechazado' && st !== 'cerrado' &&
-        st !== 'cerrado_por_cliente' && st !== 'resuelto' && st !== 'encuesta_satisfaccion';
+        st !== 'cerrado_por_cliente' && st !== 'resuelto' && st !== 'encuesta_satisfaccion' && st !== 'cancelado';
     }),
     [reportes]
   );
@@ -716,7 +738,7 @@ function AdminPanelContent() {
   const reportesTerminados = useMemo(
     () => reportes.filter((r) => {
       const st = (r.estado || '').toLowerCase();
-      return st === 'terminado' || st === 'rechazado' || st === 'cerrado' ||
+      return st === 'terminado' || st === 'cerrado' ||
         st === 'cerrado_por_cliente' || st === 'resuelto' || st === 'encuesta_satisfaccion';
     }),
     [reportes]
@@ -1019,7 +1041,14 @@ function AdminPanelContent() {
       gradient: ['#0f172a', '#475569'] as const, // Deep Slate
       iconName: 'list-outline',
     },
-  ], [finalizadosCount, cotizacionesPendientesCount]);
+    {
+      title: 'Reportes Rechazados',
+      description: 'Ver reportes cancelados o rechazados',
+      gradient: ['#450a0a', '#991b1b'] as const, // Deep Red/Maroon
+      iconName: 'close-circle-outline',
+      badge: rechazadosCount,
+    },
+  ], [finalizadosCount, cotizacionesPendientesCount, rechazadosCount]);
 
   const estadoBadgeStyle = (estado: string) => {
     const color = obtenerColorEstado(estado);
@@ -1107,6 +1136,13 @@ function AdminPanelContent() {
           setActualizandoUsuario(false);
           return;
         }
+      } else if (editEstado === 'activo') {
+        const resultadoEstado = await cambiarEstadoUsuarioBackend(usuarioEditando.id, 'activo');
+        if (!resultadoEstado.success) {
+          setErrorUsuario(resultadoEstado.error || 'Error al reactivar usuario');
+          setActualizandoUsuario(false);
+          return;
+        }
       }
     }
 
@@ -1166,6 +1202,8 @@ function AdminPanelContent() {
       setShowFinalizadosPorEmpleadoModal(true);
     } else if (title === 'Historial de Tareas') {
       setShowTareasHistorialModal(true);
+    } else if (title === 'Reportes Rechazados') {
+      setShowRechazadosModal(true);
     }
   };
 
@@ -2399,8 +2437,8 @@ function AdminPanelContent() {
 
                   <View style={styles.searchFilterContainerPro}>
                     <View style={styles.searchFilterLabelPro}>
-                      <Ionicons name="person-search-outline" size={16} color="#06b6d4" />
-                      <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por empleado</Text>
+
+                      <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por Técnico</Text>
                     </View>
                     <View style={[
                       styles.searchFilterInputWrapperPro,
@@ -2669,8 +2707,8 @@ function AdminPanelContent() {
                   {/* Search Section */}
                   <View style={[styles.searchFilterContainerPro, { padding: 0, backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, marginTop: 12 }]}>
                     <View style={[styles.searchFilterLabelPro, { marginBottom: 8 }]}>
-                      <Ionicons name="person-search-outline" size={14} color="#06b6d4" />
-                      <Text style={[styles.searchFilterLabelText, { fontSize: 10, fontFamily }]}>Buscar Técnico/Empleado</Text>
+
+                      <Text style={[styles.searchFilterLabelText, { fontSize: 10, fontFamily }]}>Buscar por técnico</Text>
                     </View>
                     <View style={[
                       styles.searchFilterInputWrapperPro,
@@ -3611,6 +3649,97 @@ function AdminPanelContent() {
         )
       }
 
+      {/* PASO Extra: Modal de Reportes Rechazados/Cancelados */}
+      {
+        showRechazadosModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
+              <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
+                <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
+                  <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Reportes Rechazados</Text>
+                  <Text style={[styles.detailSubtitle, isMobile && styles.detailSubtitleMobile, { fontFamily }]}>Historial de cancelaciones</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowRechazadosModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={20} color="#cbd5e1" />
+                </TouchableOpacity>
+              </View>
+
+              {loadingReportes ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando reportes rechazados...</Text>
+                </View>
+              ) : null}
+
+              {!loadingReportes && reportesRechazados.length === 0 ? (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>No hay reportes rechazados o cancelados.</Text>
+                </View>
+              ) : null}
+
+              {!loadingReportes && reportesRechazados.length > 0 ? (
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {reportesRechazados.map((rep) => (
+                      <View key={rep.id} style={styles.reportCard}>
+                        <View style={styles.reportHeader}>
+                          <View style={styles.reportHeaderText}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.equipo_descripcion || 'Equipo / servicio'}
+                            </Text>
+                            <Text style={[styles.reportSubtitle, { fontFamily }]} numberOfLines={1}>
+                              {rep.usuario_nombre} {rep.usuario_apellido} · {rep.usuario_email}
+                            </Text>
+                            <Text style={[styles.reportMeta, { fontFamily }]} numberOfLines={1}>
+                              {rep.empresa || 'Sin empresa'} • {rep.sucursal || 'Sin sucursal'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={async () => {
+                              setSelectedReporteDetail(rep);
+                              setShowReporteDetailModal(true);
+                              setCargandoArchivos(true);
+                              const resultado = await obtenerArchivosReporteBackend(rep.id);
+                              if (resultado.success) {
+                                const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                                setArchivosReporte(soloMedia);
+                              }
+                              setCargandoArchivos(false);
+                            }}
+                            style={styles.eyeCard}
+                          >
+                            <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                          </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                          {rep.comentario || 'Sin comentarios'}
+                        </Text>
+
+                        <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, padding: 10, marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#ef4444' }}>
+                          <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: '700', marginBottom: 2 }}>MOTIVO DEL RECHAZO:</Text>
+                          <Text style={{ color: '#f87171', fontSize: 12 }}>
+                            {rep.motivo_cancelacion || 'No se proporcionó un motivo específico.'}
+                          </Text>
+                        </View>
+
+                        <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                          <Text style={{ color: '#94a3b8', fontSize: 10 }}>
+                            ID: {rep.id} • {rep.estado || 'Cancelado'}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        )
+      }
+
       {
         showReporteDetailModal && selectedReporteDetail && (
           <View style={styles.overlayHeavy}>
@@ -3771,12 +3900,24 @@ function AdminPanelContent() {
                   )}
 
                   {/* Precio Cotización - MOVIDO AL PRINCIPIO */}
-                  {selectedReporteDetail.precio_cotizacion && (
+                  {(selectedReporteDetail.precio_cotizacion !== undefined && selectedReporteDetail.precio_cotizacion !== null) && (
                     <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
                       <Text style={[styles.detailFieldLabel, { fontFamily }]}>Precio Cotización</Text>
                       <View style={styles.detailValueBox}>
                         <Text style={[styles.detailValueText, { fontFamily, color: '#10b981', fontSize: 16, fontWeight: '700' }]}>
-                          ${selectedReporteDetail.precio_cotizacion.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${Number(selectedReporteDetail.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Motivo de Rechazo / Cancelación - Mostrar siempre si está rechazado o cancelado */}
+                  {((selectedReporteDetail.estado || '').toLowerCase() === 'rechazado' || (selectedReporteDetail.estado || '').toLowerCase() === 'cancelado' || !!selectedReporteDetail.motivo_cancelacion) && (
+                    <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
+                      <Text style={[styles.detailFieldLabel, { fontFamily, color: '#ef4444' }]}>Motivo del Rechazo / Cancelación</Text>
+                      <View style={[styles.detailValueBox, { borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
+                        <Text style={[styles.detailValueText, { fontFamily, color: '#f87171', fontWeight: '600' }]}>
+                          {selectedReporteDetail.motivo_cancelacion || 'No se proporcionó un motivo específico.'}
                         </Text>
                       </View>
                     </View>
