@@ -288,7 +288,7 @@ function ClientePanelContent() {
             estado: estadoOverride,
             equipo_descripcion,
             sucursal,
-            comentario: comentario || 'Sin comentarios'
+            comentario: comentario || ''
           };
         });
 
@@ -375,7 +375,7 @@ function ClientePanelContent() {
               ...r,
               equipo_descripcion,
               sucursal,
-              comentario: comentario || 'Sin comentarios'
+              comentario: comentario || ''
             };
           });
 
@@ -497,7 +497,7 @@ function ClientePanelContent() {
       const modeloValue = modeloMatch ? modeloMatch[1].trim() : (reporte.equipo_modelo || 'N/A');
       const serieValue = serieMatch ? serieMatch[1].trim() : (reporte.equipo_serie || 'N/A');
       const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
-      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || 'Sin comentarios');
+      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
 
       // Crear HTML para el PDF con diseño SI MANT
       const htmlContent = `
@@ -1150,9 +1150,11 @@ function ClientePanelContent() {
           </View>
         </View>
 
-        <Text style={[styles.reportCardComment, { fontFamily }]} numberOfLines={2}>
-          {rep.comentario || 'Sin comentarios'}
-        </Text>
+        {rep.comentario?.trim() ? (
+          <Text style={[styles.reportCardComment, { fontFamily }]} numberOfLines={2}>
+            {rep.comentario}
+          </Text>
+        ) : null}
 
         <View style={styles.reportCardFooter}>
           <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder }]}>
@@ -1986,7 +1988,7 @@ function ClientePanelContent() {
                 const modeloValue = modeloMatch ? modeloMatch[1].trim() : (selectedReporte.equipo_modelo || 'N/A');
                 const serieValue = serieMatch ? serieMatch[1].trim() : (selectedReporte.equipo_serie || 'N/A');
                 const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (selectedReporte.sucursal || 'N/A');
-                const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (selectedReporte.comentario || 'Sin comentarios');
+                const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (selectedReporte.comentario || '');
 
                 return (
                   <>
@@ -2006,10 +2008,12 @@ function ClientePanelContent() {
                       <Text style={[styles.detailValue, { fontFamily }]}>{sucursalValue}</Text>
                     </View>
 
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>Comentario / Problema</Text>
-                      <Text style={[styles.detailValue, { fontFamily }]}>{comentarioFinal}</Text>
-                    </View>
+                    {comentarioFinal.trim() ? (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>Comentario / Problema</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{comentarioFinal}</Text>
+                      </View>
+                    ) : null}
                   </>
                 );
               })()}

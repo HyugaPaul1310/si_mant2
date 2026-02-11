@@ -1,14 +1,14 @@
 import {
-  actualizarEmpresa,
-  actualizarSucursal,
-  crearEmpresa,
-  crearSucursal,
-  eliminarEmpresa,
-  eliminarSucursal,
-  obtenerEmpresas,
-  obtenerSucursalesPorEmpresa,
-  type Empresa,
-  type Sucursal,
+    actualizarEmpresa,
+    actualizarSucursal,
+    crearEmpresa,
+    crearSucursal,
+    eliminarEmpresa,
+    eliminarSucursal,
+    obtenerEmpresas,
+    obtenerSucursalesPorEmpresa,
+    type Empresa,
+    type Sucursal,
 } from '@/lib/empresas';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -258,10 +258,18 @@ export default function GestionEmpresasScreen() {
     if (empresaSeleccionada) await cargarSucursales(empresaSeleccionada.id);
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/admin');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color="#06b6d4" />
         </TouchableOpacity>
         <Text style={styles.title}>Gestión de Empresas</Text>
