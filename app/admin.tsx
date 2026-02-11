@@ -93,6 +93,7 @@ function AdminPanelContent() {
   const [showCerradosModal, setShowCerradosModal] = useState(false);
   const [selectedReporteDetail, setSelectedReporteDetail] = useState<any | null>(null);
   const [showReporteDetailModal, setShowReporteDetailModal] = useState(false);
+  const [detalleOrigen, setDetalleOrigen] = useState<'historial' | 'terminados' | 'cotizaciones' | 'finalizados' | 'finalizadosEmpleado' | 'cerrados' | 'rechazados' | 'otro'>('otro');
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [showArchivoModal, setShowArchivoModal] = useState(false);
@@ -2812,6 +2813,7 @@ function AdminPanelContent() {
                             <TouchableOpacity
                               onPress={async () => {
                                 setSelectedReporteDetail(rep);
+                                setDetalleOrigen('historial');
                                 setShowReporteDetailModal(true);
                                 setCargandoArchivos(true);
                                 console.log(`[ADMIN] Cargando archivos para reporte: ${rep.id}`);
@@ -3071,6 +3073,7 @@ function AdminPanelContent() {
                         <TouchableOpacity
                           onPress={async () => {
                             setSelectedReporteDetail(rep);
+                            setDetalleOrigen('terminados');
                             setShowReporteDetailModal(true);
                             setCargandoArchivos(true);
                             console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
@@ -3180,6 +3183,7 @@ function AdminPanelContent() {
                         <TouchableOpacity
                           onPress={async () => {
                             setSelectedReporteDetail(rep);
+                            setDetalleOrigen('cotizaciones');
                             setShowReporteDetailModal(true);
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(rep.id);
@@ -3674,6 +3678,7 @@ function AdminPanelContent() {
                         <TouchableOpacity
                           onPress={async () => {
                             setSelectedReporteDetail(rep);
+                            setDetalleOrigen('finalizados');
                             setShowReporteDetailModal(true);
                             setCargandoArchivos(true);
                             const resultado = await obtenerArchivosReporteBackend(rep.id);
@@ -3808,6 +3813,7 @@ function AdminPanelContent() {
                           <TouchableOpacity
                             onPress={async () => {
                               setSelectedReporteDetail(rep);
+                              setDetalleOrigen('finalizadosEmpleado');
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(rep.id);
@@ -4017,6 +4023,7 @@ function AdminPanelContent() {
                           <TouchableOpacity
                             onPress={async () => {
                               setSelectedReporteDetail(rep);
+                              setDetalleOrigen('cerrados');
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(rep.id);
@@ -4101,6 +4108,7 @@ function AdminPanelContent() {
                           <TouchableOpacity
                             onPress={async () => {
                               setSelectedReporteDetail(rep);
+                              setDetalleOrigen('rechazados');
                               setShowReporteDetailModal(true);
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(rep.id);
@@ -4356,7 +4364,8 @@ function AdminPanelContent() {
                             estado === 'cotizado' ||
                             estado === 'en_espera_confirmacion' ||
                             estado === 'en espera confirmacion') &&
-                          estado !== 'cotizacionnueva';
+                          estado !== 'cotizacionnueva' &&
+                          detalleOrigen === 'rechazados';
                         if (!puedeEditar) return null;
                         return (
                           <TouchableOpacity

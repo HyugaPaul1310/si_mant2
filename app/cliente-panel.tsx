@@ -1978,10 +1978,10 @@ function ClientePanelContent() {
                 const fullDescripcion = selectedReporte.descripcion || '';
 
                 // Regex para extraer campos (consistente con admin.tsx)
-                const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
-                const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
-                const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
-                const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
+                const modeloMatch = fullDescripcion.match(/^\s*Modelo\s*[:\-]\s*(.+)$/im);
+                const serieMatch = fullDescripcion.match(/^\s*Serie\s*[:\-]\s*(.+)$/im);
+                const sucursalMatch = fullDescripcion.match(/^\s*Sucursal\s*[:\-]\s*(.+)$/im);
+                const comentarioMatch = fullDescripcion.match(/^\s*Comentario\s*[:\-]\s*([\s\S]+?)(?:\r?\n\s*Prioridad\s*[:\-]|$)/im);
 
                 const modeloValue = modeloMatch ? modeloMatch[1].trim() : (selectedReporte.equipo_modelo || 'N/A');
                 const serieValue = serieMatch ? serieMatch[1].trim() : (selectedReporte.equipo_serie || 'N/A');
