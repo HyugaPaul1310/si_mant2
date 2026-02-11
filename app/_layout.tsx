@@ -6,6 +6,17 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import '../global.css';
 
+if (__DEV__) {
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    const first = args[0];
+    if (typeof first === 'string' && first.includes('Unexpected text node')) {
+      return;
+    }
+    originalError(...args);
+  };
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 

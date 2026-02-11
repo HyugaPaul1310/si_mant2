@@ -34,6 +34,18 @@ function ClientePanelContent() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const fontFamily = Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif';
+  const consoleLog = console.log;
+  const consoleWarn = console.warn;
+  const logDebug = (...args: any[]) => {
+    if (__DEV__) {
+      consoleLog(...args);
+    }
+  };
+  const logWarn = (...args: any[]) => {
+    if (__DEV__) {
+      consoleWarn(...args);
+    }
+  };
   const [usuario, setUsuario] = useState<Cliente | null>(null);
   // Contadores dinámicos se calculan a partir de "reportes"
   const [showLogout, setShowLogout] = useState(false);
@@ -146,7 +158,7 @@ function ClientePanelContent() {
           const parsedUser = JSON.parse(user);
           // Validación: solo clientes pueden acceder a este panel
           if (parsedUser.rol !== 'cliente') {
-            console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel. Redirigiendo...`);
+            logWarn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel. Redirigiendo...`);
             // Redirigir según su rol
             switch (parsedUser.rol) {
               case 'admin':
@@ -234,16 +246,16 @@ function ClientePanelContent() {
   // Verificar si existen encuestas para los reportes
   const verificarEncuestas = useCallback(
     async (reportes: any[]) => {
-      console.log('[VERIFICAR-ENCUESTAS] Verificando encuestas para', reportes.length, 'reportes');
+      logDebug('[VERIFICAR-ENCUESTAS] Verificando encuestas para', reportes.length, 'reportes');
       const encuestasSet = new Set<number>();
 
       for (const reporte of reportes) {
         try {
-          console.log('[VERIFICAR-ENCUESTAS] Verificando reporte ID:', reporte.id);
+          logDebug('[VERIFICAR-ENCUESTAS] Verificando reporte ID:', reporte.id);
           const { success, data } = await verificarEncuestaExiste(reporte.id.toString());
-          console.log('[VERIFICAR-ENCUESTAS] Respuesta para reporte', reporte.id, ':', { success, dataLength: data?.length, data });
+          logDebug('[VERIFICAR-ENCUESTAS] Respuesta para reporte', reporte.id, ':', { success, dataLength: data?.length, data });
           if (success && data && data.length > 0) {
-            console.log('[VERIFICAR-ENCUESTAS] ✓ Encuesta encontrada para reporte', reporte.id);
+            logDebug('[VERIFICAR-ENCUESTAS] ✓ Encuesta encontrada para reporte', reporte.id);
             encuestasSet.add(reporte.id);
           }
         } catch (error) {
@@ -251,7 +263,7 @@ function ClientePanelContent() {
         }
       }
 
-      console.log('[VERIFICAR-ENCUESTAS] Total de encuestas encontradas:', encuestasSet.size, 'IDs:', Array.from(encuestasSet));
+      logDebug('[VERIFICAR-ENCUESTAS] Total de encuestas encontradas:', encuestasSet.size, 'IDs:', Array.from(encuestasSet));
       setEncuestasRespondidas(encuestasSet);
     },
     [setEncuestasRespondidas]
@@ -263,7 +275,7 @@ function ClientePanelContent() {
       if (!silent) setLoadingReportes(true);
       setErrorReportes('');
       const { success, data, error } = await obtenerReportesCliente(email);
-      console.log('[CLIENTE-PANEL] cargarReportes respuesta:', { success, dataLength: data?.length, firstItem: data?.[0] });
+      logDebug('[CLIENTE-PANEL] cargarReportes respuesta:', { success, dataLength: data?.length, firstItem: data?.[0] });
       if (!success) {
         setErrorReportes(error || 'No se pudieron cargar los reportes');
       } else {
@@ -295,8 +307,8 @@ function ClientePanelContent() {
         const reportesActivos = reportesMapeados.filter((r: any) =>
           r.estado !== 'cerrado' && r.estado !== 'cerrado_por_cliente' && r.estado !== 'cancelado' && r.estado !== 'rechazado'
         );
-        console.log('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
-        console.log('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
+        logDebug('[CLIENTE-PANEL] Reportes activos después de filtrar:', reportesActivos.length);
+        logDebug('[CLIENTE-PANEL] Total de reportes (sin filtrar):', reportesMapeados.length);
         setReportes(reportesActivos);
         setTodosLosReportes(reportesMapeados); // Guardar TODOS los reportes para los contadores
 
@@ -318,18 +330,18 @@ function ClientePanelContent() {
   const cargarCotizaciones = useCallback(
     async (email?: string, silent: boolean = false) => {
       if (!email) {
-        console.log('[CLIENTE-PANEL] No hay email para cargar cotizaciones');
+        logDebug('[CLIENTE-PANEL] No hay email para cargar cotizaciones');
         return;
       }
-      console.log('[CLIENTE-PANEL] Cargando cotizaciones para email:', email);
+      logDebug('[CLIENTE-PANEL] Cargando cotizaciones para email:', email);
       if (!silent) setLoadingCotizaciones(true);
       try {
-        console.log('[CLIENTE-PANEL] Llamando a obtenerReportesCliente');
+        logDebug('[CLIENTE-PANEL] Llamando a obtenerReportesCliente');
         const resultado = await obtenerReportesCliente(email);
-        console.log('[CLIENTE-PANEL] Resultado completo:', resultado);
+        logDebug('[CLIENTE-PANEL] Resultado completo:', resultado);
         if (resultado.success && resultado.data) {
-          console.log('[CLIENTE-PANEL] Datos cargados:', resultado.data.length);
-          console.log('[CLIENTE-PANEL] Primeros 3 reportes:', resultado.data.slice(0, 3).map((r: any) => ({
+          logDebug('[CLIENTE-PANEL] Datos cargados:', resultado.data.length);
+          logDebug('[CLIENTE-PANEL] Primeros 3 reportes:', resultado.data.slice(0, 3).map((r: any) => ({
             id: r.id,
             titulo: r.titulo,
             estado: r.estado,
@@ -347,13 +359,13 @@ function ClientePanelContent() {
               r.estado === 'en_cotizacion' ||
               r.estado === 'cotizacionnueva';
 
-            if (!estadoValido) console.log(`[FILTRO] Reporte ${r.id}: estado inválido (${r.estado})`);
+            if (!estadoValido) logDebug(`[FILTRO] Reporte ${r.id}: estado inválido (${r.estado})`);
 
             return estadoValido;
           });
 
-          console.log('[CLIENTE-PANEL] Cotizaciones filtradas:', cotizacionesFiltradas.length);
-          console.log('[CLIENTE-PANEL] Detalle cotizaciones:', cotizacionesFiltradas.map((r: any) => ({
+          logDebug('[CLIENTE-PANEL] Cotizaciones filtradas:', cotizacionesFiltradas.length);
+          logDebug('[CLIENTE-PANEL] Detalle cotizaciones:', cotizacionesFiltradas.map((r: any) => ({
             id: r.id,
             titulo: r.titulo,
             estado: r.estado,
@@ -398,13 +410,13 @@ function ClientePanelContent() {
   const cargarReportesFinalizados = useCallback(
     async (email?: string, silent: boolean = false) => {
       if (!email) {
-        console.log('[CLIENTE-CARGAR-FINALIZADOS] Sin email');
+        logDebug('[CLIENTE-CARGAR-FINALIZADOS] Sin email');
         return [];
       }
-      console.log('[CLIENTE-CARGAR-FINALIZADOS] Iniciando carga para:', email);
+      logDebug('[CLIENTE-CARGAR-FINALIZADOS] Iniciando carga para:', email);
       try {
         const resultado = await obtenerReportesCliente(email);
-        console.log('[CLIENTE-CARGAR-FINALIZADOS] Respuesta backend:', { success: resultado.success, totalData: resultado.data?.length });
+        logDebug('[CLIENTE-CARGAR-FINALIZADOS] Respuesta backend:', { success: resultado.success, totalData: resultado.data?.length });
 
         if (resultado.success && resultado.data) {
           // FILTRO DEFENSIVO: SOLO cargar reportes que el admin CONFIRMÓ
@@ -431,15 +443,15 @@ function ClientePanelContent() {
             r.estado === 'cerrado' || r.estado === 'cerrado_por_cliente' || r.estado === 'cancelado' || r.estado === 'rechazado'
           );
 
-          console.log('[CLIENTE-CARGAR-FINALIZADOS] Finalizados encontrados:', finalizados.length);
-          console.log('[CLIENTE-CARGAR-FINALIZADOS] Detalles:', finalizados.map((r: any) => ({ id: r.id, estado: r.estado, titulo: r.titulo })));
+          logDebug('[CLIENTE-CARGAR-FINALIZADOS] Finalizados encontrados:', finalizados.length);
+          logDebug('[CLIENTE-CARGAR-FINALIZADOS] Detalles:', finalizados.map((r: any) => ({ id: r.id, estado: r.estado, titulo: r.titulo })));
 
           // Desglosar por estado para debug
           const porConfirmar = finalizados.filter(r => r.estado === 'finalizado_por_tecnico' || r.estado === 'listo_para_encuesta');
           const otros = finalizados.filter(r => r.estado !== 'finalizado_por_tecnico' && r.estado !== 'listo_para_encuesta');
-          console.log('[CLIENTE-CARGAR-FINALIZADOS] Por confirmar:', porConfirmar.length, 'Otros:', otros.length);
+          logDebug('[CLIENTE-CARGAR-FINALIZADOS] Por confirmar:', porConfirmar.length, 'Otros:', otros.length);
           if (otros.length > 0) {
-            console.log('[CLIENTE-CARGAR-FINALIZADOS] Estados de otros:', otros.map((r: any) => r.estado));
+            logDebug('[CLIENTE-CARGAR-FINALIZADOS] Estados de otros:', otros.map((r: any) => r.estado));
           }
 
           const finalizadosVisibles = finalizados.map((r: any) => {
@@ -455,7 +467,7 @@ function ClientePanelContent() {
           setReportesFinalizados(finalizadosVisibles);
           return finalizadosVisibles;
         } else {
-          console.log('[CLIENTE-CARGAR-FINALIZADOS] Error en respuesta:', resultado);
+          logDebug('[CLIENTE-CARGAR-FINALIZADOS] Error en respuesta:', resultado);
           setReportesFinalizados([]);
           return [];
         }
@@ -473,7 +485,7 @@ function ClientePanelContent() {
     if (!usuario?.email) return;
 
     const interval = setInterval(() => {
-      console.log('[CLIENTE-POLLING] Actualizando datos (silent)...');
+      logDebug('[CLIENTE-POLLING] Actualizando datos (silent)...');
       cargarReportes(usuario.email, true);
       cargarCotizaciones(usuario.email, true);
       cargarReportesFinalizados(usuario.email, true);
@@ -786,37 +798,37 @@ function ClientePanelContent() {
       `;
 
       // Generar el PDF
-      console.log('[PDF] Iniciando generación de PDF...');
-      console.log('[PDF] Platform.OS:', Platform.OS);
+      logDebug('[PDF] Iniciando generación de PDF...');
+      logDebug('[PDF] Platform.OS:', Platform.OS);
 
       if (Platform.OS === 'web') {
         // En web, enviar al backend para generar PDF
-        console.log('[PDF] Modo web detectado, enviando al backend...');
+        logDebug('[PDF] Modo web detectado, enviando al backend...');
         try {
-          console.log('[PDF] Haciendo fetch a backend...');
+          logDebug('[PDF] Haciendo fetch a backend...');
           const response = await fetch('http://localhost:3001/api/pdf/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ html: htmlContent })
           });
 
-          console.log('[PDF] Response status:', response.status);
+          logDebug('[PDF] Response status:', response.status);
 
           if (!response.ok) throw new Error('Error al generar PDF');
 
-          console.log('[PDF] Creando blob...');
+          logDebug('[PDF] Creando blob...');
           const blob = await response.blob();
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.href = url;
           link.download = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
           document.body.appendChild(link);
-          console.log('[PDF] Haciendo click en link de descarga...');
+          logDebug('[PDF] Haciendo click en link de descarga...');
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
 
-          console.log('[PDF] PDF descargado exitosamente');
+          logDebug('[PDF] PDF descargado exitosamente');
           Alert.alert(
             'PDF Descargado',
             'El archivo se ha guardado en tu carpeta de descargas.',
@@ -829,7 +841,7 @@ function ClientePanelContent() {
       } else {
         // En mÃ³vil, usar expo-print normalmente
         const { uri } = await Print.printToFileAsync({ html: htmlContent });
-        console.log('[PDF] PDF generado en:', uri);
+        logDebug('[PDF] PDF generado en:', uri);
 
         const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
 
@@ -844,7 +856,7 @@ function ClientePanelContent() {
         });
 
         const fileInfo = await FileSystem.getInfoAsync(downloadPath);
-        console.log('[PDF] PDF guardado en:', downloadPath, 'Size:', fileInfo.exists ? fileInfo.size : 'UNKNOWN');
+        logDebug('[PDF] PDF guardado en:', downloadPath, 'Size:', fileInfo.exists ? fileInfo.size : 'UNKNOWN');
 
         if (await Sharing.isAvailableAsync()) {
           await Sharing.shareAsync(downloadPath, {
@@ -881,7 +893,7 @@ function ClientePanelContent() {
         if (success && data) {
           const soloMedia = (data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
           setArchivosReporte(soloMedia);
-          console.log('[CLIENTE-PANEL] Archivos cargados:', data?.length);
+          logDebug('[CLIENTE-PANEL] Archivos cargados:', data?.length);
         } else {
           console.error('[CLIENTE-PANEL] Error cargando archivos:', error);
           setArchivosReporte([]);
@@ -900,7 +912,7 @@ function ClientePanelContent() {
   useFocusEffect(
     useCallback(() => {
       if (usuario?.email) {
-        console.log('[CLIENTE-PANEL] Panel enfocado, cargando datos...');
+        logDebug('[CLIENTE-PANEL] Panel enfocado, cargando datos...');
         cargarReportes(usuario?.email);
         cargarCotizaciones(usuario?.email);
         // PASO 4: Cargar reportes finalizados por técnico
@@ -908,12 +920,12 @@ function ClientePanelContent() {
 
         // Recargar cada 3 segundos para mantener datos actualizados (aumenté de 5 a 3)
         const interval = setInterval(() => {
-          console.log('[CLIENTE-PANEL] Auto-refresh: recargando reportes finalizados');
+          logDebug('[CLIENTE-PANEL] Auto-refresh: recargando reportes finalizados');
           cargarReportesFinalizados(usuario?.email);
         }, 3000);
 
         return () => {
-          console.log('[CLIENTE-PANEL] Panel desenfocado, limpiando interval');
+          logDebug('[CLIENTE-PANEL] Panel desenfocado, limpiando interval');
           clearInterval(interval);
         };
       }
@@ -994,8 +1006,8 @@ function ClientePanelContent() {
   useEffect(() => {
     if (todosLosReportes.length > 0) {
       const estados = todosLosReportes.map(r => r.estado);
-      console.log('[CLIENTE-PANEL] Estados de reportes:', estados);
-      console.log('[CLIENTE-PANEL] Estados únicos:', [...new Set(estados)]);
+      logDebug('[CLIENTE-PANEL] Estados de reportes:', estados);
+      logDebug('[CLIENTE-PANEL] Estados únicos:', [...new Set(estados)]);
     }
   }, [todosLosReportes]);
 
@@ -1269,7 +1281,7 @@ function ClientePanelContent() {
       const urlWeb = `https://wa.me/${phone}`;
       const supported = await Linking.canOpenURL(urlApp);
       const target = supported ? urlApp : urlWeb;
-      console.log('[WhatsApp] Intentando abrir:', target);
+      logDebug('[WhatsApp] Intentando abrir:', target);
       await Linking.openURL(target);
     } catch (e) {
       console.error('[WhatsApp] Error:', e);
@@ -2183,7 +2195,7 @@ function ClientePanelContent() {
                               <Image
                                 source={{ uri: proxyUrl }}
                                 style={styles.archivoThumb}
-                                onError={() => console.log('Error loading image:', proxyUrl)}
+                                onError={() => logDebug('Error loading image:', proxyUrl)}
                               />
                               <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
                             </>
@@ -2421,7 +2433,7 @@ function ClientePanelContent() {
                     contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}
                   >
                     {cotizaciones.map((cot: any) => {
-                      console.log('[RENDER] Renderizando cotización:', cot.id, cot.estado);
+                      logDebug('[RENDER] Renderizando cotización:', cot.id, cot.estado);
                       return (
                         <View
                           key={cot.id}
@@ -2477,23 +2489,23 @@ function ClientePanelContent() {
 
                               <TouchableOpacity
                                 onPress={async () => {
-                                  console.log('[DEBUG] Presionando ojo de cotización:', cot.id);
-                                  console.log('[DEBUG] Cotización completa:', JSON.stringify(cot, null, 2));
+                                  logDebug('[DEBUG] Presionando ojo de cotización:', cot.id);
+                                  logDebug('[DEBUG] Cotización completa:', JSON.stringify(cot, null, 2));
                                   setCotizacionSeleccionada(cot);
                                   setShowCotizacionDetalleModal(true);
 
                                   // Buscar si hay un PDF adjunto para esta cotización
                                   const reporteId = cot.reporte_id || cot.id;
-                                  console.log('[DEBUG] Buscando archivos para reporteId:', reporteId);
+                                  logDebug('[DEBUG] Buscando archivos para reporteId:', reporteId);
 
                                   if (reporteId) {
                                     try {
                                       const { success, data, error } = await obtenerArchivosReporteBackend(reporteId);
-                                      console.log('[DEBUG] Resultado obtención archivos:', { success, dataLength: data?.length, error });
+                                      logDebug('[DEBUG] Resultado obtención archivos:', { success, dataLength: data?.length, error });
 
                                       if (success && data) {
                                         const pdf = data.find((a: any) => a.tipo_archivo === 'pdf');
-                                        console.log('[DEBUG] PDF encontrado:', pdf ? pdf.nombre_original : 'NINGUNO');
+                                        logDebug('[DEBUG] PDF encontrado:', pdf ? pdf.nombre_original : 'NINGUNO');
                                         setArchivoPDFCotizacion(pdf || null);
                                       }
                                     } catch (err) {
@@ -2671,7 +2683,7 @@ function ClientePanelContent() {
                           try {
                             // Cuando el cliente acepta, cambiar estado a 'aceptado_por_cliente'
                             // Esto permite que el empleado trabaje pero que no aparezca en Cotizaciones
-                            console.log('[CLIENTE] Aceptando cotización, cambiando a aceptado_por_cliente');
+                            logDebug('[CLIENTE] Aceptando cotización, cambiando a aceptado_por_cliente');
 
                             const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, {
                               estado: 'aceptado_por_cliente'
@@ -3042,7 +3054,7 @@ function ClientePanelContent() {
 
                     setRechazandoReporte(true);
                     try {
-                      console.log('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado');
+                      logDebug('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado');
                       const estadoRechazo = 'rechazado';
                       const payload: any = {
                         estado: estadoRechazo,
@@ -4222,7 +4234,7 @@ export default function ClientePanel() {
         }
         const parsedUser = JSON.parse(user);
         if (parsedUser.rol !== 'cliente') {
-          console.warn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel`);
+          logWarn(`[SEGURIDAD] Usuario ${parsedUser.email} con rol ${parsedUser.rol} intentó acceder a /cliente-panel`);
           switch (parsedUser.rol) {
             case 'admin':
               router.replace('/admin');
