@@ -1,12 +1,25 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
-// Determinar la URL del upload server (Nginx sin puerto)
-let API_URL =
-  process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL ||
-  (Platform.OS === 'web' && typeof window !== 'undefined'
+const DEFAULT_UPLOAD_BASE = 'https://si-mant.com/upload';
+
+const configuredUploadBase = (process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || '').trim();
+const webUploadBase =
+  Platform.OS === 'web' && typeof window !== 'undefined'
     ? `${window.location.origin}/upload`
-    : 'https://si-mant.com/upload');
+    : '';
+
+function getUploadBaseCandidates(): string[] {
+  const candidates = [
+    Platform.OS === 'web' ? webUploadBase : '',
+    configuredUploadBase,
+    DEFAULT_UPLOAD_BASE,
+  ].filter(Boolean);
+
+  return Array.from(new Set(candidates));
+}
+
+const API_URL = getUploadBaseCandidates()[0] || DEFAULT_UPLOAD_BASE;
 
 const CUSTOM_DOMAIN = process.env.EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN || '';
 
@@ -23,6 +36,11 @@ export interface UploadResult {
  */
 export function getProxyUrl(cloudflareUrl: string): string {
   try {
+    // En app nativa no necesitamos proxy (CORS no aplica) y es más estable en APK
+    if (Platform.OS !== 'web') {
+      return cloudflareUrl;
+    }
+
     const url = new URL(cloudflareUrl);
     // decodeURIComponent decodifica espacios (%20) que new URL().pathname suele codificar
     const key = decodeURIComponent(url.pathname).replace(/^\//, '');
@@ -61,83 +79,96 @@ export async function uploadToCloudflare(
 ): Promise<UploadResult> {
   try {
     const isWeb = Platform.OS === 'web';
+    const uploadBases = getUploadBaseCandidates();
     console.log(`Iniciando subida (${isWeb ? 'WEB' : 'NATIVO'})`);
     console.log(`Archivo: ${fileName} | Tipo: ${fileType}`);
-    console.log(`Backend: ${API_URL}/api/upload-file`);
+    console.log(`Backends candidatos: ${uploadBases.join(' | ')}`);
 
-    let response;
+    let base64String = '';
+    let blob: Blob | null = null;
 
     if (isWeb) {
-      // ========== WEB: FormData + Blob ==========
-      console.log(`Modo WEB: usando FormData`);
-
       const blobResponse = await fetch(fileUri);
-      const blob = await blobResponse.blob();
+      blob = await blobResponse.blob();
       console.log(`Blob leído: ${blob.size} bytes`);
-
-      const formData = new FormData();
-      formData.append('file', blob, fileName);
-      formData.append('fileName', fileName);
-      formData.append('fileType', fileType);
-
-      console.log(`Enviando FormData...`);
-      response = await fetch(`${API_URL}/api/upload-file`, {
-        method: 'POST',
-        body: formData,
-      });
     } else {
-      // ========== NATIVO: JSON + Base64 ==========
-      console.log(`Modo NATIVO: usando JSON + base64`);
-
-      const base64String = await FileSystem.readAsStringAsync(fileUri, {
+      base64String = await FileSystem.readAsStringAsync(fileUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       console.log(`Base64 leído: ${base64String.length} caracteres (~${Math.round(base64String.length / 1.33 / 1024)}KB)`);
-
-      const payload = {
-        fileBase64: base64String,
-        fileName: fileName,
-        fileType: fileType,
-      };
-
-      console.log(`Enviando JSON...`);
-      response = await fetch(`${API_URL}/api/upload-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
     }
 
-    // Procesar respuesta (igual para web y nativo)
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: response.statusText }));
-      console.error('Error response:', errorData);
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}`,
-      };
+    let lastError = 'No se pudo conectar al servidor de subida';
+
+    for (const base of uploadBases) {
+      try {
+        let response;
+        console.log(`Probando subida en: ${base}/api/upload-file`);
+
+        if (isWeb) {
+          // ========== WEB: FormData + Blob ==========
+          console.log(`Modo WEB: usando FormData`);
+
+          const formData = new FormData();
+          formData.append('file', blob as Blob, fileName);
+          formData.append('fileName', fileName);
+          formData.append('fileType', fileType);
+
+          console.log(`Enviando FormData...`);
+          response = await fetch(`${base}/api/upload-file`, {
+            method: 'POST',
+            body: formData,
+          });
+        } else {
+          // ========== NATIVO: JSON + Base64 ==========
+          console.log(`Modo NATIVO: usando JSON + base64`);
+
+          const payload = {
+            fileBase64: base64String,
+            fileName: fileName,
+            fileType: fileType,
+          };
+
+          console.log(`Enviando JSON...`);
+          response = await fetch(`${base}/api/upload-file`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.url) {
+          throw new Error(data.error || 'No URL returned from server');
+        }
+
+        console.log(`Archivo subido exitosamente`);
+        console.log(`URL: ${data.url}`);
+        console.log(`Key: ${data.key}`);
+
+        return {
+          success: true,
+          url: data.url,
+          key: data.key,
+        };
+      } catch (attemptError) {
+        const message = attemptError instanceof Error ? attemptError.message : 'Error desconocido';
+        lastError = message;
+        console.warn(`Falló subida en ${base}: ${message}`);
+      }
     }
-
-    const data = await response.json();
-
-    if (!data.success || !data.url) {
-      console.error('Invalid response:', data);
-      return {
-        success: false,
-        error: data.error || 'No URL returned from server',
-      };
-    }
-
-    console.log(`Archivo subido exitosamente`);
-    console.log(`URL: ${data.url}`);
-    console.log(`Key: ${data.key}`);
 
     return {
-      success: true,
-      url: data.url,
-      key: data.key,
+      success: false,
+      error: lastError,
     };
   } catch (error) {
     console.error('Error en uploadToCloudflare:', error);
