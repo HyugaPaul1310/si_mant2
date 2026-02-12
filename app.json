@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "simant2",
+    "name": "Simant",
     "slug": "simant2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logosimant.png",
     "scheme": "simant2",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,12 +13,9 @@
     },
     "android": {
       "package": "com.simant2.app",
-      "ndkVersion": "26.1.10909125",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logosimant.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -40,7 +37,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/logosimant.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff",
