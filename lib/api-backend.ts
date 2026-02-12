@@ -1,25 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// URL del backend Express (Nginx sin puerto)
-let API_URL = 'http://217.216.43.185/api';
+// URL del backend Express (dominio con SSL)
+let API_URL = 'https://si-mant.com/api';
 
 try {
   // Usar URL publica de la VPS
   if (Platform.OS === 'android') {
-    API_URL = 'http://217.216.43.185/api';
+    API_URL = 'https://si-mant.com/api';
   }
   // Si es iOS, usar URL publica
   else if (Platform.OS === 'ios') {
-    API_URL = 'http://217.216.43.185/api';
+    API_URL = 'https://si-mant.com/api';
   }
   // Si es web, usar URL publica
   else {
-    API_URL = 'http://217.216.43.185/api';
+    API_URL = 'https://si-mant.com/api';
   }
 } catch (e) {
   // Fallback
-  API_URL = 'http://217.216.43.185/api';
+  API_URL = 'https://si-mant.com/api';
 }
 
 export function getApiBaseUrl() {

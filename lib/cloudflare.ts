@@ -6,7 +6,7 @@ let API_URL =
   process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL ||
   (Platform.OS === 'web' && typeof window !== 'undefined'
     ? `${window.location.origin}/upload`
-    : 'http://217.216.43.185/upload');
+    : 'https://si-mant.com/upload');
 
 const CUSTOM_DOMAIN = process.env.EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN || '';
 

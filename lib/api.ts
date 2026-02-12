@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// URL del backend Express (Nginx sin puerto)
-const API_BASE = 'http://217.216.43.185/api';
+// URL del backend Express (dominio con SSL)
+const API_BASE = 'https://si-mant.com/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;
