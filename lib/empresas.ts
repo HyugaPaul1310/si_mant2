@@ -128,7 +128,7 @@ export async function desactivarSucursal(id: string) {
  */
 export async function eliminarSucursal(id: string) {
   try {
-    const data = await apiCall(`/empresas/${id}`, 'DELETE');
+    const data = await apiCall(`/empresas/sucursal/${id}`, 'DELETE');
     if (!data.success) throw new Error(data.error);
     return { success: true };
   } catch (error: any) {

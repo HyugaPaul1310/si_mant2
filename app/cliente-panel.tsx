@@ -2,7 +2,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { Video } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Print from 'expo-print';
@@ -1186,6 +1185,14 @@ function ClientePanelContent() {
     );
   };
 
+  const openMediaExternally = (url: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.assign(url);
+      return;
+    }
+    Linking.openURL(url);
+  };
+
   const ensureDemoFinalizado = useCallback(
     async (lista: any[]) => {
       if (!usuario?.email) return;
@@ -2182,12 +2189,16 @@ function ClientePanelContent() {
                           key={idx}
                           style={styles.archivoItem}
                           onPress={() => {
-                            setArchivoVisualizando({
-                              url: proxyUrl,
-                              tipo: archivo.tipo_archivo,
-                              nombre: archivo.nombre_original || 'Archivo'
-                            });
-                            setShowArchivoModal(true);
+                            if (archivo.tipo_archivo === 'foto') {
+                              setArchivoVisualizando({
+                                url: proxyUrl,
+                                tipo: archivo.tipo_archivo,
+                                nombre: archivo.nombre_original || 'Archivo'
+                              });
+                              setShowArchivoModal(true);
+                              return;
+                            }
+                            openMediaExternally(proxyUrl);
                           }}
                         >
                           {archivo.tipo_archivo === 'foto' ? (
@@ -2802,55 +2813,71 @@ function ClientePanelContent() {
       }
 
       {/* Modal para visualizar archivo completo */}
-      {
-        showArchivoModal && archivoVisualizando && (
-          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 70 }]}>
-            <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
-              <TouchableOpacity
-                style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
-                onPress={() => {
-                  setShowArchivoModal(false);
-                  setArchivoVisualizando(null);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
-              </TouchableOpacity>
+      <Modal
+        visible={showArchivoModal && !!archivoVisualizando}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {
+          setShowArchivoModal(false);
+          setArchivoVisualizando(null);
+        }}
+      >
+        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
+          <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
+            <TouchableOpacity
+              style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
+              onPress={() => {
+                setShowArchivoModal(false);
+                setArchivoVisualizando(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close" size={isMobile ? 24 : 32} color="#ffffff" />
+            </TouchableOpacity>
 
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
-                {archivoVisualizando.tipo === 'foto' ? (
-                  <Image
-                    source={{ uri: archivoVisualizando.url }}
-                    style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                    resizeMode="contain"
-                  />
-                ) : Platform.OS === 'web' ? (
-                  <video
-                    src={archivoVisualizando.url}
-                    controls
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      backgroundColor: '#000'
-                    }}
-                  />
-                ) : (
-                  <Video
-                    source={{ uri: archivoVisualizando.url }}
-                    rate={1.0}
-                    volume={1.0}
-                    isMuted={false}
-                    resizeMode="cover"
-                    useNativeControls
-                    style={{ width: '100%', height: '100%' }}
-                  />
-                )}
-              </View>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+              {archivoVisualizando?.tipo_archivo === 'imagen' ||
+              archivoVisualizando?.tipo_archivo === 'foto' ||
+              archivoVisualizando?.tipo_archivo?.startsWith('image/') ||
+              archivoVisualizando?.tipo === 'imagen' ||
+              archivoVisualizando?.tipo === 'foto' ||
+              archivoVisualizando?.tipo?.startsWith('image/') ? (
+                <Image
+                  source={{ uri: archivoVisualizando?.url || archivoVisualizando?.uri }}
+                  style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                  resizeMode="contain"
+                />
+              ) : archivoVisualizando?.tipo_archivo === 'video' ||
+              archivoVisualizando?.tipo_archivo?.startsWith('video/') ||
+              archivoVisualizando?.tipo === 'video' ||
+              archivoVisualizando?.tipo?.startsWith('video/') ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowArchivoModal(false);
+                    setArchivoVisualizando(null);
+                    const videoUrl = archivoVisualizando?.url || archivoVisualizando?.uri;
+                    openMediaExternally(videoUrl);
+                  }}
+                  activeOpacity={0.8}
+                  style={{ alignItems: 'center', gap: 12 }}
+                >
+                  <Ionicons name="play-circle" size={72} color="#60a5fa" />
+                  <Text style={{ color: '#e2e8f0', fontFamily, fontSize: 16 }}>
+                    Abrir video
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ alignItems: 'center' }}>
+                  <Ionicons name="document" size={80} color="#94a3b8" />
+                  <Text style={{ color: '#fff', marginTop: 20, fontFamily, fontSize: 16 }}>
+                    Este archivo no se puede previsualizar
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
-        )
-      }
+        </View>
+      </Modal>
 
 
       {/* Modal Logout */}

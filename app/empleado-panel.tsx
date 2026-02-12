@@ -1,32 +1,32 @@
 // @ts-nocheck
 import {
-  actualizarEstadoReporteAsignado,
-  actualizarEstadoTareaBackend,
-  obtenerArchivosReporteBackend,
-  obtenerInventarioEmpleadoBackend,
-  obtenerReportesAsignados,
-  obtenerTareasEmpleadoBackend
+    actualizarEstadoReporteAsignado,
+    actualizarEstadoTareaBackend,
+    obtenerArchivosReporteBackend,
+    obtenerInventarioEmpleadoBackend,
+    obtenerReportesAsignados,
+    obtenerTareasEmpleadoBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Image,
+    Linking,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -63,6 +63,16 @@ function EmpleadoPanelContent() {
   const [listaReportes, setListaReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [showReporteDetalle, setShowReporteDetalle] = useState(false);
+  const openMediaExternally = (url: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const opened = window.open(url, '_blank', 'noopener,noreferrer');
+      if (!opened) {
+        window.location.assign(url);
+      }
+      return;
+    }
+    Linking.openURL(url);
+  };
   const [reporteSeleccionado, setReporteSeleccionado] = useState<any>(null);
   const [actualizandoReporte, setActualizandoReporte] = useState(false);
   const [showHistorialReportesModal, setShowHistorialReportesModal] = useState(false);
@@ -1175,19 +1185,9 @@ function EmpleadoPanelContent() {
                 borderRadius: 12
               }}>
                 <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                  <View style={{
-                    backgroundColor: '#10b981',
-                    borderRadius: 20,
-                    width: 40,
-                    height: 40,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Ionicons name="checkmark-circle" size={24} color="#fff" />
-                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[{ fontSize: 15, fontWeight: '800', color: '#10b981', marginBottom: 4 }, { fontFamily }]}>
-                      ✅ Cliente aceptó la cotización
+                      Cliente aceptó la cotización
                     </Text>
                     <Text style={[{ fontSize: 13, color: '#6ee7b7', lineHeight: 18 }, { fontFamily }]}>
                       Ahora puedes completar los campos de Revisión, Recomendaciones y Reparación abajo.
@@ -1407,12 +1407,17 @@ function EmpleadoPanelContent() {
                             key={idx}
                             style={styles.archivoItem}
                             onPress={() => {
-                              setArchivoVisualizando({
-                                url: proxyUrl,
-                                tipo_archivo: archivo.tipo_archivo,
-                                nombre: archivo.nombre_original || 'Archivo'
-                              });
-                              setShowArchivoModal(true);
+                              if (archivo.tipo_archivo === 'foto') {
+                                setArchivoVisualizando({
+                                  url: proxyUrl,
+                                  tipo_archivo: archivo.tipo_archivo,
+                                  tipo: archivo.tipo_archivo,
+                                  nombre: archivo.nombre_original || 'Archivo'
+                                });
+                                setShowArchivoModal(true);
+                                return;
+                              }
+                              openMediaExternally(proxyUrl);
                             }}
                           >
                             {archivo.tipo_archivo === 'foto' ? (
@@ -1799,7 +1804,7 @@ function EmpleadoPanelContent() {
       )}
 
       {showArchivoModal && archivoVisualizando && (
-        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
+        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 9999, elevation: 50 }]}>
           <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
             <TouchableOpacity
               style={[styles.archivoModalClose, isMobile && styles.archivoModalCloseMobile]}
@@ -1818,25 +1823,22 @@ function EmpleadoPanelContent() {
                   style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
                   resizeMode="contain"
                 />
-              ) : Platform.OS === 'web' && (archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/')) ? (
-                <video
-                  src={archivoVisualizando.url || archivoVisualizando.uri}
-                  controls
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: '#000'
-                  }}
-                />
               ) : archivoVisualizando.tipo_archivo === 'video' || archivoVisualizando.tipo_archivo?.startsWith('video/') ? (
-                <Video
-                  source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
-                  style={{ width: '100%', height: '100%', borderRadius: 8, backgroundColor: '#000' }}
-                  useNativeControls
-                  resizeMode="cover"
-                  shouldPlay
-                />
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowArchivoModal(false);
+                    setArchivoVisualizando(null);
+                    const videoUrl = archivoVisualizando.url || archivoVisualizando.uri;
+                    openMediaExternally(videoUrl);
+                  }}
+                  activeOpacity={0.8}
+                  style={{ alignItems: 'center', gap: 12 }}
+                >
+                  <Ionicons name="play-circle" size={72} color="#60a5fa" />
+                  <Text style={{ color: '#e2e8f0', fontFamily, fontSize: 16 }}>
+                    Abrir video
+                  </Text>
+                </TouchableOpacity>
               ) : (
                 <View style={{ alignItems: 'center' }}>
                   <Ionicons name="document" size={80} color="#94a3b8" />

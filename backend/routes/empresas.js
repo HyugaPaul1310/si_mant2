@@ -129,35 +129,45 @@ router.put('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// DELETE eliminar empresa
-router.delete('/:id', verifyToken, async (req, res) => {
+// DELETE eliminar sucursal
+router.delete('/sucursal/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Primero intentar eliminar como sucursal
     const [sucursal] = await pool.query(
       'SELECT id FROM sucursales WHERE id = ?',
       [id]
     );
 
-    if (sucursal.length > 0) {
-      // Es una sucursal, eliminarla
-      const [result] = await pool.query(
-        'DELETE FROM sucursales WHERE id = ?',
-        [id]
-      );
-      console.log('[BACKEND-SUCURSALES] Sucursal eliminada:', id);
-      return res.json({ success: true, message: 'Sucursal eliminada' });
+    if (sucursal.length === 0) {
+      return res.status(404).json({ success: false, error: 'Sucursal no encontrada' });
     }
 
-    // Si no es sucursal, intentar como empresa
+    await pool.query(
+      'DELETE FROM sucursales WHERE id = ?',
+      [id]
+    );
+
+    console.log('[BACKEND-SUCURSALES] Sucursal eliminada:', id);
+    return res.json({ success: true, message: 'Sucursal eliminada' });
+  } catch (error) {
+    console.error('[BACKEND-SUCURSALES] Error al eliminar:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE eliminar empresa
+router.delete('/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
     const [empresa] = await pool.query(
       'SELECT id FROM empresas WHERE id = ?',
       [id]
     );
 
     if (empresa.length === 0) {
-      return res.status(404).json({ success: false, error: 'Empresa o sucursal no encontrada' });
+      return res.status(404).json({ success: false, error: 'Empresa no encontrada' });
     }
 
     // Verificar si la empresa tiene sucursales asociadas

@@ -1,0 +1,19 @@
+{
+  "cli": {
+    "version": ">= 8.0.0"
+  },
+  "build": {
+    "preview": {
+      "android": {
+        "buildType": "apk",
+        "ndk": "26.1.10909125"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle",
+        "ndk": "26.1.10909125"
+      }
+    }
+  }
+}

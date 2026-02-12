@@ -7,7 +7,6 @@ import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { guardarArchivoReporte, obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Video } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -18,6 +17,7 @@ import {
     Animated,
     Easing,
     Image,
+    Linking,
     Platform,
     Pressable,
     ScrollView,
@@ -83,6 +83,13 @@ function AdminPanelContent() {
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
   const [errorReportes, setErrorReportes] = useState('');
+  const openMediaExternally = (url: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.assign(url);
+      return;
+    }
+    Linking.openURL(url);
+  };
 
   // PASO 6: Estados para reportes finalizados y cerrados
   const [reportesFinalizados, setReportesFinalizados] = useState<any[]>([]);
@@ -4498,12 +4505,17 @@ function AdminPanelContent() {
                               key={idx}
                               style={styles.archivoItem}
                               onPress={() => {
-                                setArchivoVisualizando({
-                                  url: proxyUrl,
-                                  tipo: archivo.tipo_archivo,
-                                  nombre: archivo.nombre_original || 'Archivo'
-                                });
-                                setShowArchivoModal(true);
+                                if (archivo.tipo_archivo === 'foto') {
+                                  setArchivoVisualizando({
+                                    url: proxyUrl,
+                                    tipo_archivo: archivo.tipo_archivo,
+                                    tipo: archivo.tipo_archivo,
+                                    nombre: archivo.nombre_original || 'Archivo'
+                                  });
+                                  setShowArchivoModal(true);
+                                  return;
+                                }
+                                openMediaExternally(proxyUrl);
                               }}
                             >
                               {archivo.tipo_archivo === 'foto' ? (
@@ -4553,7 +4565,7 @@ function AdminPanelContent() {
       {/* Modal para visualizar archivo en grande - Mejorado */}
       {
         showArchivoModal && archivoVisualizando && (
-          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 70 }]}>
+          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { zIndex: 9999, elevation: 50 }]}>
             <View style={[styles.archivoModalContent, { flex: 1, flexDirection: 'column', justifyContent: 'center' }]}>
               <TouchableOpacity
                 onPress={() => {
@@ -4565,34 +4577,46 @@ function AdminPanelContent() {
                 <Ionicons name="close" size={28} color="#fff" />
               </TouchableOpacity>
 
-              {archivoVisualizando.tipo === 'foto' ? (
-                <Image
-                  source={{ uri: archivoVisualizando.url }}
-                  style={styles.archivoModalImage}
-                  resizeMode="contain"
-                />
-              ) : Platform.OS === 'web' ? (
-                <video
-                  src={archivoVisualizando.url}
-                  controls
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    backgroundColor: '#000'
-                  }}
-                />
-              ) : (
-                <Video
-                  source={{ uri: archivoVisualizando.url }}
-                  rate={1.0}
-                  volume={1.0}
-                  isMuted={false}
-                  resizeMode="cover"
-                  useNativeControls
-                  style={styles.archivoModalVideo}
-                />
-              )}
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                {archivoVisualizando.tipo_archivo === 'imagen' ||
+                archivoVisualizando.tipo_archivo === 'foto' ||
+                archivoVisualizando.tipo_archivo?.startsWith('image/') ||
+                archivoVisualizando.tipo === 'imagen' ||
+                archivoVisualizando.tipo === 'foto' ||
+                archivoVisualizando.tipo?.startsWith('image/') ? (
+                  <Image
+                    source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
+                    style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
+                    resizeMode="contain"
+                  />
+                ) : archivoVisualizando.tipo_archivo === 'video' ||
+                archivoVisualizando.tipo_archivo?.startsWith('video/') ||
+                archivoVisualizando.tipo === 'video' ||
+                archivoVisualizando.tipo?.startsWith('video/') ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowArchivoModal(false);
+                      setArchivoVisualizando(null);
+                      const videoUrl = archivoVisualizando.url || archivoVisualizando.uri;
+                      openMediaExternally(videoUrl);
+                    }}
+                    activeOpacity={0.8}
+                    style={{ alignItems: 'center', gap: 12 }}
+                  >
+                    <Ionicons name="play-circle" size={72} color="#60a5fa" />
+                    <Text style={{ color: '#e2e8f0', fontFamily, fontSize: 16 }}>
+                      Abrir video
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={{ alignItems: 'center' }}>
+                    <Ionicons name="document" size={80} color="#94a3b8" />
+                    <Text style={{ color: '#fff', marginTop: 20, fontFamily, fontSize: 16 }}>
+                      Este archivo no se puede previsualizar
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         )
