@@ -1127,56 +1127,53 @@ function ClientePanelContent() {
     return (
       <View
         key={rep.id || `sample-${rep.equipo_descripcion}`}
-        style={styles.reportCard}
+        style={[styles.reportCard, { padding: 12 }]}
       >
-        <View style={styles.reportCardHeader}>
-          <View style={styles.reportCardInfo}>
-            <Text style={[styles.reportCardTitle, { fontFamily }]} numberOfLines={1}>
+        <View style={[styles.reportCardHeader, { flexWrap: 'wrap' }]}> 
+          <View style={[styles.reportCardInfo, { minWidth: 0, flexShrink: 1 }]}> 
+            <Text style={[styles.reportCardTitle, { fontFamily, fontSize: 15 }]} numberOfLines={2} ellipsizeMode="tail">
               {rep.equipo_descripcion || 'Equipo / servicio'}
             </Text>
-            <Text style={[styles.reportCardDate, { fontFamily }]}>{fecha}</Text>
+            <Text style={[styles.reportCardDate, { fontFamily, fontSize: 11, flexWrap: 'wrap' }]} numberOfLines={2}>
+              {fecha}
+            </Text>
           </View>
-          <View style={styles.reportCardActions}>
-            <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder }]}>
-              <Text style={[styles.badgeText, { fontFamily, color: estadoText, fontWeight: '600' }]}>
-                {isSample
-                  ? 'Completado'
-                  : obtenerNombreEstado(rep.estado)}
+          <View style={[styles.reportCardActions, { flexWrap: 'wrap', gap: 4 }]}> 
+            <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder, minWidth: 0, paddingHorizontal: 8, paddingVertical: 2 }]}> 
+              <Text style={[styles.badgeText, { fontFamily, color: estadoText, fontWeight: '600', fontSize: 11 }]} numberOfLines={1}>
+                {isSample ? 'Completado' : obtenerNombreEstado(rep.estado)}
               </Text>
             </View>
             {!isSample && (
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedReporte(rep);
-                    setShowReporteDetail(true);
-                    // Cargar archivos del reporte cuando se abre el detalle
-                    cargarArchivosReporte(rep.id);
-                  }}
-                  style={styles.eyeButton}
-                >
-                  <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedReporte(rep);
+                  setShowReporteDetail(true);
+                  cargarArchivosReporte(rep.id);
+                }}
+                style={[styles.eyeButton, { width: 28, height: 28 }]}
+              >
+                <Ionicons name="eye-outline" size={15} color="#06b6d4" />
+              </TouchableOpacity>
             )}
           </View>
         </View>
 
         {rep.comentario?.trim() ? (
-          <Text style={[styles.reportCardComment, { fontFamily }]} numberOfLines={2}>
+          <Text style={[styles.reportCardComment, { fontFamily, fontSize: 13 }]} numberOfLines={3} ellipsizeMode="tail">
             {rep.comentario}
           </Text>
         ) : null}
 
-        <View style={styles.reportCardFooter}>
-          <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder }]}>
-            <Text style={[styles.badgeText, { fontFamily, color: prioridadText }]}>
+        <View style={[styles.reportCardFooter, { flexWrap: 'wrap', gap: 6 }]}> 
+          <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder, paddingHorizontal: 8, paddingVertical: 2 }]}> 
+            <Text style={[styles.badgeText, { fontFamily, color: prioridadText, fontSize: 11 }]} numberOfLines={1}>
               Prioridad: {rep.prioridad || 'media'}
             </Text>
           </View>
           {rep.sucursal ? (
-            <View style={[styles.badge, { backgroundColor: '#1e293b', borderColor: '#334155' }]}>
-              <Text style={[styles.badgeText, { fontFamily, color: '#cbd5e1' }]}>
+            <View style={[styles.badge, { backgroundColor: '#1e293b', borderColor: '#334155', paddingHorizontal: 8, paddingVertical: 2 }]}> 
+              <Text style={[styles.badgeText, { fontFamily, color: '#cbd5e1', fontSize: 11 }]} numberOfLines={2}>
                 Sucursal: {rep.sucursal}
               </Text>
             </View>
@@ -1604,7 +1601,10 @@ function ClientePanelContent() {
 
       {showSeguimientoModal && (
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContainer, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 20 }]}>
+          <View style={[
+            styles.modalContainer,
+            { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 20, maxHeight: isMobile ? '90%' : 700, width: isMobile ? '100%' : 700 }
+          ]}>
             <View style={[styles.modalHeader, isMobile && styles.modalHeaderMobile]}>
               <View style={styles.modalHeaderText}>
                 <Text style={[styles.modalTitle, isMobile && styles.modalTitleMobile, { fontFamily }]}>Seguimiento</Text>
@@ -1633,6 +1633,10 @@ function ClientePanelContent() {
                   <Ionicons name="close" size={20} color="#cbd5e1" />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            <View style={styles.infoBox}>
+              <Text style={[styles.infoText, { fontFamily }]}>Aquí puedes ver el estado de tus reportes activos y filtrar por estado o prioridad.</Text>
             </View>
 
             {loadingReportes && (
@@ -1755,7 +1759,7 @@ function ClientePanelContent() {
                   </View>
                 )}
 
-                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 16 }}>
                   <View style={styles.reportsContainer}>
                     {Object.keys(activosPorEstado).length === 0 ? (
                       <View style={styles.reportCard}>
