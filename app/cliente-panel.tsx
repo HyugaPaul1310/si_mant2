@@ -11,12 +11,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  actualizarReporteBackend,
-  apiCall,
-  getApiBaseUrl,
-  obtenerArchivosReporteBackend,
-  obtenerReportesCliente,
-  verificarEncuestaExiste
+    actualizarReporteBackend,
+    apiCall,
+    getApiBaseUrl,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente,
+    verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -2496,6 +2496,13 @@ function ClientePanelContent() {
                                   ? `$${parseFloat(cot.precio_cotizacion).toFixed(2)}`
                                   : '(esperando respuesta)'}
                               </Text>
+
+                              <Text
+                                style={[styles.reportSubtitle, { fontFamily, color: '#cbd5e1', marginTop: 6 }]}
+                                numberOfLines={2}
+                              >
+                                {`Recotización: ${cot.cotizacion_explicacion?.trim() || 'Sin recotización'}`}
+                              </Text>
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
 
@@ -2642,12 +2649,12 @@ function ClientePanelContent() {
                       </Text>
                     </View>
 
-                    {cotizacionSeleccionada.cotizacion_explicacion && (
-                      <View style={styles.detailField}>
-                        <Text style={[styles.detailLabel, { fontFamily }]}>Explicación de la Cotización</Text>
-                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.cotizacion_explicacion}</Text>
-                      </View>
-                    )}
+                    <View style={styles.detailField}>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>Explicación de Recotización</Text>
+                      <Text style={[styles.detailValue, { fontFamily }]}>
+                        {cotizacionSeleccionada.cotizacion_explicacion?.trim() || 'Sin recotización'}
+                      </Text>
+                    </View>
 
                   </View>
 

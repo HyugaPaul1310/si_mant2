@@ -12,22 +12,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Easing,
-    Image,
-    Linking,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -3539,8 +3539,13 @@ function AdminPanelContent() {
                   onPress={async () => {
                     if (!reporteACotizar) return;
                     const precioNumerico = parseFloat(precioCotizacionEdit);
+                    const explicacionLimpia = (explicacionCotizacionEdit || '').trim();
                     if (isNaN(precioNumerico) || precioNumerico <= 0) {
                       setEditarCotizacionError('Ingresa un precio válido');
+                      return;
+                    }
+                    if (!explicacionLimpia) {
+                      setEditarCotizacionError('La explicación para el cliente es obligatoria');
                       return;
                     }
 
@@ -3549,7 +3554,8 @@ function AdminPanelContent() {
                     const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
                       estado: 'cotizacionnueva',
                       precioCotizacion: precioNumerico,
-                      cotizacion_explicacion: explicacionCotizacionEdit || null,
+                      cotizacion_explicacion: explicacionLimpia,
+                      cotizacionExplicacion: explicacionLimpia,
                     });
 
                     setEditandoCotizacion(false);

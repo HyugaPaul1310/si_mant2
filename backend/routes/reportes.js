@@ -19,6 +19,7 @@ router.get('/', verifyToken, async (req, res) => {
         r.updated_at,
         r.analisis_general,
         r.precio_cotizacion,
+        r.cotizacion_explicacion,
         r.revision,
         r.recomendaciones,
         r.reparacion,
@@ -114,14 +115,23 @@ router.post('/', verifyToken, async (req, res) => {
 router.put('/:id', verifyToken, async (req, res) => {
   try {
     console.log('[DEBUG-PUT] REQ.BODY:', JSON.stringify(req.body, null, 2));
-    const { titulo, descripcion, estado, prioridad, precioCotizacion, precio_cotizacion, cotizacion_explicacion } = req.body;
+    const {
+      titulo,
+      descripcion,
+      estado,
+      prioridad,
+      precioCotizacion,
+      precio_cotizacion,
+      cotizacion_explicacion,
+      cotizacionExplicacion,
+    } = req.body;
 
     const [estadoActualRows] = await pool.query(
       'SELECT estado, cotizacion_explicacion FROM reportes WHERE id = ?',
       [req.params.id]
     );
     const estadoActual = estadoActualRows?.[0]?.estado;
-    const cotizacionExplicacion = estadoActualRows?.[0]?.cotizacion_explicacion;
+    const cotizacionExplicacionActual = estadoActualRows?.[0]?.cotizacion_explicacion;
 
     const updateData = {};
     if (titulo !== undefined) updateData.titulo = titulo;
@@ -154,9 +164,12 @@ router.put('/:id', verifyToken, async (req, res) => {
       console.log('[DEBUG-PUT] motivo_cancelacion:', req.body.motivo_cancelacion);
     }
 
-    if (cotizacion_explicacion !== undefined) {
-      updateData.cotizacion_explicacion = cotizacion_explicacion;
-      console.log('[DEBUG-PUT] cotizacion_explicacion:', cotizacion_explicacion);
+    const explicacionRecibida =
+      cotizacion_explicacion !== undefined ? cotizacion_explicacion : cotizacionExplicacion;
+
+    if (explicacionRecibida !== undefined) {
+      updateData.cotizacion_explicacion = explicacionRecibida;
+      console.log('[DEBUG-PUT] cotizacion_explicacion:', explicacionRecibida);
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -339,6 +352,7 @@ router.get('/cliente', verifyToken, async (req, res) => {
         r.empleado_asignado_id,
         r.analisis_general,
         r.precio_cotizacion,
+        r.cotizacion_explicacion,
         r.revision,
         r.reparacion,
         r.recomendaciones,
