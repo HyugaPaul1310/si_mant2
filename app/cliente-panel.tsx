@@ -11,11 +11,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    actualizarReporteBackend,
-    apiCall,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente,
-    verificarEncuestaExiste
+  actualizarReporteBackend,
+  apiCall,
+  getApiBaseUrl,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente,
+  verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -805,7 +806,7 @@ function ClientePanelContent() {
         logDebug('[PDF] Modo web detectado, enviando al backend...');
         try {
           logDebug('[PDF] Haciendo fetch a backend...');
-          const response = await fetch('http://localhost:3001/api/pdf/generate', {
+          const response = await fetch(`${getApiBaseUrl()}/pdf/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ html: htmlContent })

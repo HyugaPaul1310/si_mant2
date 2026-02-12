@@ -263,7 +263,7 @@ app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
 ║   Cloudflare R2 Upload Server (Simple)                   ║
-║   Escuchando en: http://192.168.1.148:${PORT}                    ║
+║   Escuchando en: http://<tu-host>:${PORT}                 ║
 ║   Bucket: ${BUCKET_NAME}                         ║
 ║   Modo: Público (sin autenticación)                      ║
 ╚══════════════════════════════════════════════════════════╝

@@ -1,30 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// URL del backend Express según el entorno
-// - Web (Expo web): localhost:3001
-// - Emulador Android: 10.0.2.2:3001 (acceso a máquina host)
-// - Emulador iOS: localhost:3001
-// - Teléfono real: IP de la máquina (ej: 192.168.1.148:3001)
-
-let API_URL = 'http://localhost:3001/api';
+// URL del backend Express (Nginx sin puerto)
+let API_URL = 'http://217.216.43.185/api';
 
 try {
-  // Usar IP local para acceso desde teléfono en la misma red
+  // Usar URL publica de la VPS
   if (Platform.OS === 'android') {
-    API_URL = 'http://192.168.1.148:3001/api';
+    API_URL = 'http://217.216.43.185/api';
   }
-  // Si es iOS, usar IP local
+  // Si es iOS, usar URL publica
   else if (Platform.OS === 'ios') {
-    API_URL = 'http://192.168.1.148:3001/api';
+    API_URL = 'http://217.216.43.185/api';
   }
-  // Si es web, usar localhost
+  // Si es web, usar URL publica
   else {
-    API_URL = 'http://localhost:3001/api';
+    API_URL = 'http://217.216.43.185/api';
   }
 } catch (e) {
   // Fallback
-  API_URL = 'http://localhost:3001/api';
+  API_URL = 'http://217.216.43.185/api';
+}
+
+export function getApiBaseUrl() {
+  return API_URL;
 }
 
 interface ApiResponse<T = any> {

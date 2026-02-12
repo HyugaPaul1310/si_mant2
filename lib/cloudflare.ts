@@ -1,12 +1,12 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
-// Determinar la URL según si es web o mobile
-let API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://localhost:5001';
-if (Platform.OS !== 'web') {
-  // Para mobile (Android/iOS), usar la IP local
-  API_URL = process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL || 'http://192.168.1.148:5001';
-}
+// Determinar la URL del upload server (Nginx sin puerto)
+let API_URL =
+  process.env.EXPO_PUBLIC_CLOUDFLARE_API_URL ||
+  (Platform.OS === 'web' && typeof window !== 'undefined'
+    ? `${window.location.origin}/upload`
+    : 'http://217.216.43.185/upload');
 
 const CUSTOM_DOMAIN = process.env.EXPO_PUBLIC_CLOUDFLARE_CUSTOM_DOMAIN || '';
 
@@ -27,10 +27,9 @@ export function getProxyUrl(cloudflareUrl: string): string {
     // decodeURIComponent decodifica espacios (%20) que new URL().pathname suele codificar
     const key = decodeURIComponent(url.pathname).replace(/^\//, '');
 
-    // Usar el servidor Cloudflare en puerto 5001 como proxy
+    // Usar el servidor Cloudflare como proxy
     // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg
-    const proxyHost = Platform.OS === 'web' ? 'localhost' : '192.168.1.148';
-    return `http://${proxyHost}:5001/api/get-file?key=${encodeURIComponent(key)}`;
+    return `${API_URL}/api/get-file?key=${encodeURIComponent(key)}`;
   } catch (error) {
     console.warn('Error al convertir URL de Cloudflare:', error);
     // Si hay error, retornar la URL original
