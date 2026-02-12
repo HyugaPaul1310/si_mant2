@@ -1,29 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// URL del backend Express (dominio con SSL)
+// URL del backend Express (Nginx sin puerto)
 let API_URL = 'https://si-mant.com/api';
 
 try {
-  // Usar URL publica de la VPS
+  // Usar IP local para acceso desde teléfono en la misma red
   if (Platform.OS === 'android') {
     API_URL = 'https://si-mant.com/api';
   }
-  // Si es iOS, usar URL publica
+  // Si es iOS, usar IP local
   else if (Platform.OS === 'ios') {
     API_URL = 'https://si-mant.com/api';
   }
-  // Si es web, usar URL publica
+  // Si es web, usar localhost
   else {
     API_URL = 'https://si-mant.com/api';
   }
 } catch (e) {
   // Fallback
   API_URL = 'https://si-mant.com/api';
-}
-
-export function getApiBaseUrl() {
-  return API_URL;
 }
 
 interface ApiResponse<T = any> {
@@ -105,10 +101,6 @@ export async function logoutBackend() {
   await AsyncStorage.removeItem('token');
   await AsyncStorage.removeItem('user');
   return { success: true };
-}
-
-export async function changePasswordBackend(currentPassword: string, newPassword: string) {
-  return apiCall('/auth/change-password', 'PUT', { currentPassword, newPassword });
 }
 
 // ==================== REPORTES ====================

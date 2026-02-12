@@ -8,7 +8,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 // POST crear tarea (desde lib/tareas.ts)
 router.post('/crear', verifyToken, async (req, res) => {
   try {
-    const { admin_email, admin_nombre, empleado_email, descripcion } = req.body;
+    const { admin_email, admin_nombre, empleado_email, descripcion, titulo } = req.body;
 
     if (!admin_email || !admin_nombre || !empleado_email || !descripcion) {
       return res.status(400).json({ 
@@ -17,11 +17,15 @@ router.post('/crear', verifyToken, async (req, res) => {
       });
     }
 
+    const tituloFinal = (typeof titulo === 'string' && titulo.trim())
+      ? titulo.trim().slice(0, 255)
+      : descripcion.trim().slice(0, 255);
+
     console.log(`[BACKEND-TAREAS] Creando tarea para empleado: ${empleado_email}`);
 
     const [result] = await pool.query(
-      'INSERT INTO tareas (admin_email, admin_nombre, empleado_email, descripcion, estado) VALUES (?, ?, ?, ?, ?)',
-      [admin_email, admin_nombre, empleado_email, descripcion, 'pendiente']
+      'INSERT INTO tareas (titulo, admin_email, admin_nombre, empleado_email, descripcion, estado) VALUES (?, ?, ?, ?, ?, ?)',
+      [tituloFinal, admin_email, admin_nombre, empleado_email, descripcion, 'pendiente']
     );
 
     const [tarea] = await pool.query(
