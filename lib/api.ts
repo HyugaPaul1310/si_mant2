@@ -1,10 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Cambiar según entorno
-const isDev = true; // Cambiar a false para producción
-const API_BASE = isDev
-  ? 'http://localhost:3001/api'
-  : 'https://tu-vps.com/api'; // Reemplazar con tu dominio
+// URL del backend Express (Nginx sin puerto)
+const API_BASE = 'http://217.216.43.185/api';
 
 export interface ApiResponse<T = any> {
   success: boolean;
