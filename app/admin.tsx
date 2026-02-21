@@ -3422,7 +3422,7 @@ function AdminPanelContent() {
                   </View>
                 </View>
 
-                {/* Foto de Revisión (Pre-proceso) */}
+                {/* IMAGENES DE ANALISIS */}
                 {!cargandoArchivos && (
                   archivosReporte.some(a => a.tipo_archivo === 'foto_revision') ||
                   archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
@@ -3430,7 +3430,7 @@ function AdminPanelContent() {
                     <View style={{ gap: 8 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Ionicons name="camera-outline" size={14} color="#3b82f6" />
-                        <Text style={[{ fontSize: 11, color: '#3b82f6', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>IMAGEN PRE-PROCESO (REVISIÓN)</Text>
+                        <Text style={[{ fontSize: 11, color: '#3b82f6', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>IMAGENES DE ANALISIS</Text>
                       </View>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                         {archivosReporte.filter(a =>
@@ -3442,6 +3442,7 @@ function AdminPanelContent() {
                             onPress={() => {
                               setArchivoVisualizando({
                                 ...foto,
+                                url: getProxyUrl(foto.cloudflare_url),
                                 tipo_archivo: 'foto_revision', // Forzar para que el visor lo reconozca
                                 tipo: 'foto_revision'
                               });
@@ -4524,10 +4525,10 @@ function AdminPanelContent() {
                     </View>
                   </View>
 
-                  {/* Análisis General (Fase 1) - MOVIDO AL PRINCIPIO */}
+                  {/* ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA) - MOVIDO AL PRINCIPIO */}
                   {selectedReporteDetail.analisis_general && (
                     <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Análisis del Empleado (Fase 1)</Text>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA)</Text>
                       <View style={styles.detailValueBox}>
                         <Text style={[styles.detailValueText, { fontFamily }]}>
                           {selectedReporteDetail.analisis_general}
@@ -4672,7 +4673,7 @@ function AdminPanelContent() {
                     </View>
                   ) : null}
 
-                  {/* ── Fotos de Revisión (Pre-proceso) ── */}
+                  {/* ── IMAGENES DE ANALISIS ── */}
                   {!cargandoArchivos && (
                     archivosReporte.some(a => a.tipo_archivo === 'foto_revision') ||
                     archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
@@ -4686,7 +4687,7 @@ function AdminPanelContent() {
                         }}>
                           <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#3b82f6' }} />
                           <Text style={[styles.detailFieldLabel, { fontFamily, color: '#60a5fa', fontSize: 13, marginBottom: 0 }]}>
-                            IMAGEN PRE-PROCESO (REVISIÓN)
+                            IMAGENES DE ANALISIS
                           </Text>
                         </View>
                         <View style={styles.archivosContainer}>
@@ -4718,7 +4719,7 @@ function AdminPanelContent() {
                       </View>
                     )}
 
-                  {/* ── Fotos de Post-proceso (Entrega) ── */}
+                  {/* ── IMAGENES DE FINALIZACION ── */}
                   {!cargandoArchivos && (
                     archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
                   ) && (
@@ -4731,7 +4732,7 @@ function AdminPanelContent() {
                         }}>
                           <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#10b981' }} />
                           <Text style={[styles.detailFieldLabel, { fontFamily, color: '#34d399', fontSize: 13, marginBottom: 0 }]}>
-                            IMAGEN POST-PROCESO
+                            IMAGENES DE FINALIZACION
                           </Text>
                         </View>
                         <View style={styles.archivosContainer}>
@@ -4746,13 +4747,13 @@ function AdminPanelContent() {
                                     url: proxyUrl,
                                     tipo_archivo: 'foto',
                                     tipo: 'foto',
-                                    nombre: foto.nombre_original || 'Imagen Post-proceso'
+                                    nombre: foto.nombre_original || 'Imagen de Finalización'
                                   });
                                   setShowArchivoModal(true);
                                 }}
                               >
                                 <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
-                                <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Post-proceso</Text>
+                                <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Finalización</Text>
                               </TouchableOpacity>
                             );
                           })}

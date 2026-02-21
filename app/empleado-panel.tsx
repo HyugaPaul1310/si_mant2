@@ -130,9 +130,9 @@ function EmpleadoPanelContent() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [recordingInterval, setRecordingInterval] = useState<any>(null);
 
-  // Estados para Foto de Revisión
-  const [fotoRevisionUri, setFotoRevisionUri] = useState<string | null>(null);
-  const [fotoPostprocesoUri, setFotoPostprocesoUri] = useState<string | null>(null);
+  // Estados para IMAGENES DE ANALISIS
+  const [fotosRevisionUris, setFotosRevisionUris] = useState<string[]>([]);
+  const [fotosPostprocesoUris, setFotosPostprocesoUris] = useState<string[]>([]);
 
 
 
@@ -208,7 +208,8 @@ function EmpleadoPanelContent() {
     setRecomendacionesAdicionales('');
     setMaterialesRefacciones('');
     setDescripcionTrabajo(''); // Limpiar análisis al cerrar
-    setFotoRevisionUri(null); // Limpiar foto de revisión
+    setFotosRevisionUris([]); // Limpiar fotos de revisión
+    setFotosPostprocesoUris([]); // Limpiar imágenes de finalización
   };
 
   // Cargar datos de Fase 2 cuando se selecciona un reporte
@@ -582,6 +583,10 @@ function EmpleadoPanelContent() {
   };
 
   const seleccionarFotoRevision = async () => {
+    if (fotosRevisionUris.length >= 5) {
+      showToast('Límite de 5 fotos de revisión alcanzado', 'warning');
+      return;
+    }
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -590,7 +595,7 @@ function EmpleadoPanelContent() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setFotoRevisionUri(result.assets[0].uri);
+        setFotosRevisionUris(prev => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
       console.error('Error al capturar foto:', error);
@@ -599,6 +604,10 @@ function EmpleadoPanelContent() {
   };
 
   const seleccionarFotoPostproceso = async () => {
+    if (fotosPostprocesoUris.length >= 5) {
+      showToast('Límite de 5 imágenes de finalización alcanzado', 'warning');
+      return;
+    }
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -607,12 +616,20 @@ function EmpleadoPanelContent() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setFotoPostprocesoUri(result.assets[0].uri);
+        setFotosPostprocesoUris(prev => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
-      console.error('Error al capturar foto post-proceso:', error);
+      console.error('Error al capturar imagen de finalización:', error);
       showToast('Error al abrir la cámara', 'error');
     }
+  };
+
+  const eliminarFotoRevision = (index: number) => {
+    setFotosRevisionUris(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const eliminarFotoPostproceso = (index: number) => {
+    setFotosPostprocesoUris(prev => prev.filter((_, i) => i !== index));
   };
 
   const guardarCotizacion = async () => {
@@ -630,12 +647,12 @@ function EmpleadoPanelContent() {
         }
       }
 
-      // 2. Subir foto de revisión si existe
-      if (fotoRevisionUri) {
-        showToast('Subiendo foto de revisión...', 'info');
-        const uploadPhotoRes = await subirArchivosReporte(reporteSeleccionado.id, [], undefined, undefined, fotoRevisionUri);
+      // 2. Subir fotos de revisión si existen
+      if (fotosRevisionUris.length > 0) {
+        showToast('Subiendo fotos de revisión...', 'info');
+        const uploadPhotoRes = await subirArchivosReporte(reporteSeleccionado.id, [], undefined, undefined, fotosRevisionUris);
         if (!uploadPhotoRes.success) {
-          throw new Error('Error al subir la foto de revisión: ' + uploadPhotoRes.error);
+          throw new Error('Error al subir las fotos de revisión: ' + uploadPhotoRes.error);
         }
       }
 
@@ -686,7 +703,7 @@ function EmpleadoPanelContent() {
 
         showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
         deleteRecording(); // Limpiar audio
-        setFotoRevisionUri(null); // Limpiar foto
+        setFotosRevisionUris([]); // Limpiar fotos
         cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
       } else {
         console.error('[EMPLEADO-ANALISIS] Error en respuesta:', respuesta);
@@ -726,16 +743,16 @@ function EmpleadoPanelContent() {
       );
 
       if (updateResult.success) {
-        // Subir foto de post-proceso si existe
-        if (fotoPostprocesoUri) {
-          showToast('Subiendo foto de post-proceso...', 'info');
+        // Subir imágenes de finalización si existen
+        if (fotosPostprocesoUris.length > 0) {
+          showToast('Subiendo imágenes de finalización...', 'info');
           const uploadRes = await subirArchivosReporte(
             reporteSeleccionado.id,
             [],
             undefined,
             undefined,
             undefined,
-            fotoPostprocesoUri
+            fotosPostprocesoUris
           );
           if (!uploadRes.success) {
             showToast('Trabajo guardado, pero error al subir la foto', 'warning');
@@ -743,7 +760,7 @@ function EmpleadoPanelContent() {
         }
 
         showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
-        setFotoPostprocesoUri(null); // Limpiar estado
+        setFotosPostprocesoUris([]); // Limpiar estado
         cerrarModalReporteDetalle();
         cargarReportes();
       } else {
@@ -1656,7 +1673,7 @@ function EmpleadoPanelContent() {
                 {reporteSeleccionado.estado === 'asignado' ? (
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b', fontWeight: 'bold' }]}>
-                      ANÁLISIS GENERAL (Reporte de fallas) *
+                      ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA)
                     </Text>
                     <TextInput
                       style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily, minHeight: 100 }]}
@@ -1671,7 +1688,7 @@ function EmpleadoPanelContent() {
 
                     {/* Sección de Nota de Voz */}
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 16 }]}>
-                      Nota de Voz Explicativa (Opcional)
+                      NOTA DE VOZ EXPLICATIVA(BREVE RETROALIMENTACION AL ADMINISTRADOR)
                     </Text>
 
                     <View style={styles.audioControlsContainer}>
@@ -1723,38 +1740,51 @@ function EmpleadoPanelContent() {
                       )}
                     </View>
 
-                    {/* Sección de Foto de Revisión */}
+                    {/* Sección de IMAGENES DE ANALISIS */}
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 16 }]}>
-                      Foto de Revisión (Pre-proceso)
+                      IMAGENES DE ANALISIS
                     </Text>
 
-                    {!fotoRevisionUri ? (
-                      <TouchableOpacity
-                        style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
-                        onPress={seleccionarFotoRevision}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="camera" size={24} color="#fff" />
-                        <Text style={[styles.audioButtonText, { fontFamily }]}>Tomar Foto</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={{ position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', marginTop: 8 }}>
-                        <Image source={{ uri: fotoRevisionUri }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                    <View style={{ marginTop: 8 }}>
+                      {/* Galería de fotos capturadas */}
+                      {fotosRevisionUris.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                          {fotosRevisionUris.map((uri, index) => (
+                            <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                              <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                              <TouchableOpacity
+                                style={{
+                                  position: 'absolute',
+                                  top: -5,
+                                  right: -5,
+                                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                  borderRadius: 12,
+                                  padding: 2,
+                                  zIndex: 1
+                                }}
+                                onPress={() => eliminarFotoRevision(index)}
+                              >
+                                <Ionicons name="close" size={14} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      )}
+
+                      {/* Botón para tomar foto */}
+                      {fotosRevisionUris.length < 5 && (
                         <TouchableOpacity
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(0,0,0,0.5)',
-                            borderRadius: 20,
-                            padding: 4
-                          }}
-                          onPress={() => setFotoRevisionUri(null)}
+                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
+                          onPress={seleccionarFotoRevision}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons name="close" size={20} color="#fff" />
+                          <Ionicons name="camera" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>
+                            {fotosRevisionUris.length === 0 ? 'Tomar Foto' : `Añadir Foto (${fotosRevisionUris.length}/5)`}
+                          </Text>
                         </TouchableOpacity>
-                      </View>
-                    )}
+                      )}
+                    </View>
                   </View>
                 ) : (reporteSeleccionado.analisis_general && (
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
@@ -1766,6 +1796,39 @@ function EmpleadoPanelContent() {
                         {reporteSeleccionado.analisis_general}
                       </Text>
                     </View>
+
+                    {/* Nueva Galería de IMAGENES DE ANALISIS (Pre-proceso) */}
+                    {archivosReporte.some(a => a.tipo_archivo === 'foto_revision') && (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily, fontSize: 11, color: '#3b82f6', marginBottom: 8 }]}>
+                          IMAGENES DE ANALISIS CARGADAS
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          {archivosReporte.filter(a => a.tipo_archivo === 'foto_revision').map((archivo, idx) => {
+                            const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={{ marginRight: 10 }}
+                                onPress={() => {
+                                  setArchivoVisualizando({
+                                    url: proxyUrl,
+                                    tipo_archivo: 'foto_revision',
+                                    nombre: archivo.nombre_original || 'Analisis'
+                                  });
+                                  setShowArchivoModal(true);
+                                }}
+                              >
+                                <Image
+                                  source={{ uri: proxyUrl }}
+                                  style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: '#3b82f6' }}
+                                />
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    )}
                   </View>
                 ))}
 
@@ -1868,7 +1931,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    {/* Sección de Foto Post-proceso */}
+                    {/* Sección de IMAGENES DE FINALIZACION */}
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
                       <View style={{
                         flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -1876,41 +1939,87 @@ function EmpleadoPanelContent() {
                       }}>
                         <Ionicons name="camera" size={16} color="#10b981" />
                         <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold', marginBottom: 0 }]}>
-                          FOTO POST-PROCESO
+                          IMAGENES DE FINALIZACION
                         </Text>
                       </View>
 
-                      {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !fotoPostprocesoUri ? (
-                        <TouchableOpacity
-                          style={[styles.audioRecordButton, { backgroundColor: '#10b981', marginTop: 4 }]}
-                          onPress={seleccionarFotoPostproceso}
-                          activeOpacity={0.7}
-                          disabled={guardandoFase2}
-                        >
-                          <Ionicons name="camera" size={24} color="#fff" />
-                          <Text style={[styles.audioButtonText, { fontFamily }]}>Capturar Post-proceso</Text>
-                        </TouchableOpacity>
-                      ) : fotoPostprocesoUri ? (
-                        <View style={{ position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', marginTop: 8 }}>
-                          <Image source={{ uri: fotoPostprocesoUri }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
-                          {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
-                            <TouchableOpacity
-                              style={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                backgroundColor: 'rgba(0,0,0,0.5)',
-                                borderRadius: 20,
-                                padding: 4
-                              }}
-                              onPress={() => setFotoPostprocesoUri(null)}
-                              disabled={guardandoFase2}
-                            >
-                              <Ionicons name="close" size={20} color="#fff" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      ) : null}
+                      <View style={{ marginTop: 8 }}>
+                        {/* Galería de imágenes de finalización (LOCALES POR SUBIR) */}
+                        {fotosPostprocesoUris.length > 0 && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                            {fotosPostprocesoUris.map((uri, index) => (
+                              <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
+                                  <TouchableOpacity
+                                    style={{
+                                      position: 'absolute',
+                                      top: -5,
+                                      right: -5,
+                                      backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                      borderRadius: 12,
+                                      padding: 2,
+                                      zIndex: 1
+                                    }}
+                                    onPress={() => eliminarFotoPostproceso(index)}
+                                    disabled={guardandoFase2}
+                                  >
+                                    <Ionicons name="close" size={14} color="#fff" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            ))}
+                          </ScrollView>
+                        )}
+
+                        {/* Galería de imágenes de finalización (YA CARGADAS) */}
+                        {archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')) && (
+                          <View style={{ marginBottom: 12 }}>
+                            <Text style={{ fontFamily, fontSize: 11, color: '#10b981', marginBottom: 8 }}>
+                              IMAGENES DE FINALIZACION CARGADAS
+                            </Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                              {archivosReporte.filter(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')).map((archivo, idx) => {
+                                const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                                return (
+                                  <TouchableOpacity
+                                    key={idx}
+                                    style={{ marginRight: 10 }}
+                                    onPress={() => {
+                                      setArchivoVisualizando({
+                                        url: proxyUrl,
+                                        tipo_archivo: 'foto',
+                                        nombre: archivo.nombre_original || 'Finalizacion'
+                                      });
+                                      setShowArchivoModal(true);
+                                    }}
+                                  >
+                                    <Image
+                                      source={{ uri: proxyUrl }}
+                                      style={{ width: 90, height: 90, borderRadius: 8, borderWidth: 1, borderColor: '#10b981' }}
+                                    />
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          </View>
+                        )}
+
+                        {/* Botón para tomar imagen de finalización */}
+                        {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && fotosPostprocesoUris.length < 5 && (
+                          <TouchableOpacity
+                            style={[styles.audioRecordButton, { backgroundColor: '#10b981', marginTop: 4 }]}
+                            onPress={seleccionarFotoPostproceso}
+                            activeOpacity={0.7}
+                            disabled={guardandoFase2}
+                          >
+                            <Ionicons name="camera" size={24} color="#fff" />
+                            <Text style={[styles.audioButtonText, { fontFamily }]}>
+                              {fotosPostprocesoUris.length === 0 ? 'Capturar Imagen de Finalización' : `Añadir Imagen de Finalización (${fotosPostprocesoUris.length}/5)`}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   </>
                 )}
@@ -1931,11 +2040,19 @@ function EmpleadoPanelContent() {
                     }}>
                       <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#64748b' }} />
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
-                        ARCHIVOS ADJUNTOS ({archivosReporte.filter(a => a.tipo_archivo !== 'audio').length})
+                        OTROS ARCHIVOS ADJUNTOS ({archivosReporte.filter(a =>
+                          a.tipo_archivo !== 'audio' &&
+                          a.tipo_archivo !== 'foto_revision' &&
+                          !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
+                        ).length})
                       </Text>
                     </View>
                     <View style={styles.archivosContainer}>
-                      {archivosReporte.filter(a => a.tipo_archivo !== 'audio').map((archivo, idx) => {
+                      {archivosReporte.filter(a =>
+                        a.tipo_archivo !== 'audio' &&
+                        a.tipo_archivo !== 'foto_revision' &&
+                        !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
+                      ).map((archivo, idx) => {
                         const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                         return (
                           <TouchableOpacity
@@ -1971,7 +2088,7 @@ function EmpleadoPanelContent() {
                                   );
                                 })()}
                                 <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6, color: archivo.tipo_archivo === 'foto_revision' ? '#60a5fa' : (archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso')) ? '#10b981' : '#94a3b8' }]}>
-                                  {archivo.tipo_archivo === 'foto_revision' ? '📷 Pre-proceso' : (archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso')) ? '📷 Post-proceso' : '📷 Foto'}
+                                  {archivo.tipo_archivo === 'foto_revision' ? '📷 Pre-proceso' : (archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso')) ? '📷 Finalización' : '📷 Foto'}
                                 </Text>
                               </>
                             ) : (
@@ -2268,7 +2385,7 @@ function EmpleadoPanelContent() {
                   setShowCotizarModal(false);
                   setShowReporteDetalle(true);
                   setDescripcionTrabajo('');
-                  setFotoRevisionUri(null);
+                  setFotosRevisionUris([]);
                 }} activeOpacity={0.7}>
                   <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
                 </TouchableOpacity>
@@ -2304,7 +2421,7 @@ function EmpleadoPanelContent() {
                   {/* Campos de cotización */}
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 24 }]}>
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>
-                      Análisis General *
+                      ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA)
                     </Text>
                     <TextInput
                       style={[styles.textInputArea, { fontFamily }]}
@@ -2321,7 +2438,7 @@ function EmpleadoPanelContent() {
                   {/* Sección de Nota de Voz */}
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
-                      Nota de Voz Explicativa (Opcional)
+                      NOTA DE VOZ EXPLICATIVA(BREVE RETROALIMENTACION AL ADMINISTRADOR)
                     </Text>
 
                     <View style={styles.audioControlsContainer}>
@@ -2377,36 +2494,49 @@ function EmpleadoPanelContent() {
                   {/* Sección de Foto de Revisión */}
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
-                      Foto de Revisión (Pre-proceso)
+                      IMAGENES DE ANALISIS
                     </Text>
 
-                    {!fotoRevisionUri ? (
-                      <TouchableOpacity
-                        style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
-                        onPress={seleccionarFotoRevision}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="camera" size={24} color="#fff" />
-                        <Text style={[styles.audioButtonText, { fontFamily }]}>Tomar Foto</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={{ position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', marginTop: 8 }}>
-                        <Image source={{ uri: fotoRevisionUri }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                    <View style={{ marginTop: 8 }}>
+                      {/* Galería de fotos capturadas */}
+                      {fotosRevisionUris.length > 0 && (
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                          {fotosRevisionUris.map((uri, index) => (
+                            <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                              <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                              <TouchableOpacity
+                                style={{
+                                  position: 'absolute',
+                                  top: -5,
+                                  right: -5,
+                                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                  borderRadius: 12,
+                                  padding: 2,
+                                  zIndex: 1
+                                }}
+                                onPress={() => eliminarFotoRevision(index)}
+                              >
+                                <Ionicons name="close" size={14} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      )}
+
+                      {/* Botón para tomar foto */}
+                      {fotosRevisionUris.length < 5 && (
                         <TouchableOpacity
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            backgroundColor: 'rgba(0,0,0,0.5)',
-                            borderRadius: 20,
-                            padding: 4
-                          }}
-                          onPress={() => setFotoRevisionUri(null)}
+                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
+                          onPress={seleccionarFotoRevision}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons name="close" size={20} color="#fff" />
+                          <Ionicons name="camera" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>
+                            {fotosRevisionUris.length === 0 ? 'Tomar Foto' : `Añadir Foto (${fotosRevisionUris.length}/5)`}
+                          </Text>
                         </TouchableOpacity>
-                      </View>
-                    )}
+                      )}
+                    </View>
                   </View>
                 </View>
               </ScrollView>
@@ -2418,7 +2548,7 @@ function EmpleadoPanelContent() {
                     setShowCotizarModal(false);
                     setShowReporteDetalle(true);
                     setDescripcionTrabajo('');
-                    setFotoRevisionUri(null);
+                    setFotosRevisionUris([]);
                   }}
                   activeOpacity={0.7}
                 >
@@ -2463,7 +2593,7 @@ function EmpleadoPanelContent() {
               </TouchableOpacity>
 
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
-                {archivoVisualizando.tipo_archivo === 'imagen' || archivoVisualizando.tipo_archivo === 'foto' || archivoVisualizando.tipo_archivo?.startsWith('image/') ? (
+                {archivoVisualizando.tipo_archivo === 'imagen' || archivoVisualizando.tipo_archivo === 'foto' || archivoVisualizando.tipo_archivo === 'foto_revision' || archivoVisualizando.tipo_archivo?.startsWith('image/') ? (
                   <Image
                     source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
                     style={{ width: '100%', height: '100%', resizeMode: 'contain' }}

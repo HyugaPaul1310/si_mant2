@@ -98,6 +98,8 @@ function ClientePanelContent() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [generandoPDF, setGenerandoPDF] = useState(false);
   const [archivoPDFCotizacion, setArchivoPDFCotizacion] = useState<any | null>(null);
+  const [archivosCotizacion, setArchivosCotizacion] = useState<any[]>([]);
+  const [loadingArchivosCotizacion, setLoadingArchivosCotizacion] = useState(false);
 
   // Estado para rastrear encuestas enviadas (usando localStorage)
   const [encuestasEnviadas, setEncuestasEnviadas] = useState<Set<number>>(new Set());
@@ -2220,7 +2222,7 @@ function ClientePanelContent() {
                     </View>
                   )}
 
-                  {/* ── Fotos de Post-proceso (Entrega) ── */}
+                  {/* ── IMAGENES DE FINALIZACION ── */}
                   {!loadingArchivos && archivosReporte && archivosReporte.some((a: any) => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')) && (
                     <View style={{ width: '100%', marginTop: 20 }}>
                       <View style={{
@@ -2230,7 +2232,7 @@ function ClientePanelContent() {
                       }}>
                         <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#10b981' }} />
                         <Text style={[styles.detailLabel, { fontFamily, color: '#34d399', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
-                          IMAGEN POST-PROCESO
+                          IMAGENES DE FINALIZACION
                         </Text>
                       </View>
                       <View style={styles.archivosContainer}>
@@ -2245,13 +2247,13 @@ function ClientePanelContent() {
                                   url: proxyUrl,
                                   tipo_archivo: 'foto',
                                   tipo: 'foto',
-                                  nombre: foto.nombre_original || 'Imagen Post-proceso'
+                                  nombre: foto.nombre_original || 'Imagen de Finalización'
                                 });
                                 setShowArchivoModal(true);
                               }}
                             >
                               <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
-                              <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Post-proceso</Text>
+                              <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Finalización</Text>
                             </TouchableOpacity>
                           );
                         })}
@@ -2613,6 +2615,7 @@ function ClientePanelContent() {
 
                                   if (reporteId) {
                                     try {
+                                      setLoadingArchivosCotizacion(true);
                                       const { success, data, error } = await obtenerArchivosReporteBackend(reporteId);
                                       logDebug('[DEBUG] Resultado obtención archivos:', { success, dataLength: data?.length, error });
 
@@ -2620,9 +2623,15 @@ function ClientePanelContent() {
                                         const pdf = data.find((a: any) => a.tipo_archivo === 'pdf');
                                         logDebug('[DEBUG] PDF encontrado:', pdf ? pdf.nombre_original : 'NINGUNO');
                                         setArchivoPDFCotizacion(pdf || null);
+
+                                        // Guardamos todos los archivos multimedia para la galería
+                                        const soloMedia = data.filter((a: any) => a.tipo_archivo !== 'pdf' && a.tipo_archivo !== 'audio');
+                                        setArchivosCotizacion(soloMedia);
                                       }
                                     } catch (err) {
-                                      console.error('[CLIENTE] Error al buscar PDF de cotización:', err);
+                                      console.error('[CLIENTE] Error al buscar archivos de cotización:', err);
+                                    } finally {
+                                      setLoadingArchivosCotizacion(false);
                                     }
                                   }
                                 }}
@@ -2731,7 +2740,7 @@ function ClientePanelContent() {
                       <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.empleado_nombre || 'N/A'}</Text>
                     </View>
                     <View style={styles.detailField}>
-                      <Text style={[styles.detailLabel, { fontFamily }]}>Análisis General</Text>
+                      <Text style={[styles.detailLabel, { fontFamily }]}>ANALISIS GENERAL</Text>
                       <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.analisis_general || 'N/A'}</Text>
                     </View>
                     <View style={styles.detailField}>
@@ -2749,6 +2758,160 @@ function ClientePanelContent() {
                         {cotizacionSeleccionada.cotizacion_explicacion?.trim() || 'Sin recotización'}
                       </Text>
                     </View>
+
+                    {loadingArchivosCotizacion ? (
+                      <View style={{ marginTop: 20, alignItems: 'center' }}>
+                        <Text style={{ color: '#94a3b8', fontFamily }}>Cargando imágenes...</Text>
+                      </View>
+                    ) : (
+                      <>
+                        {/* ── Fotos de Revisión (Pre-proceso) ── */}
+                        {archivosCotizacion.some((a: any) => a.tipo_archivo === 'foto_revision') && (
+                          <View style={{ width: '100%', marginTop: 20 }}>
+                            <View style={{
+                              flexDirection: 'row', alignItems: 'center', gap: 10,
+                              marginBottom: 14, paddingBottom: 10,
+                              borderBottomWidth: 1, borderBottomColor: 'rgba(59,130,246,0.25)',
+                            }}>
+                              <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#3b82f6' }} />
+                              <Text style={[styles.detailLabel, { fontFamily, color: '#60a5fa', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
+                                IMAGEN PRE-PROCESO (REVISIÓN)
+                              </Text>
+                            </View>
+                            <View style={styles.archivosContainer}>
+                              {archivosCotizacion.filter((a: any) => a.tipo_archivo === 'foto_revision').map((foto: any, idx: number) => {
+                                const proxyUrl = getProxyUrl(foto.cloudflare_url);
+                                return (
+                                  <TouchableOpacity
+                                    key={idx}
+                                    style={[styles.archivoItem, { borderColor: '#3b82f6', borderWidth: 2 }]}
+                                    onPress={() => {
+                                      setArchivoVisualizando({
+                                        url: proxyUrl,
+                                        tipo_archivo: 'foto_revision',
+                                        tipo: 'foto_revision',
+                                        nombre: foto.nombre_original || 'Imagen Pre-proceso'
+                                      });
+                                      setShowArchivoModal(true);
+                                    }}
+                                  >
+                                    <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
+                                    <Text style={[styles.archivoLabel, { fontFamily, color: '#60a5fa', marginTop: 6 }]}>📷 Pre-proceso</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        )}
+
+                        {/* ── IMAGENES DE FINALIZACION ── */}
+                        {archivosCotizacion.some((a: any) => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')) && (
+                          <View style={{ width: '100%', marginTop: 20 }}>
+                            <View style={{
+                              flexDirection: 'row', alignItems: 'center', gap: 10,
+                              marginBottom: 14, paddingBottom: 10,
+                              borderBottomWidth: 1, borderBottomColor: 'rgba(16,185,129,0.25)',
+                            }}>
+                              <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#10b981' }} />
+                              <Text style={[styles.detailLabel, { fontFamily, color: '#34d399', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
+                                IMAGENES DE FINALIZACION
+                              </Text>
+                            </View>
+                            <View style={styles.archivosContainer}>
+                              {archivosCotizacion.filter((a: any) => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')).map((foto: any, idx: number) => {
+                                const proxyUrl = getProxyUrl(foto.cloudflare_url);
+                                return (
+                                  <TouchableOpacity
+                                    key={idx}
+                                    style={[styles.archivoItem, { borderColor: '#10b981', borderWidth: 2 }]}
+                                    onPress={() => {
+                                      setArchivoVisualizando({
+                                        url: proxyUrl,
+                                        tipo_archivo: 'foto',
+                                        tipo: 'foto',
+                                        nombre: foto.nombre_original || 'Imagen de Finalización'
+                                      });
+                                      setShowArchivoModal(true);
+                                    }}
+                                  >
+                                    <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
+                                    <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Finalización</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        )}
+
+                        {/* ── OTROS ARCHIVOS ADJUNTOS ── */}
+                        {archivosCotizacion.some((a: any) =>
+                          a.tipo_archivo !== 'audio' &&
+                          a.tipo_archivo !== 'pdf' &&
+                          a.tipo_archivo !== 'foto_revision' &&
+                          !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
+                        ) && (
+                            <View style={{ width: '100%', marginTop: 20 }}>
+                              <View style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 10,
+                                marginBottom: 14, paddingBottom: 10,
+                                borderBottomWidth: 1, borderBottomColor: 'rgba(148,163,184,0.25)',
+                              }}>
+                                <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#94a3b8' }} />
+                                <Text style={[styles.detailLabel, { fontFamily, color: '#94a3b8', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
+                                  OTROS ARCHIVOS ADJUNTOS
+                                </Text>
+                              </View>
+                              <View style={styles.archivosContainer}>
+                                {archivosCotizacion.filter((a: any) =>
+                                  a.tipo_archivo !== 'audio' &&
+                                  a.tipo_archivo !== 'pdf' &&
+                                  a.tipo_archivo !== 'foto_revision' &&
+                                  !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
+                                ).map((archivo, idx) => {
+                                  const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                                  return (
+                                    <TouchableOpacity
+                                      key={idx}
+                                      style={styles.archivoItem}
+                                      onPress={() => {
+                                        if (archivo.tipo_archivo === 'foto' || archivo.tipo_archivo === 'imagen' || archivo.tipo_archivo?.startsWith('image/')) {
+                                          setArchivoVisualizando({
+                                            url: proxyUrl,
+                                            tipo_archivo: archivo.tipo_archivo,
+                                            tipo: archivo.tipo_archivo,
+                                            nombre: archivo.nombre_original || 'Archivo'
+                                          });
+                                          setShowArchivoModal(true);
+                                        } else if (archivo.tipo_archivo === 'video' || archivo.tipo_archivo?.startsWith('video/')) {
+                                          setArchivoVisualizando({
+                                            url: proxyUrl,
+                                            tipo_archivo: 'video',
+                                            nombre: archivo.nombre_original || 'Video'
+                                          });
+                                          setShowArchivoModal(true);
+                                        }
+                                      }}
+                                    >
+                                      <View style={styles.archivoThumb}>
+                                        {archivo.tipo_archivo === 'video' || archivo.tipo_archivo?.startsWith('video/') ? (
+                                          <View style={{ flex: 1, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center' }}>
+                                            <Ionicons name="play-circle" size={32} color="#60a5fa" />
+                                          </View>
+                                        ) : (
+                                          <Image source={{ uri: proxyUrl }} style={{ flex: 1 }} />
+                                        )}
+                                      </View>
+                                      <Text style={[styles.archivoLabel, { fontFamily, fontSize: 10 }]} numberOfLines={1}>
+                                        {archivo.nombre_original || 'Adjunto'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          )}
+                      </>
+                    )}
 
                   </View>
 
