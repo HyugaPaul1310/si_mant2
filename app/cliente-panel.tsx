@@ -2181,13 +2181,50 @@ function ClientePanelContent() {
 
               {!loadingArchivos && archivosReporte && archivosReporte.length > 0 && (
                 <>
+                  {/* Fotos de Revisión (Pre-proceso) */}
+                  {!loadingArchivos && archivosReporte && archivosReporte.some((a: any) => a.tipo_archivo === 'foto_revision') && (
+                    <>
+                      <View style={[styles.detailSeparator, { marginVertical: 12 }]}>
+                        <View style={styles.separatorLine} />
+                        <Text style={[styles.separatorText, { fontFamily, color: '#3b82f6' }]}>Imagen Pre-proceso (Revisión)</Text>
+                        <View style={styles.separatorLine} />
+                      </View>
+                      <View style={styles.archivosContainer}>
+                        {archivosReporte.filter((a: any) => a.tipo_archivo === 'foto_revision').map((foto: any, idx: number) => {
+                          const proxyUrl = getProxyUrl(foto.cloudflare_url);
+                          return (
+                            <TouchableOpacity
+                              key={idx}
+                              style={[styles.archivoItem, { borderColor: '#3b82f6' }]}
+                              onPress={() => {
+                                setArchivoVisualizando({
+                                  url: proxyUrl,
+                                  tipo_archivo: 'foto_revision',
+                                  tipo: 'foto_revision',
+                                  nombre: foto.nombre_original || 'Imagen Pre-proceso'
+                                });
+                                setShowArchivoModal(true);
+                              }}
+                            >
+                              <Image
+                                source={{ uri: proxyUrl }}
+                                style={styles.archivoThumb}
+                              />
+                              <Text style={[styles.archivoLabel, { fontFamily, color: '#3b82f6' }]}>📷 Pre-proceso</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
                   <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
                     <View style={styles.separatorLine} />
-                    <Text style={[styles.separatorText, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio').length})</Text>
+                    <Text style={[styles.separatorText, { fontFamily }]}>Archivos Adjuntos Originales ({archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision').length})</Text>
                     <View style={styles.separatorLine} />
                   </View>
                   <View style={styles.archivosContainer}>
-                    {archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio').map((archivo: any, idx: number) => {
+                    {archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision').map((archivo: any, idx: number) => {
                       const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                       return (
                         <TouchableOpacity
@@ -2850,9 +2887,11 @@ function ClientePanelContent() {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
               {archivoVisualizando?.tipo_archivo === 'imagen' ||
                 archivoVisualizando?.tipo_archivo === 'foto' ||
+                archivoVisualizando?.tipo_archivo === 'foto_revision' ||
                 archivoVisualizando?.tipo_archivo?.startsWith('image/') ||
                 archivoVisualizando?.tipo === 'imagen' ||
                 archivoVisualizando?.tipo === 'foto' ||
+                archivoVisualizando?.tipo === 'foto_revision' ||
                 archivoVisualizando?.tipo?.startsWith('image/') ? (
                 <Image
                   source={{ uri: archivoVisualizando?.url || archivoVisualizando?.uri }}

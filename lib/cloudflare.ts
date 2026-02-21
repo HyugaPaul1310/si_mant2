@@ -75,7 +75,7 @@ export function getProxyUrl(cloudflareUrl: string): string {
 export async function uploadToCloudflare(
   fileUri: string,
   fileName: string,
-  fileType: 'foto' | 'video' | 'pdf' | 'audio'
+  fileType: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision'
 ): Promise<UploadResult> {
   try {
     const isWeb = Platform.OS === 'web';

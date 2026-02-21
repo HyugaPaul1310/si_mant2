@@ -3422,6 +3422,44 @@ function AdminPanelContent() {
                   </View>
                 </View>
 
+                {/* Foto de Revisión (Pre-proceso) */}
+                {!cargandoArchivos && (
+                  archivosReporte.some(a => a.tipo_archivo === 'foto_revision') ||
+                  archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
+                ) && (
+                    <View style={{ gap: 8 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="camera-outline" size={14} color="#3b82f6" />
+                        <Text style={[{ fontSize: 11, color: '#3b82f6', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>IMAGEN PRE-PROCESO (REVISIÓN)</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                        {archivosReporte.filter(a =>
+                          a.tipo_archivo === 'foto_revision' ||
+                          (a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
+                        ).map((foto, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => {
+                              setArchivoVisualizando({
+                                ...foto,
+                                tipo_archivo: 'foto_revision', // Forzar para que el visor lo reconozca
+                                tipo: 'foto_revision'
+                              });
+                              setShowArchivoModal(true);
+                            }}
+                            style={{ width: isMobile ? '100%' : 200, height: 150, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#1e293b' }}
+                          >
+                            <Image
+                              source={{ uri: getProxyUrl(foto.cloudflare_url) }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
                 {/* Notas de Voz Técnicas - Relocalizado aquí */}
                 {!cargandoArchivos && archivosReporte.some(a => a.tipo_archivo === 'audio') && (
                   <View style={{ gap: 10 }}>
@@ -4634,15 +4672,51 @@ function AdminPanelContent() {
                     </View>
                   ) : null}
 
-                  {!cargandoArchivos && archivosReporte.length > 0 && (
+                  {/* Fotos y Videos de Revisión (Pre-proceso) */}
+                  {!cargandoArchivos && (
+                    archivosReporte.some(a => a.tipo_archivo === 'foto_revision') ||
+                    archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
+                  ) && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailFieldLabel, { fontFamily, color: '#3b82f6' }]}>Imagen Pre-proceso (Revisión)</Text>
+                        <View style={styles.archivosContainer}>
+                          {archivosReporte.filter(a =>
+                            a.tipo_archivo === 'foto_revision' ||
+                            (a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
+                          ).map((foto, idx) => {
+                            const proxyUrl = getProxyUrl(foto.cloudflare_url);
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[styles.archivoItem, { borderColor: '#3b82f6' }]}
+                                onPress={() => {
+                                  setArchivoVisualizando({
+                                    url: proxyUrl,
+                                    tipo_archivo: 'foto_revision',
+                                    tipo: 'foto_revision',
+                                    nombre: foto.nombre_original || 'Imagen Pre-proceso'
+                                  });
+                                  setShowArchivoModal(true);
+                                }}
+                              >
+                                <Image
+                                  source={{ uri: proxyUrl }}
+                                  style={styles.archivoThumb}
+                                />
+                                <Text style={[styles.archivoLabel, { fontFamily, color: '#3b82f6' }]}>📷 Pre-proceso</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                  {/* Otros Fotos y Videos (Reporte Original) */}
+                  {!cargandoArchivos && archivosReporte.length > 0 && archivosReporte.some(a => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision' && !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))) && (
                     <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos Originales</Text>
                       <View style={styles.archivosContainer}>
-                        {archivosReporte.filter(a => a.tipo_archivo !== 'audio').map((archivo, idx) => {
-                          console.log(`[ADMIN] Rendering archivo ${idx}:`, {
-                            tipo: archivo.tipo_archivo,
-                            url: archivo.cloudflare_url
-                          });
+                        {archivosReporte.filter(a => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision' && !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))).map((archivo, idx) => {
                           const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                           return (
                             <TouchableOpacity
@@ -4667,7 +4741,6 @@ function AdminPanelContent() {
                                   <Image
                                     source={{ uri: proxyUrl }}
                                     style={styles.archivoThumb}
-                                    onError={() => console.log('Error loading image:', proxyUrl)}
                                   />
                                   <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
                                 </>
@@ -4724,9 +4797,11 @@ function AdminPanelContent() {
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
                 {archivoVisualizando.tipo_archivo === 'imagen' ||
                   archivoVisualizando.tipo_archivo === 'foto' ||
+                  archivoVisualizando.tipo_archivo === 'foto_revision' ||
                   archivoVisualizando.tipo_archivo?.startsWith('image/') ||
                   archivoVisualizando.tipo === 'imagen' ||
                   archivoVisualizando.tipo === 'foto' ||
+                  archivoVisualizando.tipo === 'foto_revision' ||
                   archivoVisualizando.tipo?.startsWith('image/') ? (
                   <Image
                     source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
