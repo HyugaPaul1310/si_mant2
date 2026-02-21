@@ -4672,13 +4672,23 @@ function AdminPanelContent() {
                     </View>
                   ) : null}
 
-                  {/* Fotos y Videos de Revisión (Pre-proceso) */}
+                  {/* ── Fotos de Revisión (Pre-proceso) ── */}
                   {!cargandoArchivos && (
                     archivosReporte.some(a => a.tipo_archivo === 'foto_revision') ||
                     archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))
                   ) && (
-                      <View style={styles.detailField}>
-                        <Text style={[styles.detailFieldLabel, { fontFamily, color: '#3b82f6' }]}>Imagen Pre-proceso (Revisión)</Text>
+                      <View style={{ width: '100%', marginTop: 24 }}>
+                        {/* Header de sección */}
+                        <View style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 10,
+                          marginBottom: 14, paddingBottom: 10,
+                          borderBottomWidth: 1, borderBottomColor: 'rgba(59,130,246,0.25)',
+                        }}>
+                          <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#3b82f6' }} />
+                          <Text style={[styles.detailFieldLabel, { fontFamily, color: '#60a5fa', fontSize: 13, marginBottom: 0 }]}>
+                            IMAGEN PRE-PROCESO (REVISIÓN)
+                          </Text>
+                        </View>
                         <View style={styles.archivosContainer}>
                           {archivosReporte.filter(a =>
                             a.tipo_archivo === 'foto_revision' ||
@@ -4688,7 +4698,7 @@ function AdminPanelContent() {
                             return (
                               <TouchableOpacity
                                 key={idx}
-                                style={[styles.archivoItem, { borderColor: '#3b82f6' }]}
+                                style={[styles.archivoItem, { borderColor: '#3b82f6', borderWidth: 2 }]}
                                 onPress={() => {
                                   setArchivoVisualizando({
                                     url: proxyUrl,
@@ -4699,11 +4709,8 @@ function AdminPanelContent() {
                                   setShowArchivoModal(true);
                                 }}
                               >
-                                <Image
-                                  source={{ uri: proxyUrl }}
-                                  style={styles.archivoThumb}
-                                />
-                                <Text style={[styles.archivoLabel, { fontFamily, color: '#3b82f6' }]}>📷 Pre-proceso</Text>
+                                <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
+                                <Text style={[styles.archivoLabel, { fontFamily, color: '#60a5fa', marginTop: 6 }]}>📷 Pre-proceso</Text>
                               </TouchableOpacity>
                             );
                           })}
@@ -4711,10 +4718,62 @@ function AdminPanelContent() {
                       </View>
                     )}
 
-                  {/* Otros Fotos y Videos (Reporte Original) */}
+                  {/* ── Fotos de Post-proceso (Entrega) ── */}
+                  {!cargandoArchivos && (
+                    archivosReporte.some(a => a.tipo_archivo === 'foto_postproceso')
+                  ) && (
+                      <View style={{ width: '100%', marginTop: 24 }}>
+                        {/* Header de sección */}
+                        <View style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 10,
+                          marginBottom: 14, paddingBottom: 10,
+                          borderBottomWidth: 1, borderBottomColor: 'rgba(16,185,129,0.25)',
+                        }}>
+                          <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#10b981' }} />
+                          <Text style={[styles.detailFieldLabel, { fontFamily, color: '#34d399', fontSize: 13, marginBottom: 0 }]}>
+                            IMAGEN POST-PROCESO (FINALIZADO)
+                          </Text>
+                        </View>
+                        <View style={styles.archivosContainer}>
+                          {archivosReporte.filter(a => a.tipo_archivo === 'foto_postproceso').map((foto, idx) => {
+                            const proxyUrl = getProxyUrl(foto.cloudflare_url);
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[styles.archivoItem, { borderColor: '#10b981', borderWidth: 2 }]}
+                                onPress={() => {
+                                  setArchivoVisualizando({
+                                    url: proxyUrl,
+                                    tipo_archivo: 'foto_postproceso',
+                                    tipo: 'foto_postproceso',
+                                    nombre: foto.nombre_original || 'Imagen Post-proceso'
+                                  });
+                                  setShowArchivoModal(true);
+                                }}
+                              >
+                                <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
+                                <Text style={[styles.archivoLabel, { fontFamily, color: '#34d399', marginTop: 6 }]}>📷 Post-proceso</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                  {/* ── Archivos Adjuntos Originales ── */}
                   {!cargandoArchivos && archivosReporte.length > 0 && archivosReporte.some(a => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision' && !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))) && (
-                    <View style={styles.detailField}>
-                      <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos Originales</Text>
+                    <View style={{ width: '100%', marginTop: 24 }}>
+                      {/* Header de sección */}
+                      <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10,
+                        marginBottom: 14, paddingBottom: 10,
+                        borderBottomWidth: 1, borderBottomColor: '#1e293b',
+                      }}>
+                        <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#64748b' }} />
+                        <Text style={[styles.detailFieldLabel, { fontFamily, fontSize: 13, marginBottom: 0 }]}>
+                          ARCHIVOS ADJUNTOS ORIGINALES
+                        </Text>
+                      </View>
                       <View style={styles.archivosContainer}>
                         {archivosReporte.filter(a => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision' && !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))).map((archivo, idx) => {
                           const proxyUrl = getProxyUrl(archivo.cloudflare_url);
@@ -4738,18 +4797,15 @@ function AdminPanelContent() {
                             >
                               {archivo.tipo_archivo === 'foto' ? (
                                 <>
-                                  <Image
-                                    source={{ uri: proxyUrl }}
-                                    style={styles.archivoThumb}
-                                  />
-                                  <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
+                                  <Image source={{ uri: proxyUrl }} style={styles.archivoThumb} />
+                                  <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6 }]}>📷 Foto</Text>
                                 </>
                               ) : (
                                 <>
                                   <View style={styles.videoThumb}>
-                                    <Ionicons name="play-circle" size={40} color="#06b6d4" />
+                                    <Ionicons name="play-circle" size={44} color="#06b6d4" />
                                   </View>
-                                  <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
+                                  <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6 }]}>🎥 Video</Text>
                                 </>
                               )}
                             </TouchableOpacity>
@@ -7970,16 +8026,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 8,
+    width: '100%',
   },
   archivoItem: {
-    width: '48%',
+    width: '47%',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
+    backgroundColor: '#161f2e',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1e293b',
   },
   audioArchivoItem: {
     width: '100%',
@@ -8013,16 +8069,16 @@ const styles = StyleSheet.create({
   },
   archivoThumb: {
     width: '100%',
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 8,
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 4,
     backgroundColor: '#0f172a',
   },
   videoThumb: {
     width: '100%',
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 8,
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 4,
     backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',

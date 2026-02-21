@@ -132,6 +132,7 @@ function EmpleadoPanelContent() {
 
   // Estados para Foto de Revisión
   const [fotoRevisionUri, setFotoRevisionUri] = useState<string | null>(null);
+  const [fotoPostprocesoUri, setFotoPostprocesoUri] = useState<string | null>(null);
 
 
 
@@ -597,6 +598,23 @@ function EmpleadoPanelContent() {
     }
   };
 
+  const seleccionarFotoPostproceso = async () => {
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setFotoPostprocesoUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error al capturar foto post-proceso:', error);
+      showToast('Error al abrir la cámara', 'error');
+    }
+  };
+
   const guardarCotizacion = async () => {
     if (!reporteSeleccionado?.id) return;
 
@@ -708,7 +726,24 @@ function EmpleadoPanelContent() {
       );
 
       if (updateResult.success) {
+        // Subir foto de post-proceso si existe
+        if (fotoPostprocesoUri) {
+          showToast('Subiendo foto de post-proceso...', 'info');
+          const uploadRes = await subirArchivosReporte(
+            reporteSeleccionado.id,
+            [],
+            undefined,
+            undefined,
+            undefined,
+            fotoPostprocesoUri
+          );
+          if (!uploadRes.success) {
+            showToast('Trabajo guardado, pero error al subir la foto', 'warning');
+          }
+        }
+
         showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
+        setFotoPostprocesoUri(null); // Limpiar estado
         cerrarModalReporteDetalle();
         cargarReportes();
       } else {
@@ -1843,8 +1878,17 @@ function EmpleadoPanelContent() {
                 ) : null}
 
                 {!cargandoArchivos && archivosReporte.length > 0 && (
-                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.filter(a => a.tipo_archivo !== 'audio').length})</Text>
+                  <View style={{ width: '100%', marginTop: 20 }}>
+                    <View style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 10,
+                      marginBottom: 14, paddingBottom: 10,
+                      borderBottomWidth: 1, borderBottomColor: '#1e293b',
+                    }}>
+                      <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#64748b' }} />
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }]}>
+                        ARCHIVOS ADJUNTOS ({archivosReporte.filter(a => a.tipo_archivo !== 'audio').length})
+                      </Text>
+                    </View>
                     <View style={styles.archivosContainer}>
                       {archivosReporte.filter(a => a.tipo_archivo !== 'audio').map((archivo, idx) => {
                         const proxyUrl = getProxyUrl(archivo.cloudflare_url);
@@ -1853,7 +1897,7 @@ function EmpleadoPanelContent() {
                             key={idx}
                             style={styles.archivoItem}
                             onPress={() => {
-                              if (archivo.tipo_archivo === 'foto') {
+                              if (archivo.tipo_archivo === 'foto' || archivo.tipo_archivo === 'foto_revision') {
                                 setArchivoVisualizando({
                                   url: proxyUrl,
                                   tipo_archivo: archivo.tipo_archivo,
@@ -1866,21 +1910,26 @@ function EmpleadoPanelContent() {
                               openMediaExternally(proxyUrl);
                             }}
                           >
-                            {archivo.tipo_archivo === 'foto' ? (
+                            {archivo.tipo_archivo === 'foto' || archivo.tipo_archivo === 'foto_revision' ? (
                               <>
                                 <Image
                                   source={{ uri: proxyUrl }}
-                                  style={styles.archivoThumb}
+                                  style={[
+                                    styles.archivoThumb,
+                                    archivo.tipo_archivo === 'foto_revision' && { borderWidth: 2, borderColor: '#3b82f6' }
+                                  ]}
                                   onError={() => console.log('Error loading image:', proxyUrl)}
                                 />
-                                <Text style={[styles.archivoLabel, { fontFamily }]}>📷 Foto</Text>
+                                <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6, color: archivo.tipo_archivo === 'foto_revision' ? '#60a5fa' : '#94a3b8' }]}>
+                                  {archivo.tipo_archivo === 'foto_revision' ? '📷 Pre-proceso' : '📷 Foto'}
+                                </Text>
                               </>
                             ) : (
                               <>
                                 <View style={styles.videoThumb}>
-                                  <Ionicons name="play-circle" size={40} color="#06b6d4" />
+                                  <Ionicons name="play-circle" size={44} color="#06b6d4" />
                                 </View>
-                                <Text style={[styles.archivoLabel, { fontFamily }]}>🎥 Video</Text>
+                                <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6 }]}>🎥 Video</Text>
                               </>
                             )}
                           </TouchableOpacity>
@@ -3456,33 +3505,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    width: '100%',
   },
   archivoItem: {
-    width: '48%',
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
+    width: '47%',
+    backgroundColor: '#161f2e',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#334155',
-    padding: 10,
+    borderColor: '#1e293b',
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   archivoThumb: {
     width: '100%',
-    height: 100,
-    borderRadius: 8,
-    marginBottom: 8,
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 4,
   },
   videoThumb: {
     width: '100%',
-    height: 100,
-    borderRadius: 8,
-    marginBottom: 8,
+    height: 140,
+    borderRadius: 10,
+    marginBottom: 4,
     backgroundColor: '#0f172a',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1e293b',
   },
   archivoLabel: {
     color: '#94a3b8',

@@ -19,7 +19,7 @@ interface ReporteData {
 interface ReporteArchivo {
   id?: string;
   reporte_id: string;
-  tipo_archivo: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision';
+  tipo_archivo: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision' | 'foto_postproceso';
   cloudflare_url: string;
   cloudflare_key: string;
   nombre_original?: string;
@@ -355,7 +355,8 @@ export async function subirArchivosReporte(
   imagenesUris?: string[],
   videoUri?: string,
   audioUri?: string,
-  fotoRevisionUri?: string
+  fotoRevisionUri?: string,
+  fotoPostprocesoUri?: string
 ) {
   try {
     console.log(`[SUBIR-ARCHIVOS] Iniciando subida para reporte: ${reporteId}`);
@@ -405,6 +406,30 @@ export async function subirArchivosReporte(
         if (guardado.success) {
           archivosGuardados.push({
             tipo: 'foto_revision',
+            url: resultado.url,
+            id: guardado.data?.id,
+          });
+        }
+      }
+    }
+
+    // Subir foto de post-proceso
+    if (fotoPostprocesoUri) {
+      const nombreArchivo = `postproceso-${Date.now()}.jpg`;
+      const resultado = await uploadToCloudflare(fotoPostprocesoUri, nombreArchivo, 'foto_postproceso');
+
+      if (resultado.success && resultado.url && resultado.key) {
+        const guardado = await guardarArchivoReporte({
+          reporte_id: reporteId,
+          tipo_archivo: 'foto_postproceso',
+          cloudflare_url: resultado.url,
+          cloudflare_key: resultado.key,
+          nombre_original: nombreArchivo,
+        });
+
+        if (guardado.success) {
+          archivosGuardados.push({
+            tipo: 'foto_postproceso',
             url: resultado.url,
             id: guardado.data?.id,
           });
