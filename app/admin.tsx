@@ -4720,7 +4720,7 @@ function AdminPanelContent() {
 
                   {/* ── Fotos de Post-proceso (Entrega) ── */}
                   {!cargandoArchivos && (
-                    archivosReporte.some(a => a.tipo_archivo === 'foto_postproceso')
+                    archivosReporte.some(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
                   ) && (
                       <View style={{ width: '100%', marginTop: 24 }}>
                         {/* Header de sección */}
@@ -4731,11 +4731,11 @@ function AdminPanelContent() {
                         }}>
                           <View style={{ width: 4, height: 18, borderRadius: 3, backgroundColor: '#10b981' }} />
                           <Text style={[styles.detailFieldLabel, { fontFamily, color: '#34d399', fontSize: 13, marginBottom: 0 }]}>
-                            IMAGEN POST-PROCESO (FINALIZADO)
+                            IMAGEN POST-PROCESO
                           </Text>
                         </View>
                         <View style={styles.archivosContainer}>
-                          {archivosReporte.filter(a => a.tipo_archivo === 'foto_postproceso').map((foto, idx) => {
+                          {archivosReporte.filter(a => a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso')).map((foto, idx) => {
                             const proxyUrl = getProxyUrl(foto.cloudflare_url);
                             return (
                               <TouchableOpacity
@@ -4744,8 +4744,8 @@ function AdminPanelContent() {
                                 onPress={() => {
                                   setArchivoVisualizando({
                                     url: proxyUrl,
-                                    tipo_archivo: 'foto_postproceso',
-                                    tipo: 'foto_postproceso',
+                                    tipo_archivo: 'foto',
+                                    tipo: 'foto',
                                     nombre: foto.nombre_original || 'Imagen Post-proceso'
                                   });
                                   setShowArchivoModal(true);
@@ -4775,7 +4775,12 @@ function AdminPanelContent() {
                         </Text>
                       </View>
                       <View style={styles.archivosContainer}>
-                        {archivosReporte.filter(a => a.tipo_archivo !== 'audio' && a.tipo_archivo !== 'foto_revision' && !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision'))).map((archivo, idx) => {
+                        {archivosReporte.filter(a =>
+                          a.tipo_archivo !== 'audio' &&
+                          a.tipo_archivo !== 'foto_revision' &&
+                          !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('revision')) &&
+                          !(a.tipo_archivo === 'foto' && a.nombre_original?.toLowerCase().includes('postproceso'))
+                        ).map((archivo, idx) => {
                           const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                           return (
                             <TouchableOpacity

@@ -1867,6 +1867,51 @@ function EmpleadoPanelContent() {
                         editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
+
+                    {/* Sección de Foto Post-proceso */}
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
+                      <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        marginBottom: 8
+                      }}>
+                        <Ionicons name="camera" size={16} color="#10b981" />
+                        <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold', marginBottom: 0 }]}>
+                          FOTO POST-PROCESO
+                        </Text>
+                      </View>
+
+                      {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !fotoPostprocesoUri ? (
+                        <TouchableOpacity
+                          style={[styles.audioRecordButton, { backgroundColor: '#10b981', marginTop: 4 }]}
+                          onPress={seleccionarFotoPostproceso}
+                          activeOpacity={0.7}
+                          disabled={guardandoFase2}
+                        >
+                          <Ionicons name="camera" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>Capturar Post-proceso</Text>
+                        </TouchableOpacity>
+                      ) : fotoPostprocesoUri ? (
+                        <View style={{ position: 'relative', width: '100%', height: 200, borderRadius: 12, overflow: 'hidden', marginTop: 8 }}>
+                          <Image source={{ uri: fotoPostprocesoUri }} style={{ width: '100%', height: '100%', resizeMode: 'cover' }} />
+                          {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
+                            <TouchableOpacity
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                backgroundColor: 'rgba(0,0,0,0.5)',
+                                borderRadius: 20,
+                                padding: 4
+                              }}
+                              onPress={() => setFotoPostprocesoUri(null)}
+                              disabled={guardandoFase2}
+                            >
+                              <Ionicons name="close" size={20} color="#fff" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      ) : null}
+                    </View>
                   </>
                 )}
 
@@ -1912,16 +1957,21 @@ function EmpleadoPanelContent() {
                           >
                             {archivo.tipo_archivo === 'foto' || archivo.tipo_archivo === 'foto_revision' ? (
                               <>
-                                <Image
-                                  source={{ uri: proxyUrl }}
-                                  style={[
-                                    styles.archivoThumb,
-                                    archivo.tipo_archivo === 'foto_revision' && { borderWidth: 2, borderColor: '#3b82f6' }
-                                  ]}
-                                  onError={() => console.log('Error loading image:', proxyUrl)}
-                                />
-                                <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6, color: archivo.tipo_archivo === 'foto_revision' ? '#60a5fa' : '#94a3b8' }]}>
-                                  {archivo.tipo_archivo === 'foto_revision' ? '📷 Pre-proceso' : '📷 Foto'}
+                                {(() => {
+                                  const isPost = archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso');
+                                  return (
+                                    <Image
+                                      source={{ uri: proxyUrl }}
+                                      style={[
+                                        styles.archivoThumb,
+                                        (archivo.tipo_archivo === 'foto_revision' || isPost) && { borderWidth: 2, borderColor: archivo.tipo_archivo === 'foto_revision' ? '#3b82f6' : '#10b981' }
+                                      ]}
+                                      onError={() => console.log('Error loading image:', proxyUrl)}
+                                    />
+                                  );
+                                })()}
+                                <Text style={[styles.archivoLabel, { fontFamily, marginTop: 6, color: archivo.tipo_archivo === 'foto_revision' ? '#60a5fa' : (archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso')) ? '#10b981' : '#94a3b8' }]}>
+                                  {archivo.tipo_archivo === 'foto_revision' ? '📷 Pre-proceso' : (archivo.tipo_archivo === 'foto' && archivo.nombre_original?.toLowerCase().includes('postproceso')) ? '📷 Post-proceso' : '📷 Foto'}
                                 </Text>
                               </>
                             ) : (

@@ -19,7 +19,7 @@ interface ReporteData {
 interface ReporteArchivo {
   id?: string;
   reporte_id: string;
-  tipo_archivo: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision' | 'foto_postproceso';
+  tipo_archivo: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision';
   cloudflare_url: string;
   cloudflare_key: string;
   nombre_original?: string;
@@ -413,15 +413,14 @@ export async function subirArchivosReporte(
       }
     }
 
-    // Subir foto de post-proceso
     if (fotoPostprocesoUri) {
       const nombreArchivo = `postproceso-${Date.now()}.jpg`;
-      const resultado = await uploadToCloudflare(fotoPostprocesoUri, nombreArchivo, 'foto_postproceso');
+      const resultado = await uploadToCloudflare(fotoPostprocesoUri, nombreArchivo, 'foto');
 
       if (resultado.success && resultado.url && resultado.key) {
         const guardado = await guardarArchivoReporte({
           reporte_id: reporteId,
-          tipo_archivo: 'foto_postproceso',
+          tipo_archivo: 'foto',
           cloudflare_url: resultado.url,
           cloudflare_key: resultado.key,
           nombre_original: nombreArchivo,

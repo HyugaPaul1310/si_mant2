@@ -91,10 +91,10 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       });
     }
 
-    if (!['foto', 'video', 'pdf', 'audio', 'foto_revision', 'foto_postproceso'].includes(fileType)) {
+    if (!['foto', 'video', 'pdf', 'audio', 'foto_revision'].includes(fileType)) {
       return res.status(400).json({
         success: false,
-        error: 'fileType debe ser "foto", "video", "pdf", "audio", "foto_revision" o "foto_postproceso"',
+        error: 'fileType debe ser "foto", "video", "pdf", "audio" o "foto_revision"',
       });
     }
 

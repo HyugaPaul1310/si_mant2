@@ -75,107 +75,108 @@ export function getProxyUrl(cloudflareUrl: string): string {
 export async function uploadToCloudflare(
   fileUri: string,
   fileName: string,
-  fileType: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision' | 'foto_postproceso'
+  fileType: 'foto' | 'video' | 'pdf' | 'audio' | 'foto_revision'
+): Promise<UploadResult> {
   try {
-  const isWeb = Platform.OS === 'web';
-  const uploadBases = getUploadBaseCandidates();
-  console.log(`Iniciando subida (${isWeb ? 'WEB' : 'NATIVO'})`);
-  console.log(`Archivo: ${fileName} | Tipo: ${fileType}`);
-  console.log(`Backends candidatos: ${uploadBases.join(' | ')}`);
+    const isWeb = Platform.OS === 'web';
+    const uploadBases = getUploadBaseCandidates();
+    console.log(`Iniciando subida (${isWeb ? 'WEB' : 'NATIVO'})`);
+    console.log(`Archivo: ${fileName} | Tipo: ${fileType}`);
+    console.log(`Backends candidatos: ${uploadBases.join(' | ')}`);
 
-  let base64String = '';
-  let blob: Blob | null = null;
+    let base64String = '';
+    let blob: Blob | null = null;
 
-  if (isWeb) {
-    const blobResponse = await fetch(fileUri);
-    blob = await blobResponse.blob();
-    console.log(`Blob leído: ${blob.size} bytes`);
-  } else {
-    base64String = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    console.log(`Base64 leído: ${base64String.length} caracteres (~${Math.round(base64String.length / 1.33 / 1024)}KB)`);
-  }
-
-  let lastError = 'No se pudo conectar al servidor de subida';
-
-  for (const base of uploadBases) {
-    try {
-      let response;
-      console.log(`Probando subida en: ${base}/api/upload-file`);
-
-      if (isWeb) {
-        // ========== WEB: FormData + Blob ==========
-        console.log(`Modo WEB: usando FormData`);
-
-        const formData = new FormData();
-        formData.append('file', blob as Blob, fileName);
-        formData.append('fileName', fileName);
-        formData.append('fileType', fileType);
-
-        console.log(`Enviando FormData...`);
-        response = await fetch(`${base}/api/upload-file`, {
-          method: 'POST',
-          body: formData,
-        });
-      } else {
-        // ========== NATIVO: JSON + Base64 ==========
-        console.log(`Modo NATIVO: usando JSON + base64`);
-
-        const payload = {
-          fileBase64: base64String,
-          fileName: fileName,
-          fileType: fileType,
-        };
-
-        console.log(`Enviando JSON...`);
-        response = await fetch(`${base}/api/upload-file`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data.success || !data.url) {
-        throw new Error(data.error || 'No URL returned from server');
-      }
-
-      console.log(`Archivo subido exitosamente`);
-      console.log(`URL: ${data.url}`);
-      console.log(`Key: ${data.key}`);
-
-      return {
-        success: true,
-        url: data.url,
-        key: data.key,
-      };
-    } catch (attemptError) {
-      const message = attemptError instanceof Error ? attemptError.message : 'Error desconocido';
-      lastError = message;
-      console.warn(`Falló subida en ${base}: ${message}`);
+    if (isWeb) {
+      const blobResponse = await fetch(fileUri);
+      blob = await blobResponse.blob();
+      console.log(`Blob leído: ${blob.size} bytes`);
+    } else {
+      base64String = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      console.log(`Base64 leído: ${base64String.length} caracteres (~${Math.round(base64String.length / 1.33 / 1024)}KB)`);
     }
-  }
 
-  return {
-    success: false,
-    error: lastError,
-  };
-} catch (error) {
-  console.error('Error en uploadToCloudflare:', error);
-  return {
-    success: false,
-    error: error instanceof Error ? error.message : 'Error desconocido',
-  };
-}
+    let lastError = 'No se pudo conectar al servidor de subida';
+
+    for (const base of uploadBases) {
+      try {
+        let response;
+        console.log(`Probando subida en: ${base}/api/upload-file`);
+
+        if (isWeb) {
+          // ========== WEB: FormData + Blob ==========
+          console.log(`Modo WEB: usando FormData`);
+
+          const formData = new FormData();
+          formData.append('file', blob as Blob, fileName);
+          formData.append('fileName', fileName);
+          formData.append('fileType', fileType);
+
+          console.log(`Enviando FormData...`);
+          response = await fetch(`${base}/api/upload-file`, {
+            method: 'POST',
+            body: formData,
+          });
+        } else {
+          // ========== NATIVO: JSON + Base64 ==========
+          console.log(`Modo NATIVO: usando JSON + base64`);
+
+          const payload = {
+            fileBase64: base64String,
+            fileName: fileName,
+            fileType: fileType,
+          };
+
+          console.log(`Enviando JSON...`);
+          response = await fetch(`${base}/api/upload-file`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+        }
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.url) {
+          throw new Error(data.error || 'No URL returned from server');
+        }
+
+        console.log(`Archivo subido exitosamente`);
+        console.log(`URL: ${data.url}`);
+        console.log(`Key: ${data.key}`);
+
+        return {
+          success: true,
+          url: data.url,
+          key: data.key,
+        };
+      } catch (attemptError) {
+        const message = attemptError instanceof Error ? attemptError.message : 'Error desconocido';
+        lastError = message;
+        console.warn(`Falló subida en ${base}: ${message}`);
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError,
+    };
+  } catch (error) {
+    console.error('Error en uploadToCloudflare:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
 }
 
 /**
