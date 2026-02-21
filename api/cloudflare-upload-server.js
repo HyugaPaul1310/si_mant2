@@ -91,10 +91,10 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       });
     }
 
-    if (!['foto', 'video', 'pdf'].includes(fileType)) {
+    if (!['foto', 'video', 'pdf', 'audio'].includes(fileType)) {
       return res.status(400).json({
         success: false,
-        error: 'fileType debe ser "foto", "video" o "pdf"',
+        error: 'fileType debe ser "foto", "video", "pdf" o "audio"',
       });
     }
 
@@ -102,7 +102,7 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
 
     // Generar clave única y sanitizar el nombre de archivo (evitar espacios y caracteres raros)
     const timestamp = Date.now();
-    const folder = fileType === 'pdf' ? 'pdfs' : `${fileType}s`;
+    const folder = fileType === 'pdf' ? 'pdfs' : fileType === 'audio' ? 'audios' : `${fileType}s`;
     const sanitizedFileName = fileName.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.-]/g, '');
     const key = `reportes/${folder}/${timestamp}-${sanitizedFileName}`;
 
@@ -113,7 +113,9 @@ app.post('/api/upload-file', upload.single('file'), async (req, res) => {
       Bucket: BUCKET_NAME,
       Key: key,
       Body: fileBuffer,
-      ContentType: fileType === 'pdf' ? 'application/pdf' : fileType === 'video' ? 'video/mp4' : 'image/jpeg',
+      ContentType: fileType === 'pdf' ? 'application/pdf' :
+        fileType === 'video' ? 'video/mp4' :
+          fileType === 'audio' ? 'audio/mpeg' : 'image/jpeg',
     });
 
     const response = await s3Client.send(command);
@@ -223,6 +225,9 @@ app.get('/api/get-file', async (req, res) => {
       '.mp4': 'video/mp4',
       '.webm': 'video/webm',
       '.pdf': 'application/pdf',
+      '.mp3': 'audio/mpeg',
+      '.m4a': 'audio/mp4',
+      '.wav': 'audio/wav',
     };
 
     const ext = key.toLowerCase().match(/\.[^.]+$/)?.[0] || '.jpg';

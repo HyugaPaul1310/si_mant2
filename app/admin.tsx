@@ -7,6 +7,7 @@ import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { guardarArchivoReporte, obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -107,6 +108,14 @@ function AdminPanelContent() {
   const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
   const [showRechazadosModal, setShowRechazadosModal] = useState(false);
 
+  // Audio Playback States
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioPosition, setAudioPosition] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [activeAudioUrl, setActiveAudioUrl] = useState<string | null>(null);
+
 
 
 
@@ -161,6 +170,85 @@ function AdminPanelContent() {
       spinValue.setValue(0);
     }
   }, [loadingFinalizadosPorEmpleado]);
+
+  // Cleanup de audio
+  useEffect(() => {
+    return sound
+      ? () => {
+        console.log('[AUDIO] Unloading sound');
+        sound.unloadAsync();
+      }
+      : undefined;
+  }, [sound]);
+
+  const onPlaybackStatusUpdate = (status: any) => {
+    if (status.isLoaded) {
+      setAudioPosition(status.positionMillis);
+      setAudioDuration(status.durationMillis || 0);
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+        setAudioPosition(0);
+        // Aseguramos que el sonido vuelva al inicio para poder repetirlo
+        // Usamos soundRef para evitar problemas de clausura
+        if (soundRef.current) {
+          soundRef.current.setPositionAsync(0).catch(err =>
+            console.log('[AUDIO] Error resetting position:', err)
+          );
+        }
+      }
+    }
+  };
+
+  const playPauseAudio = async (url: string) => {
+    try {
+      // Si ya hay un audio sonando y es el mismo
+      if (sound && activeAudioUrl === url) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          // Si el audio terminó (posición en 0 o muy cerca del final), 
+          // nos aseguramos de que esté al inicio antes de reproducir.
+          if (audioPosition === 0 || audioPosition >= (audioDuration - 500)) {
+            await sound.setPositionAsync(0);
+          }
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
+        return;
+      }
+
+      // Si hay un audio sonando pero es diferente, descargarlo primero
+      if (sound) {
+        await sound.unloadAsync();
+        setSound(null);
+        soundRef.current = null;
+        setIsPlaying(false);
+      }
+
+      console.log('[AUDIO] Loading sound:', url);
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true },
+        onPlaybackStatusUpdate
+      );
+
+      setSound(newSound);
+      soundRef.current = newSound;
+      setActiveAudioUrl(url);
+      setIsPlaying(true);
+    } catch (error) {
+      console.error('[AUDIO] Error playing sound:', error);
+      Alert.alert('Error', 'No se pudo reproducir el audio.');
+    }
+  };
+
+  const formatDuration = (millis: number) => {
+    const totalSeconds = millis / 1000;
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
@@ -3223,6 +3311,16 @@ function AdminPanelContent() {
                           setPrecioCotizacion('');
                           setCotizarError(null);
                           setShowCotizarReporteModal(true);
+
+                          // Cargar archivos para poder escuchar notas de voz en la cotización
+                          setCargandoArchivos(true);
+                          obtenerArchivosReporteBackend(rep.id).then(resultado => {
+                            if (resultado.success) {
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
+                            }
+                            setCargandoArchivos(false);
+                          });
                         }}
                         style={{
                           marginTop: 12,
@@ -3323,6 +3421,46 @@ function AdminPanelContent() {
                     </Text>
                   </View>
                 </View>
+
+                {/* Notas de Voz Técnicas - Relocalizado aquí */}
+                {!cargandoArchivos && archivosReporte.some(a => a.tipo_archivo === 'audio') && (
+                  <View style={{ gap: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="mic-outline" size={14} color="#06b6d4" />
+                      <Text style={[{ fontSize: 11, color: '#06b6d4', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>NOTAS DE VOZ DEL TÉCNICO</Text>
+                    </View>
+                    <View style={styles.archivosContainer}>
+                      {archivosReporte.filter(a => a.tipo_archivo === 'audio').map((archivo, idx) => {
+                        const proxyUrl = getProxyUrl(archivo.cloudflare_url);
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            style={[styles.archivoItem, styles.audioArchivoItem]}
+                            onPress={() => playPauseAudio(proxyUrl)}
+                          >
+                            <View style={styles.audioItemContent}>
+                              <View style={styles.audioPlayIconBox}>
+                                <Ionicons
+                                  name={activeAudioUrl === proxyUrl && isPlaying ? "pause" : "play"}
+                                  size={24}
+                                  color="#06b6d4"
+                                />
+                              </View>
+                              <View style={styles.audioInfoBox}>
+                                <Text style={[styles.archivoLabel, { fontFamily, color: '#fff', fontWeight: '700' }]}>Nota de Voz</Text>
+                                <Text style={[styles.archivoLabel, { fontFamily, fontSize: 10, color: '#94a3b8' }]}>
+                                  {activeAudioUrl === proxyUrl
+                                    ? `${formatDuration(audioPosition)} / ${formatDuration(audioDuration)}`
+                                    : 'Audio técnico de revisión'}
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
 
                 {/* Campo para subir PDF de cotización */}
                 <View style={{ gap: 10, marginTop: 4 }}>
@@ -4500,7 +4638,7 @@ function AdminPanelContent() {
                     <View style={styles.detailField}>
                       <Text style={[styles.detailFieldLabel, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
                       <View style={styles.archivosContainer}>
-                        {archivosReporte.map((archivo, idx) => {
+                        {archivosReporte.filter(a => a.tipo_archivo !== 'audio').map((archivo, idx) => {
                           console.log(`[ADMIN] Rendering archivo ${idx}:`, {
                             tipo: archivo.tipo_archivo,
                             url: archivo.cloudflare_url
@@ -4564,7 +4702,7 @@ function AdminPanelContent() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </View >
         )
       }
 
@@ -4585,20 +4723,20 @@ function AdminPanelContent() {
 
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
                 {archivoVisualizando.tipo_archivo === 'imagen' ||
-                archivoVisualizando.tipo_archivo === 'foto' ||
-                archivoVisualizando.tipo_archivo?.startsWith('image/') ||
-                archivoVisualizando.tipo === 'imagen' ||
-                archivoVisualizando.tipo === 'foto' ||
-                archivoVisualizando.tipo?.startsWith('image/') ? (
+                  archivoVisualizando.tipo_archivo === 'foto' ||
+                  archivoVisualizando.tipo_archivo?.startsWith('image/') ||
+                  archivoVisualizando.tipo === 'imagen' ||
+                  archivoVisualizando.tipo === 'foto' ||
+                  archivoVisualizando.tipo?.startsWith('image/') ? (
                   <Image
                     source={{ uri: archivoVisualizando.url || archivoVisualizando.uri }}
                     style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
                     resizeMode="contain"
                   />
                 ) : archivoVisualizando.tipo_archivo === 'video' ||
-                archivoVisualizando.tipo_archivo?.startsWith('video/') ||
-                archivoVisualizando.tipo === 'video' ||
-                archivoVisualizando.tipo?.startsWith('video/') ? (
+                  archivoVisualizando.tipo_archivo?.startsWith('video/') ||
+                  archivoVisualizando.tipo === 'video' ||
+                  archivoVisualizando.tipo?.startsWith('video/') ? (
                   <TouchableOpacity
                     onPress={() => {
                       setShowArchivoModal(false);
@@ -4988,353 +5126,359 @@ function AdminPanelContent() {
       }
 
       {/* Modal de Confirmación para Crear Tarea */}
-      {showConfirmarCrearTareaModal && (
-        <View style={styles.overlayHeavy}>
-          <Pressable
-            style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
-            onPress={() => setShowConfirmarCrearTareaModal(false)}
-          >
-            <TouchableWithoutFeedback>
-              <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                  <View style={{ backgroundColor: '#ea580c', borderRadius: 50, padding: 16, marginBottom: 16 }}>
-                    <Ionicons name="checkmark-circle-outline" size={48} color="#f97316" />
-                  </View>
-                  <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta tarea?</Text>
-                  <Text style={[styles.confirmMessage, { fontFamily }]}>
-                    Se creará una nueva tarea para el empleado seleccionado.
-                  </Text>
-                </View>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalSecondary}
-                    onPress={() => setShowConfirmarCrearTareaModal(false)}
-                  >
-                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <LinearGradient
-                    colors={['#ea580c', '#f97316']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.modalPrimary}
-                  >
-                    <TouchableOpacity
-                      onPress={handleCrearTarea}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                        Confirmar
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Modal de Confirmación para Crear Cuenta */}
-      {showConfirmarCrearCuentaModal && (
-        <View style={styles.overlayHeavy}>
-          <Pressable
-            style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
-            onPress={() => {
-              setShowConfirmarCrearCuentaModal(false);
-              setPendingUserData(null);
-            }}
-          >
-            <TouchableWithoutFeedback>
-              <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
-                <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                  <View style={{ backgroundColor: '#7c3aed', borderRadius: 50, padding: 16, marginBottom: 16 }}>
-                    <Ionicons name="person-add-outline" size={48} color="#a78bfa" />
-                  </View>
-                  <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta cuenta?</Text>
-                  <Text style={[styles.confirmMessage, { fontFamily }]}>
-                    Se creará una nueva cuenta de usuario con los datos ingresados.
-                  </Text>
-                </View>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalSecondary}
-                    onPress={() => {
-                      setShowConfirmarCrearCuentaModal(false);
-                      setPendingUserData(null);
-                    }}
-                  >
-                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <LinearGradient
-                    colors={['#7c3aed', '#8b5cf6']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.modalPrimary}
-                  >
-                    <TouchableOpacity
-                      onPress={async () => {
-                        const name = newUserName.trim();
-                        const email = newUserEmail.trim().toLowerCase();
-                        const pwd = newUserPassword.trim();
-                        const phone = newUserPhone.trim();
-                        const birth = newUserBirth.trim();
-                        const city = newUserCity.trim();
-                        const state = newUserState.trim();
-                        const company = newUserCompany.trim();
-
-                        if (!name || !email || !pwd) {
-                          setCreateError('Por favor completa todos los campos obligatorios.');
-                          return;
-                        }
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        if (!emailRegex.test(email)) {
-                          setCreateError('Por favor ingresa un correo válido.');
-                          return;
-                        }
-                        if (pwd.length < 6) {
-                          setCreateError('La contraseña debe tener al menos 6 caracteres.');
-                          return;
-                        }
-                        if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
-                          setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
-                          return;
-                        }
-
-                        setCreatingUser(true);
-                        setShowConfirmarCrearCuentaModal(false);
-                        try {
-                          const res = await registerBackend(pendingUserData);
-                          if (!res.success) {
-                            setCreateError(res.error || 'No se pudo crear la cuenta');
-                          } else {
-                            setShowEmailModal(false);
-                            setNewUserCompany('');
-                            setNewUserName('');
-                            setNewUserLastName('');
-                            setNewUserEmail('');
-                            setNewUserPassword('');
-                            setNewUserPhone('');
-                            setNewUserBirth('');
-                            setNewUserCity('');
-                            setNewUserState('');
-                            setPendingUserData(null);
-                          }
-                        } catch (e: any) {
-                          setCreateError(e?.message || 'Error inesperado');
-                        } finally {
-                          setCreatingUser(false);
-                        }
-                      }}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                        Confirmar
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Modal de Historial de Tareas - Diseño Moderno */}
-      {showTareasHistorialModal && (
-        <View style={styles.overlayHeavy}>
-          <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 700 }]}>
-            {/* Header con gradiente */}
-            <LinearGradient
-              colors={['#1e293b', '#0f172a']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                styles.largeModalHeader,
-                isMobile && styles.largeModalHeaderMobile,
-                {
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#334155',
-                  flexDirection: isMobile ? 'column' : 'row',
-                  alignItems: isMobile ? 'flex-start' : 'center',
-                  gap: isMobile ? 12 : 12
-                }
-              ]}
+      {
+        showConfirmarCrearTareaModal && (
+          <View style={styles.overlayHeavy}>
+            <Pressable
+              style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+              onPress={() => setShowConfirmarCrearTareaModal(false)}
             >
-              <View style={{ flex: 1, width: '100%' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                  <View style={{ backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 8, padding: 8 }}>
-                    <Ionicons name="list-outline" size={24} color="#94a3b8" />
-                  </View>
-                  <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800', flexShrink: 1 }]}>
-                    Historial de Tareas
-                  </Text>
-                </View>
-                <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily, color: '#64748b' }]}>
-                  Todas las tareas creadas
-                </Text>
-              </View>
-              <View style={[styles.largeModalActions, isMobile && { width: '100%', justifyContent: 'space-between', marginTop: 4 }]}>
-                <TouchableOpacity
-                  onPress={async () => {
-                    setLoadingTareas(true);
-                    const { success, data, error } = await obtenerTareasBackend();
-                    if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
-                    else setTareas(data || []);
-                    setLoadingTareas(false);
-                  }}
-                  style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6, flex: isMobile ? 1 : 0, justifyContent: 'center' }]}
-                >
-                  <Ionicons name="refresh" size={16} color="#67e8f9" />
-                  <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={[styles.closeButton, isMobile && { alignSelf: 'flex-end' }]}>
-                  <Ionicons name="close" size={20} color="#cbd5e1" />
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
-
-            {loadingTareas && (
-              <View style={styles.infoBox}>
-                <Text style={[styles.infoText, { fontFamily }]}>Cargando tareas...</Text>
-              </View>
-            )}
-
-            {!loadingTareas && errorTareas ? (
-              <View style={styles.errorPanel}>
-                <Text style={[styles.errorPanelText, { fontFamily }]}>{errorTareas}</Text>
-              </View>
-            ) : null}
-
-            {!loadingTareas && !errorTareas && tareas.length === 0 ? (
-              <View style={[styles.infoBox, { paddingVertical: 60 }]}>
-                <Ionicons name="document-text-outline" size={64} color="#334155" style={{ marginBottom: 16 }} />
-                <Text style={[styles.infoText, { fontFamily, fontSize: 16, fontWeight: '600', marginBottom: 8 }]}>No hay tareas registradas</Text>
-                <Text style={[{ color: '#64748b', fontSize: 14, textAlign: 'center' }, { fontFamily }]}>
-                  Aún no se han creado tareas en el sistema
-                </Text>
-              </View>
-            ) : null}
-
-            {!loadingTareas && !errorTareas && tareas.length > 0 ? (
-              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                <View style={styles.listSpacing}>
-                  {/* Contador de tareas */}
-                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#06b6d4' }}>
-                    <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
-                      📋 {tareas.length} {tareas.length === 1 ? 'tarea registrada' : 'tareas registradas'}
+              <TouchableWithoutFeedback>
+                <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
+                  <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                    <View style={{ backgroundColor: '#ea580c', borderRadius: 50, padding: 16, marginBottom: 16 }}>
+                      <Ionicons name="checkmark-circle-outline" size={48} color="#f97316" />
+                    </View>
+                    <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta tarea?</Text>
+                    <Text style={[styles.confirmMessage, { fontFamily }]}>
+                      Se creará una nueva tarea para el empleado seleccionado.
                     </Text>
                   </View>
 
-                  {tareas.map((tarea: any) => (
-                    <View
-                      key={tarea.id}
-                      style={{
-                        backgroundColor: '#1e293b',
-                        borderRadius: 12,
-                        padding: 16,
-                        marginBottom: 12,
-                        borderWidth: 1,
-                        borderColor: '#334155',
-                        shadowColor: '#000',
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
-                        shadowOffset: { width: 0, height: 2 },
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={styles.modalSecondary}
+                      onPress={() => setShowConfirmarCrearTareaModal(false)}
+                    >
+                      <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#ea580c', '#f97316']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.modalPrimary}
+                    >
+                      <TouchableOpacity
+                        onPress={handleCrearTarea}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                          Confirmar
+                        </Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </Pressable>
+          </View>
+        )
+      }
+
+      {/* Modal de Confirmación para Crear Cuenta */}
+      {
+        showConfirmarCrearCuentaModal && (
+          <View style={styles.overlayHeavy}>
+            <Pressable
+              style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}
+              onPress={() => {
+                setShowConfirmarCrearCuentaModal(false);
+                setPendingUserData(null);
+              }}
+            >
+              <TouchableWithoutFeedback>
+                <View style={[styles.confirmModal, isMobile && { maxWidth: '95%', width: '100%' }]}>
+                  <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                    <View style={{ backgroundColor: '#7c3aed', borderRadius: 50, padding: 16, marginBottom: 16 }}>
+                      <Ionicons name="person-add-outline" size={48} color="#a78bfa" />
+                    </View>
+                    <Text style={[styles.confirmTitle, { fontFamily }]}>¿Crear esta cuenta?</Text>
+                    <Text style={[styles.confirmMessage, { fontFamily }]}>
+                      Se creará una nueva cuenta de usuario con los datos ingresados.
+                    </Text>
+                  </View>
+
+                  <View style={styles.modalActions}>
+                    <TouchableOpacity
+                      style={styles.modalSecondary}
+                      onPress={() => {
+                        setShowConfirmarCrearCuentaModal(false);
+                        setPendingUserData(null);
                       }}
                     >
-                      {/* Header de la tarea */}
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                        <View style={{ flex: 1, marginRight: 12 }}>
-                          <Text style={[{ color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
-                            {tarea.descripcion || 'Sin descripción'}
-                          </Text>
-                        </View>
-                        {/* Badge de estado */}
-                        <View
-                          style={{
-                            backgroundColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                            borderRadius: 6,
-                            paddingHorizontal: 10,
-                            paddingVertical: 4,
-                            borderWidth: 1,
-                            borderColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(251, 191, 36, 0.4)',
-                          }}
-                        >
-                          <Text
-                            style={[
-                              {
-                                color: tarea.estado === 'completada' ? '#86efac' : '#fde047',
-                                fontSize: 11,
-                                fontWeight: '700',
-                                textTransform: 'uppercase',
-                              },
-                              { fontFamily },
-                            ]}
+                      <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <LinearGradient
+                      colors={['#7c3aed', '#8b5cf6']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.modalPrimary}
+                    >
+                      <TouchableOpacity
+                        onPress={async () => {
+                          const name = newUserName.trim();
+                          const email = newUserEmail.trim().toLowerCase();
+                          const pwd = newUserPassword.trim();
+                          const phone = newUserPhone.trim();
+                          const birth = newUserBirth.trim();
+                          const city = newUserCity.trim();
+                          const state = newUserState.trim();
+                          const company = newUserCompany.trim();
+
+                          if (!name || !email || !pwd) {
+                            setCreateError('Por favor completa todos los campos obligatorios.');
+                            return;
+                          }
+                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                          if (!emailRegex.test(email)) {
+                            setCreateError('Por favor ingresa un correo válido.');
+                            return;
+                          }
+                          if (pwd.length < 6) {
+                            setCreateError('La contraseña debe tener al menos 6 caracteres.');
+                            return;
+                          }
+                          if (birth && !/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+                            setCreateError('La fecha debe tener el formato AAAA-MM-DD.');
+                            return;
+                          }
+
+                          setCreatingUser(true);
+                          setShowConfirmarCrearCuentaModal(false);
+                          try {
+                            const res = await registerBackend(pendingUserData);
+                            if (!res.success) {
+                              setCreateError(res.error || 'No se pudo crear la cuenta');
+                            } else {
+                              setShowEmailModal(false);
+                              setNewUserCompany('');
+                              setNewUserName('');
+                              setNewUserLastName('');
+                              setNewUserEmail('');
+                              setNewUserPassword('');
+                              setNewUserPhone('');
+                              setNewUserBirth('');
+                              setNewUserCity('');
+                              setNewUserState('');
+                              setPendingUserData(null);
+                            }
+                          } catch (e: any) {
+                            setCreateError(e?.message || 'Error inesperado');
+                          } finally {
+                            setCreatingUser(false);
+                          }
+                        }}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                          Confirmar
+                        </Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </Pressable>
+          </View>
+        )
+      }
+
+      {/* Modal de Historial de Tareas - Diseño Moderno */}
+      {
+        showTareasHistorialModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 700 }]}>
+              {/* Header con gradiente */}
+              <LinearGradient
+                colors={['#1e293b', '#0f172a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.largeModalHeader,
+                  isMobile && styles.largeModalHeaderMobile,
+                  {
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#334155',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    gap: isMobile ? 12 : 12
+                  }
+                ]}
+              >
+                <View style={{ flex: 1, width: '100%' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                    <View style={{ backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 8, padding: 8 }}>
+                      <Ionicons name="list-outline" size={24} color="#94a3b8" />
+                    </View>
+                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800', flexShrink: 1 }]}>
+                      Historial de Tareas
+                    </Text>
+                  </View>
+                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily, color: '#64748b' }]}>
+                    Todas las tareas creadas
+                  </Text>
+                </View>
+                <View style={[styles.largeModalActions, isMobile && { width: '100%', justifyContent: 'space-between', marginTop: 4 }]}>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setLoadingTareas(true);
+                      const { success, data, error } = await obtenerTareasBackend();
+                      if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
+                      else setTareas(data || []);
+                      setLoadingTareas(false);
+                    }}
+                    style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6, flex: isMobile ? 1 : 0, justifyContent: 'center' }]}
+                  >
+                    <Ionicons name="refresh" size={16} color="#67e8f9" />
+                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={[styles.closeButton, isMobile && { alignSelf: 'flex-end' }]}>
+                    <Ionicons name="close" size={20} color="#cbd5e1" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+
+              {loadingTareas && (
+                <View style={styles.infoBox}>
+                  <Text style={[styles.infoText, { fontFamily }]}>Cargando tareas...</Text>
+                </View>
+              )}
+
+              {!loadingTareas && errorTareas ? (
+                <View style={styles.errorPanel}>
+                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorTareas}</Text>
+                </View>
+              ) : null}
+
+              {!loadingTareas && !errorTareas && tareas.length === 0 ? (
+                <View style={[styles.infoBox, { paddingVertical: 60 }]}>
+                  <Ionicons name="document-text-outline" size={64} color="#334155" style={{ marginBottom: 16 }} />
+                  <Text style={[styles.infoText, { fontFamily, fontSize: 16, fontWeight: '600', marginBottom: 8 }]}>No hay tareas registradas</Text>
+                  <Text style={[{ color: '#64748b', fontSize: 14, textAlign: 'center' }, { fontFamily }]}>
+                    Aún no se han creado tareas en el sistema
+                  </Text>
+                </View>
+              ) : null}
+
+              {!loadingTareas && !errorTareas && tareas.length > 0 ? (
+                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <View style={styles.listSpacing}>
+                    {/* Contador de tareas */}
+                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#06b6d4' }}>
+                      <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                        📋 {tareas.length} {tareas.length === 1 ? 'tarea registrada' : 'tareas registradas'}
+                      </Text>
+                    </View>
+
+                    {tareas.map((tarea: any) => (
+                      <View
+                        key={tarea.id}
+                        style={{
+                          backgroundColor: '#1e293b',
+                          borderRadius: 12,
+                          padding: 16,
+                          marginBottom: 12,
+                          borderWidth: 1,
+                          borderColor: '#334155',
+                          shadowColor: '#000',
+                          shadowOpacity: 0.1,
+                          shadowRadius: 4,
+                          shadowOffset: { width: 0, height: 2 },
+                        }}
+                      >
+                        {/* Header de la tarea */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                          <View style={{ flex: 1, marginRight: 12 }}>
+                            <Text style={[{ color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
+                              {tarea.descripcion || 'Sin descripción'}
+                            </Text>
+                          </View>
+                          {/* Badge de estado */}
+                          <View
+                            style={{
+                              backgroundColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(251, 191, 36, 0.2)',
+                              borderRadius: 6,
+                              paddingHorizontal: 10,
+                              paddingVertical: 4,
+                              borderWidth: 1,
+                              borderColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(251, 191, 36, 0.4)',
+                            }}
                           >
-                            {tarea.estado === 'completada' ? '✓ Completada' : '⏳ Pendiente'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Información de la tarea */}
-                      <View style={{ gap: 8 }}>
-                        {/* Creada por */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <View style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', borderRadius: 6, padding: 6 }}>
-                            <Ionicons name="person-outline" size={14} color="#a78bfa" />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Creada por:</Text>
-                            <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Admin</Text>
-                          </View>
-                        </View>
-
-                        {/* Fecha de creación */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.2)', borderRadius: 6, padding: 6 }}>
-                            <Ionicons name="calendar-outline" size={14} color="#67e8f9" />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Fecha:</Text>
-                            <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
-                              {tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString('es-MX', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'Fecha no disponible'}
+                            <Text
+                              style={[
+                                {
+                                  color: tarea.estado === 'completada' ? '#86efac' : '#fde047',
+                                  fontSize: 11,
+                                  fontWeight: '700',
+                                  textTransform: 'uppercase',
+                                },
+                                { fontFamily },
+                              ]}
+                            >
+                              {tarea.estado === 'completada' ? '✓ Completada' : '⏳ Pendiente'}
                             </Text>
                           </View>
                         </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            ) : null}
 
-            {/* Footer */}
-            <View style={{ borderTopWidth: 1, borderTopColor: '#334155', padding: 16, backgroundColor: '#0f172a' }}>
-              <TouchableOpacity
-                style={{
-                  backgroundColor: '#1e293b',
-                  borderRadius: 8,
-                  padding: 14,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: '#334155',
-                }}
-                onPress={() => setShowTareasHistorialModal(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={[{ color: '#cbd5e1', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>Cerrar</Text>
-              </TouchableOpacity>
+                        {/* Información de la tarea */}
+                        <View style={{ gap: 8 }}>
+                          {/* Creada por */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', borderRadius: 6, padding: 6 }}>
+                              <Ionicons name="person-outline" size={14} color="#a78bfa" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Creada por:</Text>
+                              <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Admin</Text>
+                            </View>
+                          </View>
+
+                          {/* Fecha de creación */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.2)', borderRadius: 6, padding: 6 }}>
+                              <Ionicons name="calendar-outline" size={14} color="#67e8f9" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Fecha:</Text>
+                              <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                                {tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString('es-MX', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Fecha no disponible'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+
+              {/* Footer */}
+              <View style={{ borderTopWidth: 1, borderTopColor: '#334155', padding: 16, backgroundColor: '#0f172a' }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#1e293b',
+                    borderRadius: 8,
+                    padding: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#334155',
+                  }}
+                  onPress={() => setShowTareasHistorialModal(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[{ color: '#cbd5e1', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Modal de Gestión de Usuarios */}
       {
@@ -5864,93 +6008,95 @@ function AdminPanelContent() {
       }
 
       {/* Modal de Confirmación para Guardar Cambios de Usuario */}
-      {showConfirmarGuardarUsuario && usuarioEditando && (
-        <View style={styles.overlayHeavy}>
-          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-            <View style={styles.modalHeaderRow}>
-              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(37, 99, 235, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
-                <Ionicons name="save-outline" size={22} color="#3b82f6" />
-              </View>
-              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Cambios</Text>
-            </View>
-
-            <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
-              <Text style={[{ fontSize: 14, color: '#cbd5e1', lineHeight: 22 }, { fontFamily }]}>
-                ¿Estás seguro de que deseas guardar los cambios realizados a este usuario?
-              </Text>
-
-              {/* Información del usuario */}
-              <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(30, 41, 59, 0.6)', borderRadius: 8, borderWidth: 1, borderColor: '#334155' }}>
-                <Text style={[{ fontSize: 12, color: '#67e8f9', fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>USUARIO:</Text>
-                <Text style={[{ fontSize: 13, color: '#e2e8f0' }, { fontFamily }]}>
-                  {editNombre} {editApellido}
-                </Text>
-                <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
-                  {editEmail}
-                </Text>
-                {editEmpresa && (
-                  <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
-                    Empresa: {editEmpresa}
-                  </Text>
-                )}
-                <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
-                  Rol: {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
-                </Text>
-              </View>
-
-              {(editRol !== usuarioEditando.rol || editEstado !== usuarioEditando.estado) && (
-                <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(251, 146, 60, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 146, 60, 0.3)' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="warning-outline" size={16} color="#fb923c" />
-                    <Text style={[{ fontSize: 12, color: '#fb923c', fontWeight: '600' }, { fontFamily }]}>
-                      CAMBIOS IMPORTANTES
-                    </Text>
-                  </View>
-                  {editRol !== usuarioEditando.rol && (
-                    <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
-                      • El rol cambiará de "{usuarioEditando.rol}" a "{editRol}"
-                    </Text>
-                  )}
-                  {editEstado !== usuarioEditando.estado && (
-                    <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
-                      • El estado cambiará de "{usuarioEditando.estado}" a "{editEstado}"
-                    </Text>
-                  )}
+      {
+        showConfirmarGuardarUsuario && usuarioEditando && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(37, 99, 235, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                  <Ionicons name="save-outline" size={22} color="#3b82f6" />
                 </View>
-              )}
-            </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Cambios</Text>
+              </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalSecondary}
-                onPress={() => setShowConfirmarGuardarUsuario(false)}
-                disabled={actualizandoUsuario}
-              >
-                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <LinearGradient
-                colors={actualizandoUsuario ? ['#4b5563', '#4b5563'] : ['#2563eb', '#3b82f6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.modalPrimary}
-              >
-                <TouchableOpacity
-                  onPress={async () => {
-                    await handleActualizarUsuario();
-                    setShowConfirmarGuardarUsuario(false);
-                  }}
-                  disabled={actualizandoUsuario}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                    {actualizandoUsuario ? 'Guardando...' : 'Sí, Guardar Cambios'}
+              <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+                <Text style={[{ fontSize: 14, color: '#cbd5e1', lineHeight: 22 }, { fontFamily }]}>
+                  ¿Estás seguro de que deseas guardar los cambios realizados a este usuario?
+                </Text>
+
+                {/* Información del usuario */}
+                <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(30, 41, 59, 0.6)', borderRadius: 8, borderWidth: 1, borderColor: '#334155' }}>
+                  <Text style={[{ fontSize: 12, color: '#67e8f9', fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>USUARIO:</Text>
+                  <Text style={[{ fontSize: 13, color: '#e2e8f0' }, { fontFamily }]}>
+                    {editNombre} {editApellido}
                   </Text>
+                  <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                    {editEmail}
+                  </Text>
+                  {editEmpresa && (
+                    <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                      Empresa: {editEmpresa}
+                    </Text>
+                  )}
+                  <Text style={[{ fontSize: 12, color: '#94a3b8', marginTop: 2 }, { fontFamily }]}>
+                    Rol: {editRol === 'admin' ? 'Administrador' : editRol === 'empleado' ? 'Empleado' : 'Cliente'}
+                  </Text>
+                </View>
+
+                {(editRol !== usuarioEditando.rol || editEstado !== usuarioEditando.estado) && (
+                  <View style={{ marginTop: 12, padding: 10, backgroundColor: 'rgba(251, 146, 60, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251, 146, 60, 0.3)' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="warning-outline" size={16} color="#fb923c" />
+                      <Text style={[{ fontSize: 12, color: '#fb923c', fontWeight: '600' }, { fontFamily }]}>
+                        CAMBIOS IMPORTANTES
+                      </Text>
+                    </View>
+                    {editRol !== usuarioEditando.rol && (
+                      <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
+                        • El rol cambiará de "{usuarioEditando.rol}" a "{editRol}"
+                      </Text>
+                    )}
+                    {editEstado !== usuarioEditando.estado && (
+                      <Text style={[{ fontSize: 11, color: '#fdba74', marginTop: 4 }, { fontFamily }]}>
+                        • El estado cambiará de "{usuarioEditando.estado}" a "{editEstado}"
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondary}
+                  onPress={() => setShowConfirmarGuardarUsuario(false)}
+                  disabled={actualizandoUsuario}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
                 </TouchableOpacity>
-              </LinearGradient>
+                <LinearGradient
+                  colors={actualizandoUsuario ? ['#4b5563', '#4b5563'] : ['#2563eb', '#3b82f6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await handleActualizarUsuario();
+                      setShowConfirmarGuardarUsuario(false);
+                    }}
+                    disabled={actualizandoUsuario}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {actualizandoUsuario ? 'Guardando...' : 'Sí, Guardar Cambios'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )
+      }
 
       {/* Modal Historial de Tareas */}
       {
@@ -6541,46 +6687,48 @@ function AdminPanelContent() {
         )
       }
 
-      {showConfirmarAsignacionModal && (
-        <View style={styles.overlayHeavy}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeaderRow}>
-              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
-                <Ionicons name="help-circle-outline" size={22} color="#3b82f6" />
+      {
+        showConfirmarAsignacionModal && (
+          <View style={styles.overlayHeavy}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 0.5)' }]}>
+                  <Ionicons name="help-circle-outline" size={22} color="#3b82f6" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Asignación</Text>
               </View>
-              <Text style={[styles.modalTitle, { fontFamily }]}>Confirmar Asignación</Text>
-            </View>
-            <Text style={[styles.modalBodyText, { fontFamily, textAlign: 'center', marginVertical: 10 }]}>
-              ¿Estás seguro de que deseas asignar este reporte a {empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre || selectedEmpleadoReporte}?
-            </Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalSecondary}
-                onPress={() => setShowConfirmarAsignacionModal(false)}
-                disabled={asignandoReporte}
-              >
-                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <LinearGradient
-                colors={['#3b82f6', '#1e40af']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.modalPrimary}
-              >
+              <Text style={[styles.modalBodyText, { fontFamily, textAlign: 'center', marginVertical: 10 }]}>
+                ¿Estás seguro de que deseas asignar este reporte a {empleados.find(e => e.email === selectedEmpleadoReporte)?.nombre || selectedEmpleadoReporte}?
+              </Text>
+              <View style={styles.modalActions}>
                 <TouchableOpacity
-                  onPress={handleAsignarReporte}
+                  style={styles.modalSecondary}
+                  onPress={() => setShowConfirmarAsignacionModal(false)}
                   disabled={asignandoReporte}
-                  activeOpacity={0.85}
                 >
-                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
-                    {asignandoReporte ? 'Asignando...' : 'Sí, Asignar'}
-                  </Text>
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
                 </TouchableOpacity>
-              </LinearGradient>
+                <LinearGradient
+                  colors={['#3b82f6', '#1e40af']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity
+                    onPress={handleAsignarReporte}
+                    disabled={asignandoReporte}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      {asignandoReporte ? 'Asignando...' : 'Sí, Asignar'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        )
+      }
     </SafeAreaView >
   );
 }
@@ -7757,6 +7905,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#334155',
+  },
+  audioArchivoItem: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    padding: 16,
+    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+    borderColor: 'rgba(6, 182, 212, 0.3)',
+  },
+  audioItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 16,
+  },
+  audioPlayIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.3)',
+  },
+  audioInfoBox: {
+    flex: 1,
+    gap: 4,
+    alignItems: 'flex-start',
   },
   archivoThumb: {
     width: '100%',

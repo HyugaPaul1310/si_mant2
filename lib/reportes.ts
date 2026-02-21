@@ -19,7 +19,7 @@ interface ReporteData {
 interface ReporteArchivo {
   id?: string;
   reporte_id: string;
-  tipo_archivo: 'foto' | 'video' | 'pdf';
+  tipo_archivo: 'foto' | 'video' | 'pdf' | 'audio';
   cloudflare_url: string;
   cloudflare_key: string;
   nombre_original?: string;
@@ -353,7 +353,8 @@ export async function eliminarArchivoReporte(archivoId: string, cloudflareKey: s
 export async function subirArchivosReporte(
   reporteId: string,
   imagenesUris?: string[],
-  videoUri?: string
+  videoUri?: string,
+  audioUri?: string
 ) {
   try {
     console.log(`[SUBIR-ARCHIVOS] Iniciando subida para reporte: ${reporteId}`);
@@ -403,6 +404,30 @@ export async function subirArchivosReporte(
         if (guardado.success) {
           archivosGuardados.push({
             tipo: 'video',
+            url: resultado.url,
+            id: guardado.data?.id,
+          });
+        }
+      }
+    }
+
+    // Subir audio
+    if (audioUri) {
+      const nombreArchivo = `audio-${Date.now()}.m4a`;
+      const resultado = await uploadToCloudflare(audioUri, nombreArchivo, 'audio');
+
+      if (resultado.success && resultado.url && resultado.key) {
+        const guardado = await guardarArchivoReporte({
+          reporte_id: reporteId,
+          tipo_archivo: 'audio',
+          cloudflare_url: resultado.url,
+          cloudflare_key: resultado.key,
+          nombre_original: nombreArchivo,
+        });
+
+        if (guardado.success) {
+          archivosGuardados.push({
+            tipo: 'audio',
             url: resultado.url,
             id: guardado.data?.id,
           });

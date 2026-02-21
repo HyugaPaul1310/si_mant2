@@ -11,12 +11,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-    actualizarReporteBackend,
-    apiCall,
-    getApiBaseUrl,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente,
-    verificarEncuestaExiste
+  actualizarReporteBackend,
+  apiCall,
+  getApiBaseUrl,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente,
+  verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -1129,8 +1129,8 @@ function ClientePanelContent() {
         key={rep.id || `sample-${rep.equipo_descripcion}`}
         style={[styles.reportCard, { padding: 12 }]}
       >
-        <View style={[styles.reportCardHeader, { flexWrap: 'wrap' }]}> 
-          <View style={[styles.reportCardInfo, { minWidth: 0, flexShrink: 1 }]}> 
+        <View style={[styles.reportCardHeader, { flexWrap: 'wrap' }]}>
+          <View style={[styles.reportCardInfo, { minWidth: 0, flexShrink: 1 }]}>
             <Text style={[styles.reportCardTitle, { fontFamily, fontSize: 15 }]} numberOfLines={2} ellipsizeMode="tail">
               {rep.equipo_descripcion || 'Equipo / servicio'}
             </Text>
@@ -1138,8 +1138,8 @@ function ClientePanelContent() {
               {fecha}
             </Text>
           </View>
-          <View style={[styles.reportCardActions, { flexWrap: 'wrap', gap: 4 }]}> 
-            <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder, minWidth: 0, paddingHorizontal: 8, paddingVertical: 2 }]}> 
+          <View style={[styles.reportCardActions, { flexWrap: 'wrap', gap: 4 }]}>
+            <View style={[styles.badge, { backgroundColor: estadoBg, borderColor: estadoBorder, minWidth: 0, paddingHorizontal: 8, paddingVertical: 2 }]}>
               <Text style={[styles.badgeText, { fontFamily, color: estadoText, fontWeight: '600', fontSize: 11 }]} numberOfLines={1}>
                 {isSample ? 'Completado' : obtenerNombreEstado(rep.estado)}
               </Text>
@@ -1165,14 +1165,14 @@ function ClientePanelContent() {
           </Text>
         ) : null}
 
-        <View style={[styles.reportCardFooter, { flexWrap: 'wrap', gap: 6 }]}> 
-          <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder, paddingHorizontal: 8, paddingVertical: 2 }]}> 
+        <View style={[styles.reportCardFooter, { flexWrap: 'wrap', gap: 6 }]}>
+          <View style={[styles.badge, { backgroundColor: prioridadBg, borderColor: prioridadBorder, paddingHorizontal: 8, paddingVertical: 2 }]}>
             <Text style={[styles.badgeText, { fontFamily, color: prioridadText, fontSize: 11 }]} numberOfLines={1}>
               Prioridad: {rep.prioridad || 'media'}
             </Text>
           </View>
           {rep.sucursal ? (
-            <View style={[styles.badge, { backgroundColor: '#1e293b', borderColor: '#334155', paddingHorizontal: 8, paddingVertical: 2 }]}> 
+            <View style={[styles.badge, { backgroundColor: '#1e293b', borderColor: '#334155', paddingHorizontal: 8, paddingVertical: 2 }]}>
               <Text style={[styles.badgeText, { fontFamily, color: '#cbd5e1', fontSize: 11 }]} numberOfLines={2}>
                 Sucursal: {rep.sucursal}
               </Text>
@@ -2183,11 +2183,11 @@ function ClientePanelContent() {
                 <>
                   <View style={[styles.detailSeparator, { marginVertical: 20 }]}>
                     <View style={styles.separatorLine} />
-                    <Text style={[styles.separatorText, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                    <Text style={[styles.separatorText, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio').length})</Text>
                     <View style={styles.separatorLine} />
                   </View>
                   <View style={styles.archivosContainer}>
-                    {archivosReporte.map((archivo: any, idx: number) => {
+                    {archivosReporte.filter((a: any) => a.tipo_archivo !== 'audio').map((archivo: any, idx: number) => {
                       const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                       return (
                         <TouchableOpacity
@@ -2849,20 +2849,20 @@ function ClientePanelContent() {
 
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
               {archivoVisualizando?.tipo_archivo === 'imagen' ||
-              archivoVisualizando?.tipo_archivo === 'foto' ||
-              archivoVisualizando?.tipo_archivo?.startsWith('image/') ||
-              archivoVisualizando?.tipo === 'imagen' ||
-              archivoVisualizando?.tipo === 'foto' ||
-              archivoVisualizando?.tipo?.startsWith('image/') ? (
+                archivoVisualizando?.tipo_archivo === 'foto' ||
+                archivoVisualizando?.tipo_archivo?.startsWith('image/') ||
+                archivoVisualizando?.tipo === 'imagen' ||
+                archivoVisualizando?.tipo === 'foto' ||
+                archivoVisualizando?.tipo?.startsWith('image/') ? (
                 <Image
                   source={{ uri: archivoVisualizando?.url || archivoVisualizando?.uri }}
                   style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
                   resizeMode="contain"
                 />
               ) : archivoVisualizando?.tipo_archivo === 'video' ||
-              archivoVisualizando?.tipo_archivo?.startsWith('video/') ||
-              archivoVisualizando?.tipo === 'video' ||
-              archivoVisualizando?.tipo?.startsWith('video/') ? (
+                archivoVisualizando?.tipo_archivo?.startsWith('video/') ||
+                archivoVisualizando?.tipo === 'video' ||
+                archivoVisualizando?.tipo?.startsWith('video/') ? (
                 <TouchableOpacity
                   onPress={() => {
                     setShowArchivoModal(false);

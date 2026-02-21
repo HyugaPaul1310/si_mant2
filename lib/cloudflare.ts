@@ -11,8 +11,8 @@ const webUploadBase =
 
 function getUploadBaseCandidates(): string[] {
   const candidates = [
-    Platform.OS === 'web' ? webUploadBase : '',
     configuredUploadBase,
+    Platform.OS === 'web' ? webUploadBase : '',
     DEFAULT_UPLOAD_BASE,
   ].filter(Boolean);
 
@@ -75,7 +75,7 @@ export function getProxyUrl(cloudflareUrl: string): string {
 export async function uploadToCloudflare(
   fileUri: string,
   fileName: string,
-  fileType: 'foto' | 'video' | 'pdf'
+  fileType: 'foto' | 'video' | 'pdf' | 'audio'
 ): Promise<UploadResult> {
   try {
     const isWeb = Platform.OS === 'web';

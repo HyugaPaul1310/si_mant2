@@ -97,9 +97,8 @@ export default function GenerarReporteScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.7,
-        aspect: [4, 3],
       });
 
       if (!result.canceled && result.assets[0].uri) {
@@ -119,7 +118,7 @@ export default function GenerarReporteScreen() {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.7,
         videoMaxDuration: 30,
       });

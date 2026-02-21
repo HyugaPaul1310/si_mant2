@@ -10,9 +10,11 @@ import {
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
+import { subirArchivosReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -117,6 +119,15 @@ function EmpleadoPanelContent() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [showConfirmarAnalisis, setShowConfirmarAnalisis] = useState(false);
   const [showConfirmarFinalizarModal, setShowConfirmarFinalizarModal] = useState(false);
+
+  // Estados para grabación de audio
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [playbackObject, setPlaybackObject] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [recordingInterval, setRecordingInterval] = useState<any>(null);
 
 
 
@@ -463,6 +474,99 @@ function EmpleadoPanelContent() {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
+  // Funciones de Audio
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        showToast('Se requiere permiso para usar el micrófono', 'warning');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(recording);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      const interval = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+      setRecordingInterval(interval);
+
+    } catch (err) {
+      console.error('Failed to start recording', err);
+      showToast('Error al iniciar grabación', 'error');
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+
+    setIsRecording(false);
+    if (recordingInterval) clearInterval(recordingInterval);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setAudioUri(uri);
+      setRecording(null);
+    } catch (err) {
+      console.error('Failed to stop recording', err);
+    }
+  };
+
+  const playPauseAudio = async () => {
+    if (!audioUri) return;
+
+    if (playbackObject !== null) {
+      if (isPlaying) {
+        await playbackObject.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await playbackObject.playAsync();
+        setIsPlaying(true);
+      }
+      return;
+    }
+
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: audioUri },
+      { shouldPlay: true }
+    );
+    setPlaybackObject(sound);
+    setIsPlaying(true);
+
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        setIsPlaying(false);
+      }
+    });
+  };
+
+  const deleteRecording = async () => {
+    if (playbackObject) {
+      await playbackObject.unloadAsync();
+      setPlaybackObject(null);
+    }
+    setAudioUri(null);
+    setIsPlaying(false);
+    setRecordingDuration(0);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   const confirmarEnvioAnalisis = () => {
     if (!descripcionTrabajo.trim()) {
       showToast('Por favor ingresa un análisis general', 'warning');
@@ -477,6 +581,15 @@ function EmpleadoPanelContent() {
     setGuardandoCotizacion(true);
     setShowConfirmarAnalisis(false); // Cerrar modal de confirmación
     try {
+      // 1. Subir audio si existe
+      if (audioUri) {
+        showToast('Subiendo nota de voz...', 'info');
+        const uploadRes = await subirArchivosReporte(reporteSeleccionado.id, [], undefined, audioUri);
+        if (!uploadRes.success) {
+          throw new Error('Error al subir el audio: ' + uploadRes.error);
+        }
+      }
+
       console.log('[EMPLEADO-ANALISIS] Enviando análisis:', {
         reporteId: reporteSeleccionado.id,
         estado: 'en_cotizacion',
@@ -523,6 +636,8 @@ function EmpleadoPanelContent() {
         cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
 
         showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
+        deleteRecording(); // Limpiar audio
+        cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
       } else {
         console.error('[EMPLEADO-ANALISIS] Error en respuesta:', respuesta);
         showToast('Error al enviar análisis', 'error');
@@ -1486,6 +1601,60 @@ function EmpleadoPanelContent() {
                       onChangeText={setDescripcionTrabajo}
                       textAlignVertical="top"
                     />
+
+                    {/* Sección de Nota de Voz */}
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 16 }]}>
+                      Nota de Voz Explicativa (Opcional)
+                    </Text>
+
+                    <View style={styles.audioControlsContainer}>
+                      {!audioUri && !isRecording ? (
+                        <TouchableOpacity
+                          style={styles.audioRecordButton}
+                          onPress={startRecording}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="mic" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>Grabar Nota</Text>
+                        </TouchableOpacity>
+                      ) : isRecording ? (
+                        <View style={styles.recordingStatusContainer}>
+                          <View style={styles.recordingPulse} />
+                          <Text style={[styles.recordingTime, { fontFamily }]}>{formatDuration(recordingDuration)}</Text>
+                          <TouchableOpacity
+                            style={styles.audioStopButton}
+                            onPress={stopRecording}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="stop" size={20} color="#fff" />
+                            <Text style={[styles.audioButtonText, { fontFamily }]}>Detener</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={styles.audioPlayerContainer}>
+                          <TouchableOpacity
+                            style={styles.audioPlayButton}
+                            onPress={playPauseAudio}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#fff" />
+                          </TouchableOpacity>
+
+                          <View style={styles.audioInfoContainer}>
+                            <Text style={[styles.audioTitle, { fontFamily }]}>Nota grabada</Text>
+                            <Text style={[styles.audioDuration, { fontFamily }]}>{formatDuration(recordingDuration)}</Text>
+                          </View>
+
+                          <TouchableOpacity
+                            style={styles.audioDeleteButton}
+                            onPress={deleteRecording}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 ) : (reporteSeleccionado.analisis_general && (
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
@@ -1610,9 +1779,9 @@ function EmpleadoPanelContent() {
 
                 {!cargandoArchivos && archivosReporte.length > 0 && (
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.length})</Text>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Archivos Adjuntos ({archivosReporte.filter(a => a.tipo_archivo !== 'audio').length})</Text>
                     <View style={styles.archivosContainer}>
-                      {archivosReporte.map((archivo, idx) => {
+                      {archivosReporte.filter(a => a.tipo_archivo !== 'audio').map((archivo, idx) => {
                         const proxyUrl = getProxyUrl(archivo.cloudflare_url);
                         return (
                           <TouchableOpacity
@@ -1976,6 +2145,62 @@ function EmpleadoPanelContent() {
                     numberOfLines={4}
                     textAlignVertical="top"
                   />
+                </View>
+
+                {/* Sección de Nota de Voz */}
+                <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
+                  <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
+                    Nota de Voz Explicativa (Opcional)
+                  </Text>
+
+                  <View style={styles.audioControlsContainer}>
+                    {!audioUri && !isRecording ? (
+                      <TouchableOpacity
+                        style={styles.audioRecordButton}
+                        onPress={startRecording}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="mic" size={24} color="#fff" />
+                        <Text style={[styles.audioButtonText, { fontFamily }]}>Grabar Nota</Text>
+                      </TouchableOpacity>
+                    ) : isRecording ? (
+                      <View style={styles.recordingStatusContainer}>
+                        <View style={styles.recordingPulse} />
+                        <Text style={[styles.recordingTime, { fontFamily }]}>{formatDuration(recordingDuration)}</Text>
+                        <TouchableOpacity
+                          style={styles.audioStopButton}
+                          onPress={stopRecording}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="stop" size={20} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>Detener</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View style={styles.audioPlayerContainer}>
+                        <TouchableOpacity
+                          style={styles.audioPlayButton}
+                          onPress={playPauseAudio}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#fff" />
+                        </TouchableOpacity>
+
+                        <View style={styles.audioInfoContainer}>
+                          <Text style={[styles.audioTitle, { fontFamily }]}>Nota grabada</Text>
+                          <Text style={[styles.audioDuration, { fontFamily }]}>{formatDuration(recordingDuration)}</Text>
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.audioDeleteButton}
+                          onPress={deleteRecording}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
             </ScrollView>
@@ -3014,6 +3239,92 @@ const styles = StyleSheet.create({
     fontSize: 15,
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  audioControlsContainer: {
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  audioRecordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    gap: 8,
+  },
+  audioButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  recordingStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  recordingPulse: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ef4444',
+  },
+  recordingTime: {
+    color: '#f1f5f9',
+    fontSize: 18,
+    fontWeight: '700',
+    minWidth: 50,
+  },
+  audioStopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#334155',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  audioPlayerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 12,
+  },
+  audioPlayButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  audioInfoContainer: {
+    flex: 1,
+  },
+  audioTitle: {
+    color: '#f1f5f9',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  audioDuration: {
+    color: '#94a3b8',
+    fontSize: 12,
+  },
+  audioDeleteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textInputPrice: {
     backgroundColor: '#1e293b',
