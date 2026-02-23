@@ -22,6 +22,11 @@ try {
   API_URL = 'https://si-mant.com/api';
 }
 
+/**
+ * Obtiene la URL base de la API para uso en componentes
+ */
+export const getApiBaseUrl = () => API_URL;
+
 interface ApiResponse<T = any> {
   success: boolean;
   error?: string;

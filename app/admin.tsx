@@ -3886,7 +3886,7 @@ function AdminPanelContent() {
 
       {/* Modal de Confirmación Secundaria */}
       {showConfirmarCotizacionModal && reporteACotizar && (
-        <View style={[styles.overlayHeavy, { zIndex: 1100 }]}>
+        <View style={[styles.overlayHeavy, { zIndex: 10001 }]}>
           <View style={[styles.detailModal, isMobile && styles.detailModalMobile, { maxWidth: 400, backgroundColor: '#0f172a', borderColor: '#1e293b' }]}>
             <View style={{ alignItems: 'center', gap: 16, paddingVertical: 10 }}>
               <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245, 158, 11, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
@@ -3904,7 +3904,7 @@ function AdminPanelContent() {
 
               <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 30, width: '100%', alignItems: 'center' }}>
                 <Text style={[{ color: '#fbbf24', fontSize: 32, fontWeight: '800' }, { fontFamily }]}>
-                  ${parseFloat(precioCotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {moneda}
+                  ${parseFloat(getCleanNumericValue(precioCotizacion)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {moneda}
                 </Text>
                 <Text style={[{ color: '#f59e0b', fontSize: 11, fontWeight: '700', marginTop: 4, letterSpacing: 1 }, { fontFamily }]}>TOTAL EN {moneda}</Text>
               </View>

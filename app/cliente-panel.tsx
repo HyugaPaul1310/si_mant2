@@ -119,7 +119,7 @@ function ClientePanelContent() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    return `$${formattedNum} ${moneda}`;
+    return `$${formattedNum} ${moneda || 'MXN'}`;
   };
 
   // Estado para confirmación de rechazo (custom modal)
@@ -523,483 +523,10 @@ function ClientePanelContent() {
       const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
       const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
 
-      // Crear HTML para el PDF con diseño SI MANT
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-
-            @page {
-              size: A4;
-              margin: 0;
-            }
-
-            body {
-              font-family: 'Helvetica', 'Arial', sans-serif;
-              background: #ffffff;
-              color: #2c3e50;
-              line-height: 1.6;
-            }
-
-            /* ============================
-               MEMBRETE (Header) - Fijo en cada página via tabla
-               ============================ */
-            .page-header {
-              display: flex;
-              width: 100%;
-              background: #ffffff;
-              border-bottom: 3px solid #00a8e8;
-              margin-bottom: 0;
-            }
-
-            .header-left {
-              background: #1a1a1a;
-              padding: 18px 22px;
-              display: flex;
-              align-items: center;
-              gap: 14px;
-              min-width: 280px;
-              position: relative;
-            }
-
-            .header-left::after {
-              content: '';
-              position: absolute;
-              right: -28px;
-              top: 0;
-              width: 0;
-              height: 0;
-              border-top: 80px solid #1a1a1a;
-              border-right: 28px solid transparent;
-              z-index: 2;
-            }
-
-            .header-gear {
-              width: 52px;
-              height: 52px;
-            }
-
-            .header-brand {
-              color: #ffffff;
-            }
-
-            .header-brand-main {
-              font-size: 20px;
-              font-weight: 900;
-              letter-spacing: 1px;
-              line-height: 1.1;
-            }
-
-            .header-brand-sub {
-              font-size: 11px;
-              color: #00a8e8;
-              letter-spacing: 2px;
-              margin-top: 2px;
-            }
-
-            .header-accent {
-              position: absolute;
-              bottom: 0;
-              left: 0;
-              right: 28px;
-              height: 6px;
-              background: linear-gradient(90deg, #c41e3a 60%, #00a8e8 100%);
-            }
-
-            .header-right {
-              flex: 1;
-              padding: 14px 28px;
-              text-align: right;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              gap: 2px;
-            }
-
-            .header-right p {
-              font-size: 11px;
-              color: #2c3e50;
-              line-height: 1.5;
-            }
-
-            .header-right .contact-email {
-              color: #0077b6;
-              font-weight: 700;
-              font-size: 12px;
-            }
-
-            .header-right .rfc-line {
-              font-size: 10px;
-              color: #6c757d;
-              margin-top: 4px;
-            }
-
-            /* ============================
-               WATERMARK - centrado en el contenido (sin fixed para compatibilidad con expo-print)
-               ============================ */
-            .watermark {
-              display: block;
-              text-align: center;
-              font-size: 90px;
-              font-weight: 900;
-              color: rgba(200, 220, 240, 0.45);
-              letter-spacing: 8px;
-              white-space: nowrap;
-              margin: 20px 0;
-              user-select: none;
-              pointer-events: none;
-            }
-
-            /* ============================
-               FOOTER - al fondo del documento (sin fixed para compatibilidad con expo-print)
-               ============================ */
-            .page-footer {
-              border-top: 2px solid #1a1a1a;
-              padding: 10px 30px;
-              text-align: center;
-              background: #ffffff;
-              font-size: 10px;
-              color: #6c757d;
-              letter-spacing: 1px;
-              margin-top: 30px;
-            }
-
-            /* ============================
-               CONTENIDO PRINCIPAL
-               ============================ */
-            .main-content {
-              padding: 30px 40px 20px 40px;
-            }
-
-            .section {
-              margin-bottom: 32px;
-              position: relative;
-              z-index: 1;
-            }
-
-            .section-title {
-              color: #c41e3a;
-              font-size: 15px;
-              font-weight: 700;
-              margin-bottom: 20px;
-              padding: 10px 18px;
-              border-left: 5px solid #c41e3a;
-              border-radius: 3px;
-              background: #fff;
-              letter-spacing: 0.5px;
-            }
-
-            .field-row {
-              display: flex;
-              gap: 16px;
-              margin-bottom: 14px;
-            }
-
-            .field {
-              flex: 1;
-              margin-bottom: 14px;
-              padding: 12px 16px;
-              background: #f8f9fa;
-              border-left: 4px solid #00a8e8;
-              border-radius: 4px;
-            }
-
-            .field-label {
-              font-size: 10px;
-              color: #0077b6;
-              font-weight: 700;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              margin-bottom: 6px;
-              display: block;
-            }
-
-            .field-value {
-              font-size: 14px;
-              color: #2c3e50;
-              line-height: 1.5;
-              font-weight: 500;
-              word-wrap: break-word;
-              word-break: break-word;
-              white-space: pre-wrap;
-            }
-
-            .value-highlight {
-              color: #c41e3a;
-              font-weight: 700;
-              text-transform: capitalize;
-            }
-
-            .value-price {
-              font-size: 28px;
-              font-weight: 900;
-              color: #c41e3a;
-              letter-spacing: 1px;
-            }
-
-            /* ============================
-               FIRMAS
-               ============================ */
-            .signatures-section {
-              margin-top: 50px;
-              padding-top: 30px;
-              page-break-inside: avoid;
-              position: relative;
-              z-index: 1;
-            }
-
-            .signatures-row {
-              display: flex;
-              gap: 60px;
-              justify-content: center;
-            }
-
-            .signature-box {
-              flex: 1;
-              text-align: center;
-              max-width: 220px;
-            }
-
-            .signature-line {
-              border-bottom: 2px solid #1a1a1a;
-              margin-bottom: 12px;
-              width: 100%;
-              height: 60px;
-            }
-
-            .signature-label {
-              font-size: 13px;
-              color: #2c3e50;
-              font-weight: 500;
-            }
-          </style>
-        </head>
-        <body>
-
-          <!-- HEADER MEMBRETE -->
-          <div class="page-header">
-            <div class="header-left">
-              <!-- Gear SVG icon -->
-              <svg class="header-gear" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="18" stroke="#00a8e8" stroke-width="8"/>
-                <rect x="44" y="5" width="12" height="20" rx="4" fill="#00a8e8"/>
-                <rect x="44" y="75" width="12" height="20" rx="4" fill="#00a8e8"/>
-                <rect x="5" y="44" width="20" height="12" rx="4" fill="#00a8e8"/>
-                <rect x="75" y="44" width="20" height="12" rx="4" fill="#00a8e8"/>
-                <rect x="17" y="17" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 23 23)"/>
-                <rect x="66" y="17" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 77 23)"/>
-                <rect x="17" y="63" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 23 77)"/>
-                <rect x="66" y="63" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 77 77)"/>
-              </svg>
-              <div class="header-brand">
-                <div class="header-brand-main">MX SI-MANT<br>COMERCIAL</div>
-                <div class="header-brand-sub">SI MANT</div>
-              </div>
-              <div class="header-accent"></div>
-            </div>
-            <div class="header-right">
-              <p>Calle Villa Charra, No. 18096 Bodega No. 5</p>
-              <p>C.P. 22200, Loma Bonita, Tijuana, B.C.</p>
-              <p class="contact-email">contacto@si-mant.com</p>
-              <p>+52 668 160 5243 · +52 664 438 7533</p>
-              <p class="rfc-line">SI-MANT COMERCIAL, S.A. DE C.V. &nbsp;|&nbsp; RFC: MSC230817UU1</p>
-            </div>
-          </div>
-
-          <!-- CONTENIDO PRINCIPAL -->
-          <div class="main-content">
-
-            <!-- Datos Generales -->
-            <div class="section">
-              <div class="section-title">Datos Generales</div>
-
-              <div class="field-row">
-                <div class="field">
-                  <div class="field-label">Modelo:</div>
-                  <div class="field-value">${modeloValue}</div>
-                </div>
-                <div class="field">
-                  <div class="field-label">Serie:</div>
-                  <div class="field-value">${serieValue}</div>
-                </div>
-              </div>
-
-              <div class="field-row">
-                <div class="field">
-                  <div class="field-label">Sucursal:</div>
-                  <div class="field-value">${sucursalValue}</div>
-                </div>
-                <div class="field">
-                  <div class="field-label">Prioridad:</div>
-                  <div class="field-value" style="text-transform: capitalize;">${reporte.prioridad || 'media'}</div>
-                </div>
-              </div>
-
-              <div class="field">
-                <div class="field-label">Comentario / Problema:</div>
-                <div class="field-value">${comentarioFinal}</div>
-              </div>
-
-              <div class="field-row">
-                <div class="field">
-                  <div class="field-label">Estado:</div>
-                  <div class="field-value value-highlight">${obtenerNombreEstado(reporte.estado)}</div>
-                </div>
-                ${reporte.empresa ? `
-                <div class="field">
-                  <div class="field-label">Empresa:</div>
-                  <div class="field-value">${reporte.empresa}</div>
-                </div>
-                ` : '<div class="field" style="visibility:hidden;"></div>'}
-              </div>
-
-              <div class="field-row">
-                <div class="field">
-                  <div class="field-label">Fecha de Creación:</div>
-                  <div class="field-value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No disponible'}</div>
-                </div>
-                ${reporte.usuario_nombre ? `
-                <div class="field">
-                  <div class="field-label">Solicitante:</div>
-                  <div class="field-value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</div>
-                </div>
-                ` : '<div class="field" style="visibility:hidden;"></div>'}
-              </div>
-            </div>
-
-            <!-- Información de Cotización -->
-            ${reporte.analisis_general ? `
-            <div class="section">
-              <div class="section-title">Información de Cotización</div>
-
-              ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
-              <div class="field">
-                <div class="field-label">Costo de Cotización:</div>
-                <div class="field-value value-price">$ ${parseFloat(reporte.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reporte.moneda || 'MXN'}</div>
-              </div>
-              ` : ''}
-
-              <div class="field">
-                <div class="field-label">Análisis:</div>
-                <div class="field-value">${reporte.analisis_general}</div>
-              </div>
-            </div>
-            ` : ''}
-
-            <!-- Trabajo Realizado -->
-            ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
-            <div class="section">
-              <div class="section-title">Trabajo Realizado</div>
-
-              ${reporte.reparacion ? `
-              <div class="field">
-                <div class="field-label">Reparación:</div>
-                <div class="field-value">${reporte.reparacion}</div>
-              </div>
-              ` : `<div class="field"><div class="field-label">Reparación:</div><div class="field-value">*** Detalles de las reparaciones realizadas aquí ***</div></div>`}
-
-              ${reporte.materiales_refacciones ? `
-              <div class="field">
-                <div class="field-label">Materiales y Refacciones:</div>
-                <div class="field-value">${reporte.materiales_refacciones}</div>
-              </div>
-              ` : `<div class="field"><div class="field-label">Materiales y Refacciones:</div><div class="field-value">*** Lista de materiales y refacciones utilizados aquí ***</div></div>`}
-
-              ${reporte.recomendaciones ? `
-              <div class="field">
-                <div class="field-label">Recomendaciones:</div>
-                <div class="field-value">${reporte.recomendaciones}</div>
-              </div>
-              ` : `<div class="field"><div class="field-label">Recomendaciones:</div><div class="field-value">*** Recomendaciones adicionales aquí ***</div></div>`}
-
-              ${reporte.recomendaciones_adicionales ? `
-              <div class="field">
-                <div class="field-label">Recomendaciones Adicionales:</div>
-                <div class="field-value">${reporte.recomendaciones_adicionales}</div>
-              </div>
-              ` : ''}
-            </div>
-            ` : ''}
-
-            <!-- SECCIÓN DE FIRMAS -->
-            <div class="signatures-section">
-              <div class="signatures-row">
-                <div class="signature-box">
-                  <div class="signature-line"></div>
-                  <div class="signature-label">Nombre del técnico</div>
-                </div>
-                <div class="signature-box">
-                  <div class="signature-line"></div>
-                  <div class="signature-label">Nombre del cliente</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- WATERMARK centrado (debajo de firmas) -->
-            <div class="watermark">SI MANT</div>
-
-            <!-- FOOTER -->
-            <div class="page-footer">si-mant.com</div>
-
-          </div><!-- /main-content -->
-
-        </body>
-        </html>
-      `;
-
-      // Generar el PDF
-      logDebug('[PDF] Iniciando generación de PDF...');
-      logDebug('[PDF] Platform.OS:', Platform.OS);
-
-      if (Platform.OS === 'web') {
-        // En web, enviar al backend para generar PDF
-        logDebug('[PDF] Modo web detectado, enviando al backend...');
-        try {
-          logDebug('[PDF] Haciendo fetch a backend...');
-          const response = await fetch(`${getApiBaseUrl()} /pdf/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ html: htmlContent })
-          });
-
-          logDebug('[PDF] Response status:', response.status);
-
-          if (!response.ok) throw new Error('Error al generar PDF');
-
-          logDebug('[PDF] Creando blob...');
-          const blob = await response.blob();
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
-          document.body.appendChild(link);
-          logDebug('[PDF] Haciendo click en link de descarga...');
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          logDebug('[PDF] PDF descargado exitosamente');
-          Alert.alert(
-            'PDF Descargado',
-            'El archivo se ha guardado en tu carpeta de descargas.',
-            [{ text: 'OK' }]
-          );
-        } catch (error) {
-          console.error('[PDF] Error:', error);
-          Alert.alert('Error', 'No se pudo generar el PDF');
-        }
-      } else {
-        // En móvil: usar expo-print con HTML simplificado compatible
-        logDebug('[PDF] Modo móvil detectado, usando expo-print...');
-
-        // Cargar logo de la empresa como base64 para incrustarlo en el HTML
-        let logoDataUri = '';
-        try {
-          // Intentar leer el logo real desde el sistema de archivos del bundle
+      // --- LOGO LOGIC (Unificada) ---
+      let logoDataUri = '';
+      try {
+        if (Platform.OS !== 'web') {
           const possiblePaths = [
             `${FileSystem.bundleDirectory}assets/images/logosimant.png`,
             `${FileSystem.bundleDirectory}assets/logosimant.png`,
@@ -1011,55 +538,59 @@ function ClientePanelContent() {
                 encoding: FileSystem.EncodingType.Base64,
               });
               logoDataUri = `data:image/png;base64,${b64}`;
-              logDebug('[PDF] Logo cargado desde:', logoPath);
               break;
             }
           }
-        } catch (logoErr) {
-          logDebug('[PDF] No se pudo cargar logo:', logoErr);
         }
+      } catch (err) {
+        logDebug('[PDF] Error cargando logo:', err);
+      }
 
-        const logoHtml = logoDataUri
-          ? `<img src="${logoDataUri}" style="height:60px; width:auto; display:block; margin-bottom:8px;" />`
-          : `<span style="font-size:14px; font-weight:900; color:#c41e3a; letter-spacing:2px; display:block; margin-bottom:6px;">SI MANT</span><span style="font-size:18px; font-weight:900; color:#fff; display:block; line-height:1.2;">MX SI-MANT<br/>COMERCIAL</span>`;
+      const logoHtml = logoDataUri
+        ? `<img src="${logoDataUri}" style="height:60px; width:auto; display:block; margin-bottom:8px;" />`
+        : `<span style="font-size:14px; font-weight:900; color:#c41e3a; letter-spacing:2px; display:block; margin-bottom:6px;">SI MANT</span><span style="font-size:18px; font-weight:900; color:#fff; display:block; line-height:1.2;">MX SI-MANT<br/>COMERCIAL</span>`;
 
-        const mobileHtml = `<!DOCTYPE html>
+      // --- TEMPLATE UNIFICADO ---
+      const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 0; }
-    .body-content { padding: 20px; }
-    /* ===== MEMBRETE ===== */
-    .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-    .lh-left { display: table-cell; background: #1a1a1a; width: 52%; padding: 14px 20px 0 20px; vertical-align: middle; position: relative; }
-    .lh-accent { display: table-cell; background: #00a8e8; width: 8px; vertical-align: top; }
-    .lh-right { display: table-cell; width: 46%; padding: 14px 18px; vertical-align: middle; text-align: right; }
-    .lh-icon { font-size: 40px; display: block; color: #aaa; line-height: 1; }
+    @page { margin: 0; size: A4; }
+    body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .body-content { padding: 0 20px 20px 20px; }
+    .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 24px; border: none; }
+    .lh-left { display: table-cell; background: #1a1a1a !important; width: 52%; padding: 20px 20px 0 20px; vertical-align: middle; position: relative; border: none; }
+    .lh-accent { display: table-cell; background: #00a8e8 !important; width: 8px; vertical-align: top; border: none; }
+    .lh-right { display: table-cell; width: 46%; padding: 20px 18px 10px 18px; vertical-align: middle; text-align: right; border: none; }
     .lh-si { color: #c41e3a; font-size: 13px; font-weight: 900; letter-spacing: 2px; display: block; margin-top: 4px; margin-bottom: 10px; }
     .lh-company { color: #ffffff; font-size: 22px; font-weight: 900; line-height: 1.15; letter-spacing: 0.5px; display: block; padding-bottom: 6px; }
-    .lh-redbar { background: #c41e3a; height: 6px; margin: 8px -20px 0 -20px; }
+    .lh-redbar { background: #c41e3a !important; height: 6px; margin: 12px -20px 0 -20px; }
     .lh-addr { font-size: 10px; color: #2c3e50; line-height: 1.6; }
     .lh-email { font-size: 11px; font-weight: 700; color: #0077b6; margin-top: 6px; display: block; }
     .lh-phone { font-size: 10px; color: #2c3e50; display: block; }
     .lh-rfc { font-size: 9px; color: #6c757d; margin-top: 6px; display: block; }
+    
     .section { margin-bottom: 28px; }
     .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 14px; }
-    .field { margin-bottom: 12px; border-left: 3px solid #00a8e8; padding-left: 10px; background: #f5f5f5; padding: 10px 12px; border-radius: 3px; }
+    .field { margin-bottom: 12px; border-left: 3px solid #00a8e8; padding-left: 10px; background: #f5f5f5 !important; padding: 10px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
     .label { font-size: 9px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
     .value { font-size: 13px; color: #222; }
     .value-red { color: #c41e3a; font-weight: 700; font-size: 20px; }
-    .row { display: table; width: 100%; margin-bottom: 12px; }
-    .col { display: table-cell; width: 50%; padding-right: 10px; }
-    .signatures { margin-top: 60px; border-top: 1px solid #ccc; padding-top: 30px; }
-    .sig-row { display: table; width: 100%; }
-    .sig-col { display: table-cell; width: 50%; text-align: center; height: 60px; border-bottom: 2px solid #222; font-size: 11px; color: #555; padding-bottom: 8px; vertical-align: bottom; }
-    .footer { margin-top: 30px; border-top: 2px solid #222; padding-top: 8px; text-align: center; font-size: 10px; color: #888; }
-    .watermark { text-align: center; font-size: 60px; font-weight: 900; color: rgba(200,220,240,0.4); letter-spacing: 6px; margin: 20px 0; }
+    
+    .row { display: table; width: 100%; margin-bottom: 12px; table-layout: fixed; }
+    .col { display: table-cell; width: 50%; padding-right: 10px; vertical-align: top; }
+    
+    .signatures { margin-top: 60px; padding-top: 30px; }
+    .sig-row { display: table; width: 100%; table-layout: fixed; }
+    .sig-col { display: table-cell; text-align: center; height: 60px; border-bottom: 2px solid #222; font-size: 11px; color: #555; padding-bottom: 8px; vertical-align: bottom; }
+    .sig-spacer { display: table-cell; width: 120px; }
+    
+    .footer { margin-top: 30px; padding-top: 8px; text-align: center; font-size: 10px; color: #888; }
+    .watermark { text-align: center; font-size: 60px; font-weight: 900; color: rgba(200,220,240,0.4); letter-spacing: 6px; margin: 40px 0; -webkit-print-color-adjust: exact; }
   </style>
 </head>
 <body>
-  <!-- MEMBRETE -->
   <div class="letterhead">
     <div class="lh-left">
       ${logoHtml}
@@ -1079,75 +610,90 @@ function ClientePanelContent() {
       <div class="section-title">Datos Generales</div>
       <div class="row">
         <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
-      <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+        <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
+        <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+      </div>
+      <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
+        ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
+      </div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
+        ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
+      </div>
     </div>
-    <div class="row">
-      <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
-      <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+
+    ${reporte.analisis_general ? `
+    <div class="section">
+      <div class="section-title">Información de Cotización</div>
+      ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `<div class="field"><span class="label">Costo de cotización</span><span class="value-red">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</span></div>` : ''}
+      <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
+    </div>` : ''}
+
+    ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+    <div class="section">
+      <div class="section-title">Trabajo Realizado</div>
+      ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
+      ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
+      ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
+      ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
+    </div>` : ''}
+
+    <div class="watermark">SI MANT</div>
+
+    <div class="signatures">
+      <div class="sig-row">
+        <div class="sig-col">Nombre del técnico</div>
+        <div class="sig-spacer"></div>
+        <div class="sig-col">Nombre del cliente</div>
+      </div>
     </div>
-    <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
-    <div class="row">
-      <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
-      ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
-    </div>
-    <div class="row">
-      <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
-      ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
-    </div>
+
+    <div class="footer">si-mant.com</div>
   </div>
-
-  ${reporte.analisis_general ? `
-  <div class="section">
-    <div class="section-title">Información de Cotización</div>
-    ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `<div class="field"><span class="label">Costo de cotización</span><span class="value-red">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</span></div>` : ''}
-    <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
-  </div>` : ''}
-
-  ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones || reporte.recomendaciones_adicionales) ? `
-  <div class="section">
-    <div class="section-title">Trabajo Realizado</div>
-    ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
-    ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
-    ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
-    ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
-  </div>` : ''}
-
-  <div class="watermark">SI MANT</div>
-
-  <div class="signatures">
-    <div class="sig-row">
-      <div class="sig-col">Nombre del técnico</div>
-      <div class="sig-col">Nombre del cliente</div>
-    </div>
-  </div>
-
-  <div class="footer">si-mant.com</div>
-  </div><!-- /body-content -->
 </body>
 </html>`;
 
-        const { uri } = await Print.printToFileAsync({ html: mobileHtml });
-        logDebug('[PDF] PDF generado en:', uri);
-
+      // --- GENERACIÓN ---
+      if (Platform.OS === 'web') {
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/pdf/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html: htmlTemplate })
+          });
+          if (!response.ok) throw new Error('Error al generar PDF');
+          const arrayBuffer = await response.arrayBuffer();
+          const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+          Alert.alert('PDF Descargado', 'El archivo se ha guardado en tu carpeta de descargas.', [{ text: 'OK' }]);
+        } catch (error) {
+          console.error('[PDF] Error:', error);
+          Alert.alert('Error', 'No se pudo generar el PDF');
+        }
+      } else {
+        const { uri } = await Print.printToFileAsync({ html: htmlTemplate });
         const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
         const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
         const downloadPath = `${storageDir}${fileName}`;
-
         await FileSystem.moveAsync({ from: uri, to: downloadPath });
-
-        const fileInfo = await FileSystem.getInfoAsync(downloadPath);
-        logDebug('[PDF] PDF guardado en:', downloadPath, 'Size:', fileInfo.exists ? fileInfo.size : 'UNKNOWN');
-
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(downloadPath, {
-            mimeType: 'application/pdf',
-            dialogTitle: 'Abrir PDF de Reporte',
-            UTI: 'com.adobe.pdf'
-          });
+          await Sharing.shareAsync(downloadPath, { mimeType: 'application/pdf', dialogTitle: 'Abrir PDF de Reporte', UTI: 'com.adobe.pdf' });
         } else {
           Alert.alert('PDF Descargado', 'El archivo se ha guardado exitosamente.', [{ text: 'OK' }]);
         }
-      } // fin else móvil
+      }
     } catch (error) {
       console.error('[PDF] Error al generar PDF:', error);
       Alert.alert('Error', 'No se pudo generar el PDF');
@@ -1155,6 +701,7 @@ function ClientePanelContent() {
       setGenerandoPDF(false);
     }
   };
+
 
 
   const cargarArchivosReporte = useCallback(
@@ -2860,12 +2407,18 @@ function ClientePanelContent() {
                                 {new Date(cot.created_at).toLocaleDateString('es-ES')}
                               </Text>
 
-                              {/* 4. Precio al final */}
-                              <Text style={[styles.reportTitle, { fontFamily, color: '#f59e0b', marginTop: 4, fontSize: 18 }]}>
-                                {cot.precio_cotizacion && parseFloat(cot.precio_cotizacion) > 0
-                                  ? formatDisplayPrice(cot.precio_cotizacion, cot.moneda)
-                                  : '(esperando respuesta)'}
-                              </Text>
+                              {cot.precio_cotizacion && parseFloat(cot.precio_cotizacion) > 0 ? (
+                                <Text style={[styles.reportTitle, { fontFamily, color: '#f59e0b', marginTop: 4, fontSize: 18 }]}>
+                                  {formatDisplayPrice(cot.precio_cotizacion, cot.moneda)}
+                                </Text>
+                              ) : (
+                                <View style={[styles.statusBadgePending, { marginVertical: 12 }]}>
+                                  <Ionicons name="time-outline" size={isMobile ? 12 : 14} color="#f59e0b" />
+                                  <Text style={[styles.statusBadgeTextPending, { fontFamily, fontSize: isMobile ? 10 : 12 }]}>
+                                    PENDIENTE DE COTIZACIÓN
+                                  </Text>
+                                </View>
+                              )}
 
                               <Text
                                 style={[styles.reportSubtitle, { fontFamily, color: '#cbd5e1', marginTop: 6 }]}
@@ -3019,11 +2572,18 @@ function ClientePanelContent() {
                     </View>
                     <View style={styles.detailField}>
                       <Text style={[styles.detailLabel, { fontFamily }]}>Precio Cotizado</Text>
-                      <Text style={[styles.detailValue, { fontFamily, fontSize: 18, fontWeight: 'bold', color: '#f59e0b' }]}>
-                        {cotizacionSeleccionada.precio_cotizacion && cotizacionSeleccionada.precio_cotizacion > 0
-                          ? formatDisplayPrice(cotizacionSeleccionada.precio_cotizacion, cotizacionSeleccionada.moneda)
-                          : 'Por Cotizar'}
-                      </Text>
+                      {cotizacionSeleccionada.precio_cotizacion && cotizacionSeleccionada.precio_cotizacion > 0 ? (
+                        <Text style={[styles.detailValue, { fontFamily, fontSize: 18, fontWeight: 'bold', color: '#f59e0b' }]}>
+                          {formatDisplayPrice(cotizacionSeleccionada.precio_cotizacion, cotizacionSeleccionada.moneda)}
+                        </Text>
+                      ) : (
+                        <View style={[styles.statusBadgePending, { marginVertical: 4 }]}>
+                          <Ionicons name="time-outline" size={isMobile ? 12 : 14} color="#f59e0b" />
+                          <Text style={[styles.statusBadgeTextPending, { fontFamily, fontSize: isMobile ? 10 : 12 }]}>
+                            EN PROCESO DE COTIZACIÓN
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     <View style={styles.detailField}>
@@ -4748,6 +4308,23 @@ const styles = StyleSheet.create({
   archivoModalCloseMobile: {
     width: 40,
     height: 40,
+  },
+  statusBadgePending: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    alignSelf: 'flex-start',
+  },
+  statusBadgeTextPending: {
+    color: '#f59e0b',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   archivoModalName: {
     color: '#f1f5f9',

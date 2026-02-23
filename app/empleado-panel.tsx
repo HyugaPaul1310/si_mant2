@@ -538,6 +538,10 @@ function EmpleadoPanelContent() {
         await playbackObject.pauseAsync();
         setIsPlaying(false);
       } else {
+        const status = await playbackObject.getStatusAsync();
+        if (status.isLoaded && status.positionMillis >= (status.durationMillis || 0)) {
+          await playbackObject.setPositionAsync(0);
+        }
         await playbackObject.playAsync();
         setIsPlaying(true);
       }
@@ -551,9 +555,10 @@ function EmpleadoPanelContent() {
     setPlaybackObject(sound);
     setIsPlaying(true);
 
-    sound.setOnPlaybackStatusUpdate((status) => {
+    sound.setOnPlaybackStatusUpdate(async (status) => {
       if (status.isLoaded && status.didJustFinish) {
         setIsPlaying(false);
+        await sound.setPositionAsync(0);
       }
     });
   };
@@ -2114,8 +2119,8 @@ function EmpleadoPanelContent() {
                 >
                   <TouchableOpacity
                     onPress={async () => {
-                      if (!revision.trim() || !recomendaciones.trim() || !reparacion.trim()) {
-                        showToast('Por favor completa los campos obligatorios: Revisión, Recomendaciones y Reparación', 'warning');
+                      if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
+                        showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
                         return;
                       }
                       setShowConfirmarFinalizarModal(true);
