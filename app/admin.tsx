@@ -279,6 +279,7 @@ function AdminPanelContent() {
   const [showCotizarReporteModal, setShowCotizarReporteModal] = useState(false);
   const [reporteACotizar, setReporteACotizar] = useState<any | null>(null);
   const [precioCotizacion, setPrecioCotizacion] = useState('');
+  const [moneda, setMoneda] = useState('MXN');
   const [cotizando, setCotizando] = useState(false);
   const [cotizarError, setCotizarError] = useState<string | null>(null);
   const [showConfirmarCotizacionModal, setShowConfirmarCotizacionModal] = useState(false);
@@ -286,6 +287,7 @@ function AdminPanelContent() {
   const [subiendoArchivo, setSubiendoArchivo] = useState(false);
   const [showEditarCotizacionModal, setShowEditarCotizacionModal] = useState(false);
   const [precioCotizacionEdit, setPrecioCotizacionEdit] = useState('');
+  const [monedaEdit, setMonedaEdit] = useState('MXN');
   const [explicacionCotizacionEdit, setExplicacionCotizacionEdit] = useState('');
   const [editandoCotizacion, setEditandoCotizacion] = useState(false);
   const [editarCotizacionError, setEditarCotizacionError] = useState<string | null>(null);
@@ -297,6 +299,32 @@ function AdminPanelContent() {
   const [showEncuestasModal, setShowEncuestasModal] = useState(false);
   const [selectedEncuesta, setSelectedEncuesta] = useState<any | null>(null);
   const [showEncuestaDetailModal, setShowEncuestaDetailModal] = useState(false);
+
+  // Helper para formatear números con comas y 2 decimales
+  const formatNumberWithCommas = (value: string) => {
+    if (!value) return '';
+    // Eliminar todo lo que no sea número o punto
+    const numeric = value.replace(/[^0-9.]/g, '');
+    const parts = numeric.split('.');
+
+    // Limitar a un solo punto decimal
+    if (parts.length > 2) return value;
+
+    // Formatear la parte entera con comas
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    // Si hay decimales, limitar a 2
+    if (parts[1]) {
+      parts[1] = parts[1].substring(0, 2);
+    }
+
+    return parts.join('.');
+  };
+
+  const getCleanNumericValue = (value: string) => {
+    return value.replace(/,/g, '');
+  };
+
   const [filtroEmpleadoEncuesta, setFiltroEmpleadoEncuesta] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
@@ -997,7 +1025,8 @@ function AdminPanelContent() {
       return;
     }
 
-    const precioNumerico = parseFloat(precioCotizacion);
+    const valorLimpio = getCleanNumericValue(precioCotizacion);
+    const precioNumerico = parseFloat(valorLimpio);
     if (isNaN(precioNumerico) || precioNumerico <= 0) {
       setCotizarError('Por favor ingresa un precio válido');
       return;
@@ -1042,6 +1071,7 @@ function AdminPanelContent() {
       const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
         estado: 'en_espera_confirmacion',
         precioCotizacion: precioNumerico,
+        moneda: moneda,
       });
 
       if (!success) {
@@ -3572,20 +3602,67 @@ function AdminPanelContent() {
                     <Ionicons name="cash-outline" size={14} color="#f59e0b" />
                     <Text style={[{ fontSize: 12, color: '#f59e0b', fontWeight: '800', letterSpacing: 0.5 }, { fontFamily }]}>PRECIO DEL SERVICIO *</Text>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245, 158, 11, 0.08)', borderWidth: 1.5, borderColor: '#f59e0b', borderRadius: 12, paddingHorizontal: 16, height: 56 }}>
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                    <TouchableOpacity
+                      onPress={() => setMoneda('MXN')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 10,
+                        backgroundColor: moneda === 'MXN' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(30, 41, 59, 0.3)',
+                        borderWidth: 1,
+                        borderColor: moneda === 'MXN' ? '#f59e0b' : '#1e293b',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 6
+                      }}
+                    >
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moneda === 'MXN' ? '#f59e0b' : '#475569' }} />
+                      <Text style={[{ color: moneda === 'MXN' ? '#fff' : '#64748b', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>PESOS (MXN)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setMoneda('USD')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 10,
+                        backgroundColor: moneda === 'USD' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(30, 41, 59, 0.3)',
+                        borderWidth: 1,
+                        borderColor: moneda === 'USD' ? '#f59e0b' : '#1e293b',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 6
+                      }}
+                    >
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moneda === 'USD' ? '#f59e0b' : '#475569' }} />
+                      <Text style={[{ color: moneda === 'USD' ? '#fff' : '#64748b', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>DÓLARES (USD)</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245, 158, 11, 0.08)', borderWidth: 1.5, borderColor: '#f59e0b', borderRadius: 12, paddingHorizontal: 16, height: 56, marginTop: 4 }}>
                     <Text style={[{ fontSize: 20, color: '#fbbf24', fontWeight: '700', marginRight: 8 }, { fontFamily }]}>$</Text>
                     <TextInput
                       style={[{ flex: 1, color: '#fff', fontSize: 18, fontWeight: '600' }, { fontFamily }]}
                       value={precioCotizacion}
                       onChangeText={(text) => {
-                        const numeric = text.replace(/[^0-9.]/g, '');
-                        if ((numeric.match(/\./g) || []).length > 1) return;
-                        setPrecioCotizacion(numeric);
+                        const formatted = formatNumberWithCommas(text);
+                        setPrecioCotizacion(formatted);
+                      }}
+                      onBlur={() => {
+                        // Al salir del campo, asegurar que tenga 2 decimales si hay contenido
+                        if (precioCotizacion && !precioCotizacion.includes('.')) {
+                          setPrecioCotizacion(precioCotizacion + '.00');
+                        } else if (precioCotizacion && precioCotizacion.endsWith('.')) {
+                          setPrecioCotizacion(precioCotizacion + '00');
+                        }
                       }}
                       placeholder="0.00"
                       placeholderTextColor="#475569"
                       keyboardType="decimal-pad"
                     />
+                    <Text style={[{ fontSize: 14, color: '#f59e0b', fontWeight: '700', marginLeft: 8 }, { fontFamily }]}>{moneda}</Text>
                   </View>
                   {cotizarError && (
                     <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeftWidth: 3, borderLeftColor: '#ef4444', padding: 12, borderRadius: 8, marginTop: 4 }}>
@@ -3661,18 +3738,59 @@ function AdminPanelContent() {
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }}>
               <View style={{ gap: 12 }}>
+                <View style={{ gap: 8 }}>
+                  <Text style={[{ color: '#f8fafc', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Moneda</Text>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => setMonedaEdit('MXN')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        backgroundColor: monedaEdit === 'MXN' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(30, 41, 59, 0.3)',
+                        borderWidth: 1,
+                        borderColor: monedaEdit === 'MXN' ? '#f59e0b' : '#1e293b',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={[{ color: monedaEdit === 'MXN' ? '#fff' : '#64748b', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>MXN</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setMonedaEdit('USD')}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 10,
+                        borderRadius: 10,
+                        backgroundColor: monedaEdit === 'USD' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(30, 41, 59, 0.3)',
+                        borderWidth: 1,
+                        borderColor: monedaEdit === 'USD' ? '#f59e0b' : '#1e293b',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Text style={[{ color: monedaEdit === 'USD' ? '#fff' : '#64748b', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>USD</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <View style={{ gap: 6 }}>
                   <Text style={[{ color: '#f8fafc', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Precio nuevo</Text>
                   <TextInput
                     value={precioCotizacionEdit}
                     onChangeText={(text) => {
-                      const sanitized = text.replace(/[^0-9.]/g, '');
-                      const parts = sanitized.split('.');
-                      const normalized = parts.length > 1 ? `${parts[0]}.${parts.slice(1).join('')}` : sanitized;
-                      setPrecioCotizacionEdit(normalized);
+                      const formatted = formatNumberWithCommas(text);
+                      setPrecioCotizacionEdit(formatted);
                     }}
-                    keyboardType="numeric"
-                    placeholder="Ej. 1500"
+                    onBlur={() => {
+                      if (precioCotizacionEdit && !precioCotizacionEdit.includes('.')) {
+                        setPrecioCotizacionEdit(precioCotizacionEdit + '.00');
+                      } else if (precioCotizacionEdit && precioCotizacionEdit.endsWith('.')) {
+                        setPrecioCotizacionEdit(precioCotizacionEdit + '00');
+                      }
+                    }}
+                    keyboardType="decimal-pad"
+                    placeholder="Ej. 1,500.00"
                     placeholderTextColor="#64748b"
                     style={{
                       backgroundColor: '#0b1220',
@@ -3715,7 +3833,8 @@ function AdminPanelContent() {
                 <TouchableOpacity
                   onPress={async () => {
                     if (!reporteACotizar) return;
-                    const precioNumerico = parseFloat(precioCotizacionEdit);
+                    const cleanVal = getCleanNumericValue(precioCotizacionEdit);
+                    const precioNumerico = parseFloat(cleanVal);
                     const explicacionLimpia = (explicacionCotizacionEdit || '').trim();
                     if (isNaN(precioNumerico) || precioNumerico <= 0) {
                       setEditarCotizacionError('Ingresa un precio válido');
@@ -3731,6 +3850,7 @@ function AdminPanelContent() {
                     const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
                       estado: 'cotizacionnueva',
                       precioCotizacion: precioNumerico,
+                      moneda: monedaEdit,
                       cotizacion_explicacion: explicacionLimpia,
                       cotizacionExplicacion: explicacionLimpia,
                     });
@@ -3784,9 +3904,9 @@ function AdminPanelContent() {
 
               <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 30, width: '100%', alignItems: 'center' }}>
                 <Text style={[{ color: '#fbbf24', fontSize: 32, fontWeight: '800' }, { fontFamily }]}>
-                  ${parseFloat(precioCotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ${parseFloat(precioCotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {moneda}
                 </Text>
-                <Text style={[{ color: '#f59e0b', fontSize: 11, fontWeight: '700', marginTop: 4, letterSpacing: 1 }, { fontFamily }]}>MXN TOTAL</Text>
+                <Text style={[{ color: '#f59e0b', fontSize: 11, fontWeight: '700', marginTop: 4, letterSpacing: 1 }, { fontFamily }]}>TOTAL EN {moneda}</Text>
               </View>
 
               <View style={{ width: '100%', gap: 12, marginTop: 10 }}>
@@ -4329,7 +4449,8 @@ function AdminPanelContent() {
                           <TouchableOpacity
                             onPress={() => {
                               setReporteACotizar(rep);
-                              setPrecioCotizacionEdit(String(rep.precio_cotizacion || ''));
+                              setPrecioCotizacionEdit(formatNumberWithCommas(String(rep.precio_cotizacion || '')));
+                              setMonedaEdit(rep.moneda || 'MXN');
                               setExplicacionCotizacionEdit(rep.cotizacion_explicacion || '');
                               setEditarCotizacionError(null);
                               setShowRechazadosModal(false);
@@ -4543,7 +4664,7 @@ function AdminPanelContent() {
                       <Text style={[styles.detailFieldLabel, { fontFamily }]}>Precio Cotización</Text>
                       <View style={styles.detailValueBox}>
                         <Text style={[styles.detailValueText, { fontFamily, color: '#10b981', fontSize: 16, fontWeight: '700' }]}>
-                          ${Number(selectedReporteDetail.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${Number(selectedReporteDetail.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {selectedReporteDetail.moneda || ''}
                         </Text>
                       </View>
                       {(() => {
@@ -4561,7 +4682,8 @@ function AdminPanelContent() {
                           <TouchableOpacity
                             onPress={() => {
                               setReporteACotizar(selectedReporteDetail);
-                              setPrecioCotizacionEdit(String(selectedReporteDetail.precio_cotizacion || ''));
+                              setPrecioCotizacionEdit(formatNumberWithCommas(String(selectedReporteDetail.precio_cotizacion || '')));
+                              setMonedaEdit(selectedReporteDetail.moneda || 'MXN');
                               setExplicacionCotizacionEdit(selectedReporteDetail.cotizacion_explicacion || '');
                               setEditarCotizacionError(null);
                               setShowReporteDetailModal(false);
@@ -4603,18 +4725,29 @@ function AdminPanelContent() {
                   )}
 
                   {/* Sección de Fase 2 - Trabajo completado por empleado */}
-                  {(selectedReporteDetail.revision || selectedReporteDetail.recomendaciones || selectedReporteDetail.reparacion || selectedReporteDetail.recomendaciones_adicionales || selectedReporteDetail.materiales_refacciones) && (
+                  {(selectedReporteDetail.reparacion || selectedReporteDetail.materiales_refacciones || selectedReporteDetail.recomendaciones || selectedReporteDetail.recomendaciones_adicionales) && (
                     <>
                       <View style={{ marginTop: 20, marginBottom: 12, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#334155' }}>
                         <Text style={[styles.detailFieldLabel, { fontFamily, fontSize: 14, fontWeight: '700', color: '#06b6d4' }]}>Fase 2 - Trabajo Completado por Empleado</Text>
                       </View>
 
-                      {selectedReporteDetail.revision && (
+                      {selectedReporteDetail.reparacion && (
                         <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
-                          <Text style={[styles.detailFieldLabel, { fontFamily }]}>Revisión</Text>
+                          <Text style={[styles.detailFieldLabel, { fontFamily }]}>Reparación Realizada</Text>
                           <View style={styles.detailValueBox}>
                             <Text style={[styles.detailValueText, { fontFamily }]}>
-                              {selectedReporteDetail.revision}
+                              {selectedReporteDetail.reparacion}
+                            </Text>
+                          </View>
+                        </View>
+                      )}
+
+                      {selectedReporteDetail.materiales_refacciones && (
+                        <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
+                          <Text style={[styles.detailFieldLabel, { fontFamily }]}>Materiales / Refacciones Utilizadas</Text>
+                          <View style={styles.detailValueBox}>
+                            <Text style={[styles.detailValueText, { fontFamily }]}>
+                              {selectedReporteDetail.materiales_refacciones}
                             </Text>
                           </View>
                         </View>
@@ -4631,34 +4764,12 @@ function AdminPanelContent() {
                         </View>
                       )}
 
-                      {selectedReporteDetail.reparacion && (
-                        <View style={{ width: '100%', marginBottom: 16, gap: 10 }}>
-                          <Text style={[styles.detailFieldLabel, { fontFamily }]}>Reparación Realizada</Text>
-                          <View style={styles.detailValueBox}>
-                            <Text style={[styles.detailValueText, { fontFamily }]}>
-                              {selectedReporteDetail.reparacion}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-
                       {selectedReporteDetail.recomendaciones_adicionales && (
                         <View style={styles.detailField}>
                           <Text style={[styles.detailFieldLabel, { fontFamily }]}>Recomendaciones Adicionales</Text>
                           <View style={styles.detailValueBox}>
                             <Text style={[styles.detailValueText, { fontFamily }]}>
                               {selectedReporteDetail.recomendaciones_adicionales}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {selectedReporteDetail.materiales_refacciones && (
-                        <View style={styles.detailField}>
-                          <Text style={[styles.detailFieldLabel, { fontFamily }]}>Materiales / Refacciones Utilizadas</Text>
-                          <View style={styles.detailValueBox}>
-                            <Text style={[styles.detailValueText, { fontFamily }]}>
-                              {selectedReporteDetail.materiales_refacciones}
                             </Text>
                           </View>
                         </View>

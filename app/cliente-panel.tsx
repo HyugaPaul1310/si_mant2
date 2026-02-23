@@ -111,6 +111,16 @@ function ClientePanelContent() {
   const [showEncuestaSuccessModal, setShowEncuestaSuccessModal] = useState(false);
 
   // Efecto para rotar pantalla en móvil al abrir modal de archivo
+  // Helper para formatear precio con comas y moneda
+  const formatDisplayPrice = (precio: any, moneda: string = '') => {
+    if (precio === undefined || precio === null || isNaN(parseFloat(precio))) return 'N/A';
+    const num = parseFloat(precio);
+    const formattedNum = num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `$${formattedNum} ${moneda}`;
+  };
 
   // Estado para confirmación de rechazo (custom modal)
   const [showConfirmarRechazoModal, setShowConfirmarRechazoModal] = useState(false);
@@ -521,165 +531,292 @@ function ClientePanelContent() {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+
             @page {
-              margin: 10mm 15mm;
               size: A4;
+              margin: 0;
             }
-            
+
             body {
               font-family: 'Helvetica', 'Arial', sans-serif;
               background: #ffffff;
               color: #2c3e50;
               line-height: 1.6;
-              padding: 0 30px;
             }
-            
-            /* Header solo con logo */
-            .header {
-              text-align: right;
-              padding: 20px 0 30px 0;
-              border-bottom: 4px solid #00a8e8;
-              margin-bottom: 40px;
+
+            /* ============================
+               MEMBRETE (Header) - Fijo en cada página via tabla
+               ============================ */
+            .page-header {
+              display: flex;
+              width: 100%;
+              background: #ffffff;
+              border-bottom: 3px solid #00a8e8;
+              margin-bottom: 0;
             }
-            
-            .header-title {
-              display: none;
+
+            .header-left {
+              background: #1a1a1a;
+              padding: 18px 22px;
+              display: flex;
+              align-items: center;
+              gap: 14px;
+              min-width: 280px;
+              position: relative;
             }
-            
-            .logo-container {
-              display: inline-block;
+
+            .header-left::after {
+              content: '';
+              position: absolute;
+              right: -28px;
+              top: 0;
+              width: 0;
+              height: 0;
+              border-top: 80px solid #1a1a1a;
+              border-right: 28px solid transparent;
+              z-index: 2;
             }
-            
-            .logo-text {
-              font-size: 42px;
+
+            .header-gear {
+              width: 52px;
+              height: 52px;
+            }
+
+            .header-brand {
+              color: #ffffff;
+            }
+
+            .header-brand-main {
+              font-size: 20px;
               font-weight: 900;
-              letter-spacing: 5px;
-              line-height: 1;
+              letter-spacing: 1px;
+              line-height: 1.1;
             }
-            
-            .logo-si {
-              color: #c41e3a;
+
+            .header-brand-sub {
+              font-size: 11px;
+              color: #00a8e8;
+              letter-spacing: 2px;
+              margin-top: 2px;
             }
-            
-            .logo-mant {
-              color: #2c3e50;
+
+            .header-accent {
+              position: absolute;
+              bottom: 0;
+              left: 0;
+              right: 28px;
+              height: 6px;
+              background: linear-gradient(90deg, #c41e3a 60%, #00a8e8 100%);
             }
-            
-            .logo-subtitle {
-              font-size: 9px;
-              color: #6c757d;
-              letter-spacing: 3px;
-              margin-top: 8px;
-              font-weight: 500;
+
+            .header-right {
+              flex: 1;
+              padding: 14px 28px;
               text-align: right;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              gap: 2px;
             }
-            
-            /* Contenido con padding lateral */
-            .content {
-              padding: 0 20px;
+
+            .header-right p {
+              font-size: 11px;
+              color: #2c3e50;
+              line-height: 1.5;
             }
-            
-            /* Secciones con color azul */
+
+            .header-right .contact-email {
+              color: #0077b6;
+              font-weight: 700;
+              font-size: 12px;
+            }
+
+            .header-right .rfc-line {
+              font-size: 10px;
+              color: #6c757d;
+              margin-top: 4px;
+            }
+
+            /* ============================
+               WATERMARK - centrado en el contenido (sin fixed para compatibilidad con expo-print)
+               ============================ */
+            .watermark {
+              display: block;
+              text-align: center;
+              font-size: 90px;
+              font-weight: 900;
+              color: rgba(200, 220, 240, 0.45);
+              letter-spacing: 8px;
+              white-space: nowrap;
+              margin: 20px 0;
+              user-select: none;
+              pointer-events: none;
+            }
+
+            /* ============================
+               FOOTER - al fondo del documento (sin fixed para compatibilidad con expo-print)
+               ============================ */
+            .page-footer {
+              border-top: 2px solid #1a1a1a;
+              padding: 10px 30px;
+              text-align: center;
+              background: #ffffff;
+              font-size: 10px;
+              color: #6c757d;
+              letter-spacing: 1px;
+              margin-top: 30px;
+            }
+
+            /* ============================
+               CONTENIDO PRINCIPAL
+               ============================ */
+            .main-content {
+              padding: 30px 40px 20px 40px;
+            }
+
             .section {
-              margin-bottom: 45px;
-              page-break-inside: avoid;
+              margin-bottom: 32px;
+              position: relative;
+              z-index: 1;
             }
-            
+
             .section-title {
               color: #c41e3a;
-              background: #ffffff;
-              font-size: 16px;
+              font-size: 15px;
               font-weight: 700;
-              margin-bottom: 25px;
-              margin-top: 30px;
-              padding: 12px 20px;
-              letter-spacing: 1px;
-              border-radius: 4px;
+              margin-bottom: 20px;
+              padding: 10px 18px;
               border-left: 5px solid #c41e3a;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+              border-radius: 3px;
+              background: #fff;
+              letter-spacing: 0.5px;
             }
-            
-            /* Primera sección sin margin-top extra */
-            .section:first-of-type .section-title {
-              margin-top: 0;
-            }
-            
-            /* Grid de campos con cajas */
+
             .field-row {
               display: flex;
-              gap: 25px;
-              margin-bottom: 20px;
+              gap: 16px;
+              margin-bottom: 14px;
             }
-            
+
             .field {
               flex: 1;
-              margin-bottom: 20px;
-              padding: 15px 18px;
+              margin-bottom: 14px;
+              padding: 12px 16px;
               background: #f8f9fa;
               border-left: 4px solid #00a8e8;
               border-radius: 4px;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             }
-            
+
             .field-label {
-              font-size: 11px;
+              font-size: 10px;
               color: #0077b6;
               font-weight: 700;
               text-transform: uppercase;
-              letter-spacing: 1.2px;
-              margin-bottom: 8px;
+              letter-spacing: 1px;
+              margin-bottom: 6px;
               display: block;
             }
-            
+
             .field-value {
-              font-size: 16px;
+              font-size: 14px;
               color: #2c3e50;
-              line-height: 1.6;
+              line-height: 1.5;
               font-weight: 500;
               word-wrap: break-word;
               word-break: break-word;
-              overflow-wrap: break-word;
               white-space: pre-wrap;
             }
-            
-            /* Valores especiales */
+
             .value-highlight {
               color: #c41e3a;
               font-weight: 700;
               text-transform: capitalize;
             }
-            
+
             .value-price {
-              font-size: 32px;
-              font-weight: 700;
-              color: red;
+              font-size: 28px;
+              font-weight: 900;
+              color: #c41e3a;
               letter-spacing: 1px;
+            }
+
+            /* ============================
+               FIRMAS
+               ============================ */
+            .signatures-section {
+              margin-top: 50px;
+              padding-top: 30px;
+              page-break-inside: avoid;
+              position: relative;
+              z-index: 1;
+            }
+
+            .signatures-row {
+              display: flex;
+              gap: 60px;
+              justify-content: center;
+            }
+
+            .signature-box {
+              flex: 1;
+              text-align: center;
+              max-width: 220px;
+            }
+
+            .signature-line {
+              border-bottom: 2px solid #1a1a1a;
+              margin-bottom: 12px;
+              width: 100%;
+              height: 60px;
+            }
+
+            .signature-label {
+              font-size: 13px;
+              color: #2c3e50;
+              font-weight: 500;
             }
           </style>
         </head>
         <body>
-          <!-- Header -->
-          <div class="header">
-            <div class="header-title"></div>
-            <div class="logo-container">
-              <div class="logo-text">
-                <span class="logo-si">SI</span> <span class="logo-mant">MANT</span>
+
+          <!-- HEADER MEMBRETE -->
+          <div class="page-header">
+            <div class="header-left">
+              <!-- Gear SVG icon -->
+              <svg class="header-gear" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="50" cy="50" r="18" stroke="#00a8e8" stroke-width="8"/>
+                <rect x="44" y="5" width="12" height="20" rx="4" fill="#00a8e8"/>
+                <rect x="44" y="75" width="12" height="20" rx="4" fill="#00a8e8"/>
+                <rect x="5" y="44" width="20" height="12" rx="4" fill="#00a8e8"/>
+                <rect x="75" y="44" width="20" height="12" rx="4" fill="#00a8e8"/>
+                <rect x="17" y="17" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 23 23)"/>
+                <rect x="66" y="17" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 77 23)"/>
+                <rect x="17" y="63" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 23 77)"/>
+                <rect x="66" y="63" width="12" height="20" rx="4" fill="#00a8e8" transform="rotate(45 77 77)"/>
+              </svg>
+              <div class="header-brand">
+                <div class="header-brand-main">MX SI-MANT<br>COMERCIAL</div>
+                <div class="header-brand-sub">SI MANT</div>
               </div>
+              <div class="header-accent"></div>
+            </div>
+            <div class="header-right">
+              <p>Calle Villa Charra, No. 18096 Bodega No. 5</p>
+              <p>C.P. 22200, Loma Bonita, Tijuana, B.C.</p>
+              <p class="contact-email">contacto@si-mant.com</p>
+              <p>+52 668 160 5243 · +52 664 438 7533</p>
+              <p class="rfc-line">SI-MANT COMERCIAL, S.A. DE C.V. &nbsp;|&nbsp; RFC: MSC230817UU1</p>
             </div>
           </div>
-          
-          <!-- Contenido -->
-          <div class="content">
+
+          <!-- CONTENIDO PRINCIPAL -->
+          <div class="main-content">
+
             <!-- Datos Generales -->
             <div class="section">
               <div class="section-title">Datos Generales</div>
-              
+
               <div class="field-row">
                 <div class="field">
                   <div class="field-label">Modelo:</div>
@@ -690,7 +827,7 @@ function ClientePanelContent() {
                   <div class="field-value">${serieValue}</div>
                 </div>
               </div>
-              
+
               <div class="field-row">
                 <div class="field">
                   <div class="field-label">Sucursal:</div>
@@ -701,100 +838,115 @@ function ClientePanelContent() {
                   <div class="field-value" style="text-transform: capitalize;">${reporte.prioridad || 'media'}</div>
                 </div>
               </div>
-              
+
               <div class="field">
                 <div class="field-label">Comentario / Problema:</div>
                 <div class="field-value">${comentarioFinal}</div>
               </div>
-              
+
               <div class="field-row">
-                <div class="field">
-                  <div class="field-label">Prioridad:</div>
-                  <div class="field-value" style="text-transform: capitalize;">${reporte.prioridad || 'media'}</div>
-                </div>
                 <div class="field">
                   <div class="field-label">Estado:</div>
                   <div class="field-value value-highlight">${obtenerNombreEstado(reporte.estado)}</div>
                 </div>
+                ${reporte.empresa ? `
+                <div class="field">
+                  <div class="field-label">Empresa:</div>
+                  <div class="field-value">${reporte.empresa}</div>
+                </div>
+                ` : '<div class="field" style="visibility:hidden;"></div>'}
               </div>
-              
-              ${reporte.empresa ? `
-              <div class="field">
-                <div class="field-label">Empresa:</div>
-                <div class="field-value">${reporte.empresa}</div>
+
+              <div class="field-row">
+                <div class="field">
+                  <div class="field-label">Fecha de Creación:</div>
+                  <div class="field-value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No disponible'}</div>
+                </div>
+                ${reporte.usuario_nombre ? `
+                <div class="field">
+                  <div class="field-label">Solicitante:</div>
+                  <div class="field-value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</div>
+                </div>
+                ` : '<div class="field" style="visibility:hidden;"></div>'}
               </div>
-              ` : ''}
-              
-              <div class="field">
-                <div class="field-label">Fecha de creación:</div>
-                <div class="field-value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No disponible'}</div>
-              </div>
-              
-              ${reporte.usuario_nombre ? `
-              <div class="field">
-                <div class="field-label">Solicitante:</div>
-                <div class="field-value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</div>
-              </div>
-              ` : ''}
             </div>
-            
+
             <!-- Información de Cotización -->
             ${reporte.analisis_general ? `
             <div class="section">
               <div class="section-title">Información de Cotización</div>
-              
+
               ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
               <div class="field">
-                <div class="field-label">Costo de cotización:</div>
-                <div class="field-value value-price">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</div>
+                <div class="field-label">Costo de Cotización:</div>
+                <div class="field-value value-price">$ ${parseFloat(reporte.precio_cotizacion).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${reporte.moneda || 'MXN'}</div>
               </div>
               ` : ''}
-              
+
               <div class="field">
                 <div class="field-label">Análisis:</div>
                 <div class="field-value">${reporte.analisis_general}</div>
               </div>
             </div>
             ` : ''}
-            
+
             <!-- Trabajo Realizado -->
-            ${(reporte.revision || reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+            ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
             <div class="section">
               <div class="section-title">Trabajo Realizado</div>
-              
-              ${reporte.revision ? `
-              <div class="field">
-                <div class="field-label">Revisión:</div>
-                <div class="field-value">${reporte.revision}</div>
-              </div>
-              ` : '<div class="field"><div class="field-label">Revisión:</div><div class="field-value">*** Detalles de la revisión o diagnóstico ***</div></div>'}
-              
+
               ${reporte.reparacion ? `
               <div class="field">
                 <div class="field-label">Reparación:</div>
                 <div class="field-value">${reporte.reparacion}</div>
               </div>
-              ` : '<div class="field"><div class="field-label">Reparación:</div><div class="field-value">*** Detalles de las reparaciones realizadas aquí ***</div></div>'}
-              
+              ` : `<div class="field"><div class="field-label">Reparación:</div><div class="field-value">*** Detalles de las reparaciones realizadas aquí ***</div></div>`}
+
               ${reporte.materiales_refacciones ? `
               <div class="field">
                 <div class="field-label">Materiales y Refacciones:</div>
                 <div class="field-value">${reporte.materiales_refacciones}</div>
               </div>
-              ` : '<div class="field"><div class="field-label">Materiales y Refacciones:</div><div class="field-value">*** Lista de materiales y refacciones utilizados aquí ***</div></div>'}
-              
+              ` : `<div class="field"><div class="field-label">Materiales y Refacciones:</div><div class="field-value">*** Lista de materiales y refacciones utilizados aquí ***</div></div>`}
+
               ${reporte.recomendaciones ? `
               <div class="field">
                 <div class="field-label">Recomendaciones:</div>
                 <div class="field-value">${reporte.recomendaciones}</div>
               </div>
-              ` : '<div class="field"><div class="field-label">Recomendaciones:</div><div class="field-value">*** Recomendaciones adicionales aquí ***</div></div>'}
+              ` : `<div class="field"><div class="field-label">Recomendaciones:</div><div class="field-value">*** Recomendaciones adicionales aquí ***</div></div>`}
+
+              ${reporte.recomendaciones_adicionales ? `
+              <div class="field">
+                <div class="field-label">Recomendaciones Adicionales:</div>
+                <div class="field-value">${reporte.recomendaciones_adicionales}</div>
+              </div>
+              ` : ''}
             </div>
             ` : ''}
-          </div>
-          
-          <!-- Onda inferior -->
-          <div class="wave-bottom"></div>
+
+            <!-- SECCIÓN DE FIRMAS -->
+            <div class="signatures-section">
+              <div class="signatures-row">
+                <div class="signature-box">
+                  <div class="signature-line"></div>
+                  <div class="signature-label">Nombre del técnico</div>
+                </div>
+                <div class="signature-box">
+                  <div class="signature-line"></div>
+                  <div class="signature-label">Nombre del cliente</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WATERMARK centrado (debajo de firmas) -->
+            <div class="watermark">SI MANT</div>
+
+            <!-- FOOTER -->
+            <div class="page-footer">si-mant.com</div>
+
+          </div><!-- /main-content -->
+
         </body>
         </html>
       `;
@@ -808,7 +960,7 @@ function ClientePanelContent() {
         logDebug('[PDF] Modo web detectado, enviando al backend...');
         try {
           logDebug('[PDF] Haciendo fetch a backend...');
-          const response = await fetch(`${getApiBaseUrl()}/pdf/generate`, {
+          const response = await fetch(`${getApiBaseUrl()} /pdf/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ html: htmlContent })
@@ -841,21 +993,147 @@ function ClientePanelContent() {
           Alert.alert('Error', 'No se pudo generar el PDF');
         }
       } else {
-        // En mÃ³vil, usar expo-print normalmente
-        const { uri } = await Print.printToFileAsync({ html: htmlContent });
+        // En móvil: usar expo-print con HTML simplificado compatible
+        logDebug('[PDF] Modo móvil detectado, usando expo-print...');
+
+        // Cargar logo de la empresa como base64 para incrustarlo en el HTML
+        let logoDataUri = '';
+        try {
+          // Intentar leer el logo real desde el sistema de archivos del bundle
+          const possiblePaths = [
+            `${FileSystem.bundleDirectory}assets/images/logosimant.png`,
+            `${FileSystem.bundleDirectory}assets/logosimant.png`,
+          ];
+          for (const logoPath of possiblePaths) {
+            const info = await FileSystem.getInfoAsync(logoPath);
+            if (info.exists) {
+              const b64 = await FileSystem.readAsStringAsync(logoPath, {
+                encoding: FileSystem.EncodingType.Base64,
+              });
+              logoDataUri = `data:image/png;base64,${b64}`;
+              logDebug('[PDF] Logo cargado desde:', logoPath);
+              break;
+            }
+          }
+        } catch (logoErr) {
+          logDebug('[PDF] No se pudo cargar logo:', logoErr);
+        }
+
+        const logoHtml = logoDataUri
+          ? `<img src="${logoDataUri}" style="height:60px; width:auto; display:block; margin-bottom:8px;" />`
+          : `<span style="font-size:14px; font-weight:900; color:#c41e3a; letter-spacing:2px; display:block; margin-bottom:6px;">SI MANT</span><span style="font-size:18px; font-weight:900; color:#fff; display:block; line-height:1.2;">MX SI-MANT<br/>COMERCIAL</span>`;
+
+        const mobileHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 0; }
+    .body-content { padding: 20px; }
+    /* ===== MEMBRETE ===== */
+    .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    .lh-left { display: table-cell; background: #1a1a1a; width: 52%; padding: 14px 20px 0 20px; vertical-align: middle; position: relative; }
+    .lh-accent { display: table-cell; background: #00a8e8; width: 8px; vertical-align: top; }
+    .lh-right { display: table-cell; width: 46%; padding: 14px 18px; vertical-align: middle; text-align: right; }
+    .lh-icon { font-size: 40px; display: block; color: #aaa; line-height: 1; }
+    .lh-si { color: #c41e3a; font-size: 13px; font-weight: 900; letter-spacing: 2px; display: block; margin-top: 4px; margin-bottom: 10px; }
+    .lh-company { color: #ffffff; font-size: 22px; font-weight: 900; line-height: 1.15; letter-spacing: 0.5px; display: block; padding-bottom: 6px; }
+    .lh-redbar { background: #c41e3a; height: 6px; margin: 8px -20px 0 -20px; }
+    .lh-addr { font-size: 10px; color: #2c3e50; line-height: 1.6; }
+    .lh-email { font-size: 11px; font-weight: 700; color: #0077b6; margin-top: 6px; display: block; }
+    .lh-phone { font-size: 10px; color: #2c3e50; display: block; }
+    .lh-rfc { font-size: 9px; color: #6c757d; margin-top: 6px; display: block; }
+    .section { margin-bottom: 28px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 14px; }
+    .field { margin-bottom: 12px; border-left: 3px solid #00a8e8; padding-left: 10px; background: #f5f5f5; padding: 10px 12px; border-radius: 3px; }
+    .label { font-size: 9px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+    .value { font-size: 13px; color: #222; }
+    .value-red { color: #c41e3a; font-weight: 700; font-size: 20px; }
+    .row { display: table; width: 100%; margin-bottom: 12px; }
+    .col { display: table-cell; width: 50%; padding-right: 10px; }
+    .signatures { margin-top: 60px; border-top: 1px solid #ccc; padding-top: 30px; }
+    .sig-row { display: table; width: 100%; }
+    .sig-col { display: table-cell; width: 50%; text-align: center; height: 60px; border-bottom: 2px solid #222; font-size: 11px; color: #555; padding-bottom: 8px; vertical-align: bottom; }
+    .footer { margin-top: 30px; border-top: 2px solid #222; padding-top: 8px; text-align: center; font-size: 10px; color: #888; }
+    .watermark { text-align: center; font-size: 60px; font-weight: 900; color: rgba(200,220,240,0.4); letter-spacing: 6px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <!-- MEMBRETE -->
+  <div class="letterhead">
+    <div class="lh-left">
+      ${logoHtml}
+      <div class="lh-redbar"></div>
+    </div>
+    <div class="lh-accent"></div>
+    <div class="lh-right">
+      <span class="lh-addr">Calle Villa Charra, No. 18096 Bodega No. 5<br>C.P. 22200, Loma Bonita, Tijuana, B.C.</span>
+      <span class="lh-email">contacto@si-mant.com</span>
+      <span class="lh-phone">+52 668 160 5243 &middot; +52 664 438 7533</span>
+      <span class="lh-rfc">SI-MANT COMERCIAL, S.A. DE C.V. &nbsp;|&nbsp; RFC: MSC230817UU1</span>
+    </div>
+  </div>
+
+  <div class="body-content">
+    <div class="section">
+      <div class="section-title">Datos Generales</div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
+      <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+    </div>
+    <div class="row">
+      <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
+      <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+    </div>
+    <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
+    <div class="row">
+      <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
+      ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
+    </div>
+    <div class="row">
+      <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
+      ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
+    </div>
+  </div>
+
+  ${reporte.analisis_general ? `
+  <div class="section">
+    <div class="section-title">Información de Cotización</div>
+    ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `<div class="field"><span class="label">Costo de cotización</span><span class="value-red">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</span></div>` : ''}
+    <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
+  </div>` : ''}
+
+  ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones || reporte.recomendaciones_adicionales) ? `
+  <div class="section">
+    <div class="section-title">Trabajo Realizado</div>
+    ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
+    ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
+    ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
+    ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
+  </div>` : ''}
+
+  <div class="watermark">SI MANT</div>
+
+  <div class="signatures">
+    <div class="sig-row">
+      <div class="sig-col">Nombre del técnico</div>
+      <div class="sig-col">Nombre del cliente</div>
+    </div>
+  </div>
+
+  <div class="footer">si-mant.com</div>
+  </div><!-- /body-content -->
+</body>
+</html>`;
+
+        const { uri } = await Print.printToFileAsync({ html: mobileHtml });
         logDebug('[PDF] PDF generado en:', uri);
 
         const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
-
-        // Android: Usar cacheDirectory es más seguro para compartir (FileProvider)
-        // iOS: documentDirectory está bien, pero cache también funciona
         const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
         const downloadPath = `${storageDir}${fileName}`;
 
-        await FileSystem.moveAsync({
-          from: uri,
-          to: downloadPath
-        });
+        await FileSystem.moveAsync({ from: uri, to: downloadPath });
 
         const fileInfo = await FileSystem.getInfoAsync(downloadPath);
         logDebug('[PDF] PDF guardado en:', downloadPath, 'Size:', fileInfo.exists ? fileInfo.size : 'UNKNOWN');
@@ -867,13 +1145,9 @@ function ClientePanelContent() {
             UTI: 'com.adobe.pdf'
           });
         } else {
-          Alert.alert(
-            'PDF Descargado',
-            'El archivo se ha guardado exitosamente.',
-            [{ text: 'OK' }]
-          );
+          Alert.alert('PDF Descargado', 'El archivo se ha guardado exitosamente.', [{ text: 'OK' }]);
         }
-      }
+      } // fin else móvil
     } catch (error) {
       console.error('[PDF] Error al generar PDF:', error);
       Alert.alert('Error', 'No se pudo generar el PDF');
@@ -1128,7 +1402,7 @@ function ClientePanelContent() {
 
     return (
       <View
-        key={rep.id || `sample-${rep.equipo_descripcion}`}
+        key={rep.id || `sample - ${rep.equipo_descripcion} `}
         style={[styles.reportCard, { padding: 12 }]}
       >
         <View style={[styles.reportCardHeader, { flexWrap: 'wrap' }]}>
@@ -2112,7 +2386,7 @@ function ClientePanelContent() {
                     <View style={styles.detailField}>
                       <Text style={[styles.detailLabel, { fontFamily, color: '#f59e0b' }]}>Costo de Cotización</Text>
                       <Text style={[styles.detailValue, { fontFamily, fontSize: 24, fontWeight: '700', color: '#10b981' }]}>
-                        ${parseFloat(selectedReporte.precio_cotizacion).toFixed(2)}
+                        {formatDisplayPrice(selectedReporte.precio_cotizacion, selectedReporte.moneda)}
                       </Text>
                     </View>
                   )}
@@ -2589,7 +2863,7 @@ function ClientePanelContent() {
                               {/* 4. Precio al final */}
                               <Text style={[styles.reportTitle, { fontFamily, color: '#f59e0b', marginTop: 4, fontSize: 18 }]}>
                                 {cot.precio_cotizacion && parseFloat(cot.precio_cotizacion) > 0
-                                  ? `$${parseFloat(cot.precio_cotizacion).toFixed(2)}`
+                                  ? formatDisplayPrice(cot.precio_cotizacion, cot.moneda)
                                   : '(esperando respuesta)'}
                               </Text>
 
@@ -2747,7 +3021,7 @@ function ClientePanelContent() {
                       <Text style={[styles.detailLabel, { fontFamily }]}>Precio Cotizado</Text>
                       <Text style={[styles.detailValue, { fontFamily, fontSize: 18, fontWeight: 'bold', color: '#f59e0b' }]}>
                         {cotizacionSeleccionada.precio_cotizacion && cotizacionSeleccionada.precio_cotizacion > 0
-                          ? `$${parseFloat(cotizacionSeleccionada.precio_cotizacion).toFixed(2)}`
+                          ? formatDisplayPrice(cotizacionSeleccionada.precio_cotizacion, cotizacionSeleccionada.moneda)
                           : 'Por Cotizar'}
                       </Text>
                     </View>

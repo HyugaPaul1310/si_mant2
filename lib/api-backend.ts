@@ -142,11 +142,13 @@ export async function actualizarEstadoReporteAsignado(
   nuevoEstado: string,
   descripcionTrabajo?: string,
   precioCotizacion?: number,
+  moneda?: string,
   fase2Data?: any
 ) {
   const datos: any = { estado: nuevoEstado };
   if (descripcionTrabajo) datos.descripcionTrabajo = descripcionTrabajo;
   if (precioCotizacion) datos.precioCotizacion = precioCotizacion;
+  if (moneda) datos.moneda = moneda;
 
   // Si hay datos de Fase 2, incluirlos
   if (fase2Data) {

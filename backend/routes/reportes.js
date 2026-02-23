@@ -19,6 +19,7 @@ router.get('/', verifyToken, async (req, res) => {
         r.updated_at,
         r.analisis_general,
         r.precio_cotizacion,
+        r.moneda,
         r.cotizacion_explicacion,
         r.revision,
         r.recomendaciones,
@@ -124,6 +125,7 @@ router.put('/:id', verifyToken, async (req, res) => {
       precio_cotizacion,
       cotizacion_explicacion,
       cotizacionExplicacion,
+      moneda,
     } = req.body;
 
     const [estadoActualRows] = await pool.query(
@@ -157,6 +159,11 @@ router.put('/:id', verifyToken, async (req, res) => {
     } else if (precio_cotizacion !== undefined) {
       updateData.precio_cotizacion = precio_cotizacion;
       console.log('[DEBUG-PUT] precio_cotizacion:', precio_cotizacion);
+    }
+
+    if (moneda !== undefined) {
+      updateData.moneda = moneda;
+      console.log('[DEBUG-PUT] moneda:', moneda);
     }
 
     if (req.body.motivo_cancelacion !== undefined) {
@@ -289,6 +296,7 @@ router.get('/empleado', verifyToken, async (req, res) => {
         r.empleado_asignado_id,
         r.analisis_general,
         r.precio_cotizacion,
+        r.moneda,
         r.revision,
         r.recomendaciones,
         r.reparacion,
@@ -352,6 +360,7 @@ router.get('/cliente', verifyToken, async (req, res) => {
         r.empleado_asignado_id,
         r.analisis_general,
         r.precio_cotizacion,
+        r.moneda,
         r.cotizacion_explicacion,
         r.revision,
         r.reparacion,
@@ -464,6 +473,12 @@ router.put('/:id/estado', verifyToken, async (req, res) => {
       console.log('[BACKEND-ESTADO] Guardando precio:', precioCotizacion);
       setClauses.push('precio_cotizacion = ?');
       params.push(precioCotizacion);
+    }
+
+    if (req.body.moneda) {
+      console.log('[BACKEND-ESTADO] Guardando moneda:', req.body.moneda);
+      setClauses.push('moneda = ?');
+      params.push(req.body.moneda);
     }
 
     if (cerrado_por_cliente_at) {
@@ -870,7 +885,9 @@ router.get('/cotizaciones/cliente/:email', verifyToken, async (req, res) => {
         r.comentario,
         r.prioridad,
         r.empresa,
-        r.sucursal
+        r.sucursal,
+        r.moneda,
+        r.precio_cotizacion
       FROM cotizaciones c
       LEFT JOIN reportes r ON c.reporte_id = r.id
       WHERE r.usuario_email = ?

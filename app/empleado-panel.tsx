@@ -1862,15 +1862,29 @@ function EmpleadoPanelContent() {
                     )}
 
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Revisión</Text>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Describe la revisión realizada..."
+                        placeholder="Detalla lo que fue reparado..."
                         placeholderTextColor="#cbd5e1"
                         multiline
                         numberOfLines={3}
-                        value={revision}
-                        onChangeText={setRevision}
+                        value={reparacion}
+                        onChangeText={setReparacion}
+                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Materiales o refacciones utilizadas..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={2}
+                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !materialesRefacciones ? 'N/A' : materialesRefacciones}
+                        onChangeText={setMaterialesRefacciones}
                         editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
@@ -1890,20 +1904,6 @@ function EmpleadoPanelContent() {
                     </View>
 
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Detalla lo que fue reparado..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={3}
-                        value={reparacion}
-                        onChangeText={setReparacion}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
-
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -1913,20 +1913,6 @@ function EmpleadoPanelContent() {
                         numberOfLines={2}
                         value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !recomendacionesAdicionales ? 'N/A' : recomendacionesAdicionales}
                         onChangeText={setRecomendacionesAdicionales}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
-
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Materiales o refacciones utilizadas..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={2}
-                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !materialesRefacciones ? 'N/A' : materialesRefacciones}
-                        onChangeText={setMaterialesRefacciones}
                         editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
                       />
                     </View>
