@@ -10,6 +10,7 @@ import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
   actualizarReporteBackend,
   apiCall,
@@ -101,7 +102,6 @@ function ClientePanelContent() {
   const [archivosCotizacion, setArchivosCotizacion] = useState<any[]>([]);
   const [loadingArchivosCotizacion, setLoadingArchivosCotizacion] = useState(false);
 
-  // Estado para rastrear encuestas enviadas (usando localStorage)
   const [encuestasEnviadas, setEncuestasEnviadas] = useState<Set<number>>(new Set());
   // Estado para rastrear encuestas confirmadas en BD
   const [encuestasRespondidas, setEncuestasRespondidas] = useState<Set<number>>(new Set());
@@ -510,6 +510,7 @@ function ClientePanelContent() {
   const generarPDF = async (reporte: any) => {
     if (generandoPDF) return;
     setGenerandoPDF(true);
+    console.log('[PDF] Iniciando proceso de generación...');
     try {
       // Extraer información del reporte
       const fullDescripcion = reporte.descripcion || '';
@@ -523,33 +524,6 @@ function ClientePanelContent() {
       const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
       const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
 
-      // --- LOGO LOGIC (Unificada) ---
-      let logoDataUri = '';
-      try {
-        if (Platform.OS !== 'web') {
-          const possiblePaths = [
-            `${FileSystem.bundleDirectory}assets/images/logosimant.png`,
-            `${FileSystem.bundleDirectory}assets/logosimant.png`,
-          ];
-          for (const logoPath of possiblePaths) {
-            const info = await FileSystem.getInfoAsync(logoPath);
-            if (info.exists) {
-              const b64 = await FileSystem.readAsStringAsync(logoPath, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-              logoDataUri = `data:image/png;base64,${b64}`;
-              break;
-            }
-          }
-        }
-      } catch (err) {
-        logDebug('[PDF] Error cargando logo:', err);
-      }
-
-      const logoHtml = logoDataUri
-        ? `<img src="${logoDataUri}" style="height:60px; width:auto; display:block; margin-bottom:8px;" />`
-        : `<span style="font-size:14px; font-weight:900; color:#c41e3a; letter-spacing:2px; display:block; margin-bottom:6px;">SI MANT</span><span style="font-size:18px; font-weight:900; color:#fff; display:block; line-height:1.2;">MX SI-MANT<br/>COMERCIAL</span>`;
-
       // --- TEMPLATE UNIFICADO ---
       const htmlTemplate = `<!DOCTYPE html>
 <html>
@@ -557,52 +531,66 @@ function ClientePanelContent() {
   <meta charset="utf-8">
   <style>
     @page { margin: 0; size: A4; }
-    body { font-family: Arial, sans-serif; color: #222; margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .body-content { padding: 0 20px 20px 20px; }
-    .letterhead { display: table; width: 100%; border-collapse: collapse; margin-bottom: 24px; border: none; }
-    .lh-left { display: table-cell; background: #1a1a1a !important; width: 52%; padding: 20px 20px 0 20px; vertical-align: middle; position: relative; border: none; }
-    .lh-accent { display: table-cell; background: #00a8e8 !important; width: 8px; vertical-align: top; border: none; }
-    .lh-right { display: table-cell; width: 46%; padding: 20px 18px 10px 18px; vertical-align: middle; text-align: right; border: none; }
-    .lh-si { color: #c41e3a; font-size: 13px; font-weight: 900; letter-spacing: 2px; display: block; margin-top: 4px; margin-bottom: 10px; }
-    .lh-company { color: #ffffff; font-size: 22px; font-weight: 900; line-height: 1.15; letter-spacing: 0.5px; display: block; padding-bottom: 6px; }
-    .lh-redbar { background: #c41e3a !important; height: 6px; margin: 12px -20px 0 -20px; }
-    .lh-addr { font-size: 10px; color: #2c3e50; line-height: 1.6; }
-    .lh-email { font-size: 11px; font-weight: 700; color: #0077b6; margin-top: 6px; display: block; }
-    .lh-phone { font-size: 10px; color: #2c3e50; display: block; }
-    .lh-rfc { font-size: 9px; color: #6c757d; margin-top: 6px; display: block; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 210mm;
+      height: 297mm;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      color: #222; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      background: transparent;
+    }
+    .background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 210mm;
+      height: 297mm;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .background-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .body-content { 
+      padding: 180px 50px 80px 50px; 
+      position: relative;
+      z-index: 10;
+    }
     
-    .section { margin-bottom: 28px; }
-    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 14px; }
-    .field { margin-bottom: 12px; border-left: 3px solid #00a8e8; padding-left: 10px; background: #f5f5f5 !important; padding: 10px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
-    .label { font-size: 9px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; }
-    .value { font-size: 13px; color: #222; }
-    .value-red { color: #c41e3a; font-weight: 700; font-size: 20px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; }
+    .field { margin-bottom: 10px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
+    .label { font-size: 8px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
+    .value { font-size: 12px; color: #222; }
+    .value-red { color: #c41e3a; font-weight: 700; font-size: 18px; }
     
-    .row { display: table; width: 100%; margin-bottom: 12px; table-layout: fixed; }
-    .col { display: table-cell; width: 50%; padding-right: 10px; vertical-align: top; }
+    .row { display: table; width: 100%; margin-bottom: 10px; table-layout: fixed; }
+    .col { display: table-cell; width: 50%; padding-right: 15px; vertical-align: top; }
     
-    .signatures { margin-top: 60px; padding-top: 30px; }
+    .signatures { margin-top: 140px; padding-top: 20px; }
     .sig-row { display: table; width: 100%; table-layout: fixed; }
-    .sig-col { display: table-cell; text-align: center; height: 60px; border-bottom: 2px solid #222; font-size: 11px; color: #555; padding-bottom: 8px; vertical-align: bottom; }
-    .sig-spacer { display: table-cell; width: 120px; }
+    .sig-col { display: table-cell; text-align: center; height: 50px; border-bottom: 2.5px solid #1a1a1a; font-size: 11px; font-weight: 700; color: #333; padding-bottom: 8px; vertical-align: bottom; }
+    .sig-spacer { display: table-cell; width: 60px; }
     
-    .footer { margin-top: 30px; padding-top: 8px; text-align: center; font-size: 10px; color: #888; }
-    .watermark { text-align: center; font-size: 60px; font-weight: 900; color: rgba(200,220,240,0.4); letter-spacing: 6px; margin: 40px 0; -webkit-print-color-adjust: exact; }
+    .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; }
+    .page-break { 
+      page-break-before: always; 
+      padding-top: 180px;
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <div class="letterhead">
-    <div class="lh-left">
-      ${logoHtml}
-      <div class="lh-redbar"></div>
-    </div>
-    <div class="lh-accent"></div>
-    <div class="lh-right">
-      <span class="lh-addr">Calle Villa Charra, No. 18096 Bodega No. 5<br>C.P. 22200, Loma Bonita, Tijuana, B.C.</span>
-      <span class="lh-email">contacto@si-mant.com</span>
-      <span class="lh-phone">+52 668 160 5243 &middot; +52 664 438 7533</span>
-      <span class="lh-rfc">SI-MANT COMERCIAL, S.A. DE C.V. &nbsp;|&nbsp; RFC: MSC230817UU1</span>
-    </div>
+  <div class="background-container">
+    <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
   </div>
 
   <div class="body-content">
@@ -630,7 +618,11 @@ function ClientePanelContent() {
     ${reporte.analisis_general ? `
     <div class="section">
       <div class="section-title">Información de Cotización</div>
-      ${(reporte.estado === 'cerrado' || reporte.estado === 'cerrado_por_cliente' || reporte.estado === 'terminado') && reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `<div class="field"><span class="label">Costo de cotización</span><span class="value-red">$ ${parseFloat(reporte.precio_cotizacion).toFixed(2)}</span></div>` : ''}
+      ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+        <div class="field">
+          <span class="label">Costo de cotización</span>
+          <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
+        </div>` : ''}
       <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
     </div>` : ''}
 
@@ -643,15 +635,34 @@ function ClientePanelContent() {
       ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
     </div>` : ''}
 
-    <div class="watermark">SI MANT</div>
-
-    <div class="signatures">
-      <div class="sig-row">
-        <div class="sig-col">Nombre del técnico</div>
-        <div class="sig-spacer"></div>
-        <div class="sig-col">Nombre del cliente</div>
+    ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+    <div class="page-break"></div>
+    <div class="section">
+      <div class="section-title">Archivos Adjuntos</div>
+      <div class="field">
+        <div class="value" style="font-size: 10px; line-height: 1.6;">
+          ${archivosReporte
+            .filter(a => a.tipo_archivo !== 'audio')
+            .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
+            .join('<br/>')}
+        </div>
       </div>
     </div>
+    
+    <div class="signatures">
+      <div class="sig-row">
+        <div class="sig-col">Firma del técnico</div>
+        <div class="sig-spacer"></div>
+        <div class="sig-col">Firma del cliente</div>
+      </div>
+    </div>` : `
+    <div class="signatures">
+      <div class="sig-row">
+        <div class="sig-col">Firma del técnico</div>
+        <div class="sig-spacer"></div>
+        <div class="sig-col">Firma del cliente</div>
+      </div>
+    </div>`}
 
     <div class="footer">si-mant.com</div>
   </div>
@@ -661,6 +672,7 @@ function ClientePanelContent() {
       // --- GENERACIÓN ---
       if (Platform.OS === 'web') {
         try {
+          console.log('[PDF] Enviando petición al servidor:', `${getApiBaseUrl()}/pdf/generate`);
           const response = await fetch(`${getApiBaseUrl()}/pdf/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2204,6 +2216,11 @@ function ClientePanelContent() {
                   <TouchableOpacity
                     disabled={generandoPDF}
                     onPress={() => {
+                      console.log('[DEBUG] Click en Descargar PDF. Estado generandoPDF:', generandoPDF);
+                      if (generandoPDF) {
+                        console.log('[DEBUG] Evitando clic duplicado (generandoPDF === true)');
+                        return;
+                      }
                       generarPDF(selectedReporte);
                     }}
                     style={{
@@ -2881,6 +2898,11 @@ function ClientePanelContent() {
                     <TouchableOpacity
                       disabled={generandoPDF}
                       onPress={() => {
+                        console.log('[DEBUG] Click en Descargar PDF (Cotizaciones). Estado generandoPDF:', generandoPDF);
+                        if (generandoPDF) {
+                          console.log('[DEBUG] Evitando clic duplicado (generandoPDF === true)');
+                          return;
+                        }
                         generarPDF(cotizacionSeleccionada);
                       }}
                       style={{

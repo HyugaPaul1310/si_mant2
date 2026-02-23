@@ -8,6 +8,7 @@ router.post('/generate', async (req, res) => {
 
     try {
         const { html } = req.body;
+        console.log('[PDF] Cuerpo recibido. Tamaño HTML:', html ? html.length : 0);
 
         if (!html) {
             return res.status(400).json({ success: false, error: 'HTML content is required' });

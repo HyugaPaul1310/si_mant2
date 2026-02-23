@@ -2299,8 +2299,8 @@ function EmpleadoPanelContent() {
 
       {
         showInventarioModal && (
-          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile, { padding: 0 }]}>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { width: '100%', maxWidth: '100%', height: '100%', maxHeight: '100%', borderRadius: 0 }]}>
               <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1 }}>
                   <View style={{ backgroundColor: '#be185d', borderRadius: 12, padding: isMobile ? 8 : 10 }}>

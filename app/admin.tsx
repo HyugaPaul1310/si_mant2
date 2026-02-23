@@ -1584,81 +1584,83 @@ function AdminPanelContent() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.container, isMobile && styles.containerMobile]}>
-          <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
-            <View style={styles.headerLeft}>
-              <View style={styles.badgeWrapper}>
-                <LinearGradient
-                  colors={['#06b6d4', '#0891b2']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.badge, isMobile && styles.badgeMobile]}
+          <View style={styles.centeredSection}>
+            <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
+              <View style={styles.headerLeft}>
+                <View style={styles.badgeWrapper}>
+                  <LinearGradient
+                    colors={['#06b6d4', '#0891b2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.badge, isMobile && styles.badgeMobile]}
+                  >
+                    <Text style={[styles.badgeText, { fontFamily }]}>{initials}</Text>
+                  </LinearGradient>
+                  <View style={styles.badgeDot} />
+                </View>
+
+                <View style={styles.welcomeTextWrapper}>
+                  <Text style={[styles.welcomeTitle, isMobile && styles.welcomeTitleMobile, { fontFamily }]}>Bienvenido <Text style={styles.welcomeName}>{usuario?.nombre ?? 'Usuario'}</Text></Text>
+                  <Text style={[styles.welcomeSubtitle, { fontFamily }]}>Panel de Administrador</Text>
+                </View>
+              </View>
+
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  onPress={() => setShowPasswordModal(true)}
+                  style={styles.toggleButton}
                 >
-                  <Text style={[styles.badgeText, { fontFamily }]}>{initials}</Text>
-                </LinearGradient>
-                <View style={styles.badgeDot} />
-              </View>
-
-              <View style={styles.welcomeTextWrapper}>
-                <Text style={[styles.welcomeTitle, isMobile && styles.welcomeTitleMobile, { fontFamily }]}>Bienvenido <Text style={styles.welcomeName}>{usuario?.nombre ?? 'Usuario'}</Text></Text>
-                <Text style={[styles.welcomeSubtitle, { fontFamily }]}>Panel de Administrador</Text>
+                  <Ionicons name="key-outline" size={18} color="#94a3b8" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
+                  <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
+                  <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
+                </TouchableOpacity>
               </View>
             </View>
 
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                onPress={() => setShowPasswordModal(true)}
-                style={styles.toggleButton}
-              >
-                <Ionicons name="key-outline" size={18} color="#94a3b8" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowStats(!showStats)} style={styles.toggleButton} activeOpacity={0.8}>
-                <Ionicons name={showStats ? "eye-off-outline" : "eye-outline"} size={18} color="#94a3b8" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.8}>
-                <Ionicons name="log-out-outline" size={18} color="#94a3b8" />
-              </TouchableOpacity>
+            {/* SISTEMA DE TABS - NAVEGACIÓN */}
+            <View style={[styles.tabsNavigationContainer, isMobile && styles.tabsNavigationContainerMobile]}>
+              {[
+                { id: 'inicio', label: 'Inicio', icon: 'home-outline' },
+                { id: 'encuestas', label: 'Encuestas', icon: 'clipboard-outline' },
+                { id: 'inventario', label: 'Inventario', icon: 'cube-outline' }
+              ].map((tab) => (
+                <TouchableOpacity
+                  key={tab.id}
+                  style={[
+                    styles.tabButton,
+                    isMobile && styles.tabButtonMobile,
+                    activeTab === tab.id && styles.tabButtonActive,
+                    isMobile && activeTab === tab.id && styles.tabButtonActiveMobile
+                  ]}
+                  onPress={() => setActiveTab(tab.id as any)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={tab.icon as any}
+                    size={isMobile ? 18 : 20}
+                    color={activeTab === tab.id ? '#06b6d4' : '#64748b'}
+                  />
+                  {!isMobile && (
+                    <Text style={[
+                      styles.tabButtonText,
+                      { fontFamily },
+                      activeTab === tab.id && styles.tabButtonTextActive
+                    ]}>
+                      {tab.label}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
-          </View>
-
-          {/* SISTEMA DE TABS - NAVEGACIÓN */}
-          <View style={[styles.tabsNavigationContainer, isMobile && styles.tabsNavigationContainerMobile]}>
-            {[
-              { id: 'inicio', label: 'Inicio', icon: 'home-outline' },
-              { id: 'encuestas', label: 'Encuestas', icon: 'clipboard-outline' },
-              { id: 'inventario', label: 'Inventario', icon: 'cube-outline' }
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.id}
-                style={[
-                  styles.tabButton,
-                  isMobile && styles.tabButtonMobile,
-                  activeTab === tab.id && styles.tabButtonActive,
-                  isMobile && activeTab === tab.id && styles.tabButtonActiveMobile
-                ]}
-                onPress={() => setActiveTab(tab.id as any)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={tab.icon as any}
-                  size={isMobile ? 18 : 20}
-                  color={activeTab === tab.id ? '#06b6d4' : '#64748b'}
-                />
-                {!isMobile && (
-                  <Text style={[
-                    styles.tabButtonText,
-                    { fontFamily },
-                    activeTab === tab.id && styles.tabButtonTextActive
-                  ]}>
-                    {tab.label}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            ))}
           </View>
 
           {/* CONTENIDO DE LAS TABS */}
           {activeTab === 'inicio' && (
-            <View style={styles.tabContent}>
+            <View style={[styles.tabContent, styles.centeredSection]}>
 
               {showStats && (
                 <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
@@ -1747,7 +1749,7 @@ function AdminPanelContent() {
 
           {/* TAB 3: ENCUESTAS */}
           {activeTab === 'encuestas' && (
-            <View style={styles.tabContent}>
+            <View style={[styles.tabContent, styles.centeredSection]}>
               <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
@@ -1938,82 +1940,83 @@ function AdminPanelContent() {
           )}
 
 
-          {/* TAB 5: INVENTARIO */}
           {activeTab === 'inventario' && (
-            <View style={styles.tabContent}>
-              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+            <View style={[styles.tabContent, { flex: 1 }]}>
+              <ScrollView style={[styles.inventoryScroll, isMobile && styles.inventoryScrollMobile]} showsVerticalScrollIndicator={false}>
                 <View style={[styles.listSpacing, { paddingTop: 0 }]}>
-                  <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { marginBottom: 24 }]}>
-                    <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Inventario</Text>
-                    <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
-                  </View>
+                  <View style={[styles.centeredSection, { paddingHorizontal: isMobile ? 0 : 32 }]}>
+                    <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { marginBottom: 24 }]}>
+                      <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Inventario</Text>
+                      <Text style={[styles.sectionSubtitle, { fontFamily }]}>Gestión de herramientas asignadas</Text>
+                    </View>
 
-                  {/* INVENTORY TABLE */}
-                  {loadingEmpleadosInventario ? (
-                    <View style={styles.infoBox}>
-                      <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
-                    </View>
-                  ) : empleadosInventario.length === 0 ? (
-                    <View style={styles.noResultadosContainer}>
-                      <Ionicons name="cube-outline" size={64} color="#334155" />
-                      <Text style={[styles.noResultadosTitle, { fontFamily, marginTop: 16 }]}>No hay inventario asignado</Text>
-                      <Text style={[styles.noResultadosText, { fontFamily }]}>Aún no hay herramientas asignadas a empleados</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.inventoryTable}>
-                      {/* Header */}
-                      <View style={styles.tableHeader}>
-                        <Text style={[styles.headerCell, { flex: 2 }, { fontFamily }]}>Nombre</Text>
-                        {!isMobile && <Text style={[styles.headerCell, { flex: 2 }, { fontFamily }]}>Apellido</Text>}
-                        <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }, { fontFamily }]}>Detalles</Text>
+                    {/* INVENTORY TABLE - NOW ALIGNED */}
+                    {loadingEmpleadosInventario ? (
+                      <View style={styles.infoBox}>
+                        <Text style={[styles.infoText, { fontFamily }]}>Cargando inventario...</Text>
                       </View>
+                    ) : empleadosInventario.length === 0 ? (
+                      <View style={styles.noResultadosContainer}>
+                        <Ionicons name="cube-outline" size={64} color="#334155" />
+                        <Text style={[styles.noResultadosTitle, { fontFamily, marginTop: 16 }]}>No hay inventario asignado</Text>
+                        <Text style={[styles.noResultadosText, { fontFamily }]}>Aún no hay herramientas asignadas a empleados</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.inventoryTable}>
+                        {/* Header */}
+                        <View style={styles.tableHeader}>
+                          <Text style={[styles.headerCell, { flex: 2 }, { fontFamily }]}>Nombre</Text>
+                          {!isMobile && <Text style={[styles.headerCell, { flex: 2 }, { fontFamily }]}>Apellido</Text>}
+                          <Text style={[styles.headerCell, { flex: 1, textAlign: 'center' }, { fontFamily }]}>Detalles</Text>
+                        </View>
 
-                      {/* Rows */}
-                      {empleadosInventario.map((empleado: any, index: number) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={[
-                            styles.tableRow,
-                            index === empleadosInventario.length - 1 && { borderBottomWidth: 0 }
-                          ]}
-                          onPress={async () => {
-                            setEmpleadoSelectedInventario(empleado);
-                            setLoadingInventarioEmpleado(true);
-                            const { success, data } = await obtenerInventarioEmpleadoBackend(empleado.id);
-                            if (success) {
-                              setInventarioEmpleado(data || []);
-                            }
-                            setLoadingInventarioEmpleado(false);
-                            setShowInventarioModal(true);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={{ flex: 2 }}>
-                            <Text style={[styles.cellText, { fontFamily }]} numberOfLines={1}>
-                              {empleado.nombre}
-                            </Text>
-                            {isMobile && (
-                              <Text style={[styles.cellSubText, { fontFamily }]} numberOfLines={1}>
-                                {empleado.apellido}
-                              </Text>
-                            )}
-                          </View>
-                          {!isMobile && (
+                        {/* Rows */}
+                        {empleadosInventario.map((empleado: any, index: number) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={[
+                              styles.tableRow,
+                              index === empleadosInventario.length - 1 && { borderBottomWidth: 0 }
+                            ]}
+                            onPress={async () => {
+                              setEmpleadoSelectedInventario(empleado);
+                              setLoadingInventarioEmpleado(true);
+                              const { success, data } = await obtenerInventarioEmpleadoBackend(empleado.id);
+                              if (success) {
+                                setInventarioEmpleado(data || []);
+                              }
+                              setLoadingInventarioEmpleado(false);
+                              setShowInventarioModal(true);
+                            }}
+                            activeOpacity={0.7}
+                          >
                             <View style={{ flex: 2 }}>
                               <Text style={[styles.cellText, { fontFamily }]} numberOfLines={1}>
-                                {empleado.apellido || '-'}
+                                {empleado.nombre}
                               </Text>
+                              {isMobile && (
+                                <Text style={[styles.cellSubText, { fontFamily }]} numberOfLines={1}>
+                                  {empleado.apellido}
+                                </Text>
+                              )}
                             </View>
-                          )}
-                          <View style={{ flex: 1, alignItems: 'center' }}>
-                            <View style={styles.eyeCardSmall}>
-                              <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                            {!isMobile && (
+                              <View style={{ flex: 2 }}>
+                                <Text style={[styles.cellText, { fontFamily }]} numberOfLines={1}>
+                                  {empleado.apellido || '-'}
+                                </Text>
+                              </View>
+                            )}
+                            <View style={{ flex: 1, alignItems: 'center' }}>
+                              <View style={styles.eyeCardSmall}>
+                                <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                              </View>
                             </View>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 </View>
               </ScrollView>
             </View>
@@ -7037,8 +7040,11 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 32, backgroundColor: '#0f172a' },
   container: {
     flex: 1,
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
     paddingVertical: 28,
+    width: '100%',
+  },
+  centeredSection: {
     maxWidth: 1200,
     alignSelf: 'center',
     width: '100%',
@@ -7948,6 +7954,8 @@ const styles = StyleSheet.create({
   errorPanelText: { color: '#fca5a5', fontSize: 14 },
   listScroll: { maxHeight: 450 },
   listScrollMobile: { maxHeight: 350 },
+  inventoryScroll: { maxHeight: 1000 },
+  inventoryScrollMobile: { maxHeight: 600 },
   listSpacing: { gap: 12 },
   reportCard: {
     backgroundColor: 'rgba(30,41,59,0.5)',
