@@ -78,7 +78,10 @@ function ClientePanelContent() {
   const [showStats, setShowStats] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<string[]>([]);
   const [filtroPrioridad, setFiltroPrioridad] = useState<string[]>([]);
-  const [showFiltros, setShowFiltros] = useState(false);
+  const [showFiltros, setShowFiltros] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filtroID, setFiltroID] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
 
   // PASO 4: Nuevos estados para reportes finalizados por técnico
   const [reportesFinalizados, setReportesFinalizados] = useState<any[]>([]);
@@ -919,8 +922,98 @@ function ClientePanelContent() {
       });
     }
 
+    if (searchQuery.trim() !== '') {
+      const search = searchQuery.toLowerCase();
+      lista = lista.filter((r) => {
+        const equipo = (r.equipo_descripcion || '').toLowerCase();
+        const comentario = (r.comentario || '').toLowerCase();
+        const sucursal = (r.sucursal || '').toLowerCase();
+        return equipo.includes(search) || comentario.includes(search) || sucursal.includes(search);
+      });
+    }
+
+    if (filtroID.trim() !== '') {
+      lista = lista.filter((r) => String(r.id).toLowerCase().includes(filtroID.toLowerCase()));
+    }
+
+    if (filtroFecha.trim() !== '') {
+      const search = filtroFecha.replace(/\//g, '-').toLowerCase();
+      lista = lista.filter((r) => {
+        const created = (r.created_at || '').toLowerCase();
+        return created.includes(search);
+      });
+    }
+
     return lista;
-  }, [activos, filtroEstado, filtroPrioridad]);
+  }, [activos, filtroEstado, filtroPrioridad, searchQuery, filtroID, filtroFecha]);
+
+  const reportesFinalizadosFiltrados = useMemo(() => {
+    let lista = [...reportesFinalizados];
+
+    if (filtroEstado.length > 0) {
+      lista = lista.filter((r) => {
+        const key = normalizeStatus(r.estado);
+        return filtroEstado.includes(key);
+      });
+    }
+
+    if (filtroPrioridad.length > 0) {
+      lista = lista.filter((r) => {
+        const prioridad = (r.prioridad || 'media').toLowerCase();
+        return filtroPrioridad.includes(prioridad);
+      });
+    }
+
+    if (searchQuery.trim() !== '') {
+      const search = searchQuery.toLowerCase();
+      lista = lista.filter((r) => {
+        const equipo = (r.equipo_descripcion || '').toLowerCase();
+        const comentario = (r.comentario || '').toLowerCase();
+        const sucursal = (r.sucursal || '').toLowerCase();
+        return equipo.includes(search) || comentario.includes(search) || sucursal.includes(search);
+      });
+    }
+
+    if (filtroID.trim() !== '') {
+      lista = lista.filter((r) => String(r.id).toLowerCase().includes(filtroID.toLowerCase()));
+    }
+
+    if (filtroFecha.trim() !== '') {
+      const search = filtroFecha.replace(/\//g, '-').toLowerCase();
+      lista = lista.filter((r) => {
+        const created = (r.created_at || '').toLowerCase();
+        return created.includes(search);
+      });
+    }
+
+    return lista;
+  }, [reportesFinalizados, filtroEstado, filtroPrioridad, searchQuery, filtroID, filtroFecha]);
+
+  const cotizacionesFiltradas = useMemo(() => {
+    let lista = [...cotizaciones];
+
+    if (searchQuery.trim() !== '') {
+      const search = searchQuery.toLowerCase();
+      lista = lista.filter((c) => {
+        const equipo = (c.equipo_descripcion || '').toLowerCase();
+        return equipo.includes(search);
+      });
+    }
+
+    if (filtroID.trim() !== '') {
+      lista = lista.filter((c) => String(c.id).toLowerCase().includes(filtroID.toLowerCase()));
+    }
+
+    if (filtroFecha.trim() !== '') {
+      const search = filtroFecha.replace(/\//g, '-').toLowerCase();
+      lista = lista.filter((c) => {
+        const created = (c.created_at || '').toLowerCase();
+        return created.includes(search);
+      });
+    }
+
+    return lista;
+  }, [cotizaciones, searchQuery, filtroID, filtroFecha]);
 
   const activosPorEstado = useMemo(() => {
     const grupos: Record<string, any[]> = {};
@@ -966,9 +1059,16 @@ function ClientePanelContent() {
       >
         <View style={[styles.reportCardHeader, { flexWrap: 'wrap' }]}>
           <View style={[styles.reportCardInfo, { minWidth: 0, flexShrink: 1 }]}>
-            <Text style={[styles.reportCardTitle, { fontFamily, fontSize: 15 }]} numberOfLines={2} ellipsizeMode="tail">
-              {rep.equipo_descripcion || 'Equipo / servicio'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
+              <Text style={[styles.reportCardTitle, { fontFamily, fontSize: 15, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                {rep.equipo_descripcion || 'Equipo / servicio'}
+              </Text>
+              {!isSample && rep.id && (
+                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                  <Text style={{ color: '#38bdf8', fontSize: 9, fontWeight: '700', fontFamily }}>Reporte ID: {rep.id}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.reportCardDate, { fontFamily, fontSize: 11, flexWrap: 'wrap' }]} numberOfLines={2}>
               {fecha}
             </Text>
@@ -1051,6 +1151,9 @@ function ClientePanelContent() {
   const limpiarFiltros = () => {
     setFiltroEstado([]);
     setFiltroPrioridad([]);
+    setFiltroID('');
+    setFiltroFecha('');
+    setSearchQuery('');
   };
 
   const initials = useMemo(() => {
@@ -1402,6 +1505,185 @@ function ClientePanelContent() {
               </Text>
             </View>
 
+            {/* ─── Panel de filtros avanzado: Mis Reportes ─── */}
+            <View style={styles.filtroPanel}>
+              <View style={styles.filtroPanelHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="options-outline" size={16} color="#06b6d4" />
+                  <Text style={[styles.filtroTitulo, { fontFamily }]}>Filtros</Text>
+                  {(filtroEstado.length > 0 || filtroPrioridad.length > 0 || filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                    <View style={{ backgroundColor: '#06b6d4', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                        {filtroEstado.length + filtroPrioridad.length + (filtroID.trim() ? 1 : 0) + (filtroFecha.trim() ? 1 : 0) + (searchQuery.trim() ? 1 : 0)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {(filtroEstado.length > 0 || filtroPrioridad.length > 0 || filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                      <Ionicons name="close-circle" size={16} color="#f87171" />
+                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => setShowFiltros(prev => !prev)}>
+                    <Ionicons name={showFiltros ? 'chevron-up' : 'chevron-down'} size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {showFiltros && (
+                <>
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Estado</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'cerrado', label: 'Cerrado', icon: 'checkmark-circle-outline', color: '#6366f1' },
+                        { value: 'en_espera', label: 'Pendiente', icon: 'time-outline', color: '#eab308' },
+                      ].map((estado) => {
+                        const isActive = filtroEstado.includes(estado.value);
+                        return (
+                          <TouchableOpacity
+                            key={estado.value}
+                            onPress={() => toggleFiltroEstado(estado.value)}
+                            style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: estado.color }]}
+                          >
+                            <Ionicons name={estado.icon as any} size={14} color={isActive ? estado.color : '#94a3b8'} />
+                            <Text style={[styles.filtroChipText, { fontFamily }, isActive && { ...styles.filtroChipTextActive, color: estado.color }]}>{estado.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Prioridad</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                        { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                        { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                      ].map((p) => {
+                        const isActive = filtroPrioridad.includes(p.value);
+                        return (
+                          <TouchableOpacity
+                            key={p.value}
+                            onPress={() => toggleFiltroPrioridad(p.value)}
+                            style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: p.color }]}
+                          >
+                            <Ionicons name={p.icon as any} size={14} color={isActive ? p.color : '#94a3b8'} />
+                            <Text style={[styles.filtroChipText, { fontFamily }, isActive && { ...styles.filtroChipTextActive, color: p.color }]}>{p.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Fila 1: Equipo + ID */}
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 0 : 8 }}>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por Equipo / Servicio</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        searchQuery.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <Ionicons name="search-outline" size={isMobile ? 14 : 18} color={searchQuery.length > 0 ? '#06b6d4' : '#64748b'} />
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder={isMobile ? "Equipo o comentario" : "Nombre o comentario..."}
+                          placeholderTextColor="#64748b"
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>ID</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        filtroID.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder="ID..."
+                          placeholderTextColor="#64748b"
+                          value={filtroID}
+                          onChangeText={setFiltroID}
+                        />
+                        {filtroID.length > 0 && (
+                          <TouchableOpacity onPress={() => setFiltroID('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Fila 2: Fecha */}
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 8 : 0 }}>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Fecha</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder="YYYY/MM/DD..."
+                          placeholderTextColor="#64748b"
+                          value={filtroFecha}
+                          keyboardType="numeric"
+                          maxLength={10}
+                          onChangeText={(text) => {
+                            const digits = text.replace(/[^0-9]/g, '');
+                            let formatted = digits;
+                            if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
+                            if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
+                            setFiltroFecha(formatted);
+                          }}
+                        />
+                        {filtroFecha.length > 0 && (
+                          <TouchableOpacity onPress={() => setFiltroFecha('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {!loadingReportes && (
+                    <View style={styles.filtrosResultados}>
+                      <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                      <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                        Mostrando {reportesFinalizadosFiltrados.length} de {reportesFinalizados.length} reportes
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+
             {loadingReportes && (
               <View style={styles.reportCard}>
                 <Text style={[styles.loadingText, { fontFamily }]}>Cargando reportes...</Text>
@@ -1414,19 +1696,21 @@ function ClientePanelContent() {
               </View>
             ) : null}
 
-            {!loadingReportes && !errorReportes && reportesFinalizados.length === 0 ? (
+            {!loadingReportes && !errorReportes && reportesFinalizadosFiltrados.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <View style={styles.reportCard}>
-                  <Text style={[styles.emptyText, { fontFamily }]}>Aún no tienes reportes completados.</Text>
+                  <Text style={[styles.emptyText, { fontFamily }]}>
+                    {searchQuery ? 'No se encontraron reportes.' : 'Aún no tienes reportes completados.'}
+                  </Text>
                 </View>
               </View>
             ) : null}
 
 
-            {!loadingReportes && !errorReportes && reportesFinalizados.length > 0 ? (
+            {!loadingReportes && !errorReportes && reportesFinalizadosFiltrados.length > 0 ? (
               <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
                 <View style={styles.reportsContainer}>
-                  {reportesFinalizados.map((rep) => renderReporteCard(rep))}
+                  {reportesFinalizadosFiltrados.map((rep) => renderReporteCard(rep))}
                 </View>
               </ScrollView>
             ) : null}
@@ -1470,9 +1754,189 @@ function ClientePanelContent() {
               </View>
             </View>
 
-            <View style={styles.infoBox}>
-              <Text style={[styles.infoText, { fontFamily }]}>Aquí puedes ver el estado de tus reportes activos y filtrar por estado o prioridad.</Text>
+
+            {/* ─── Panel de filtros avanzado: Seguimiento ─── */}
+            <View style={styles.filtroPanel}>
+              <View style={styles.filtroPanelHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="options-outline" size={16} color="#06b6d4" />
+                  <Text style={[styles.filtroTitulo, { fontFamily }]}>Filtros</Text>
+                  {(filtroEstado.length > 0 || filtroPrioridad.length > 0 || filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                    <View style={{ backgroundColor: '#06b6d4', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
+                      <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                        {filtroEstado.length + filtroPrioridad.length + (filtroID.trim() ? 1 : 0) + (filtroFecha.trim() ? 1 : 0) + (searchQuery.trim() ? 1 : 0)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {(filtroEstado.length > 0 || filtroPrioridad.length > 0 || filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                    <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                      <Ionicons name="close-circle" size={16} color="#f87171" />
+                      <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => setShowFiltros(prev => !prev)}>
+                    <Ionicons name={showFiltros ? 'chevron-up' : 'chevron-down'} size={20} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {showFiltros && (
+                <>
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Estado</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'en_espera', label: 'En Espera', icon: 'time-outline', color: '#eab308' },
+                        { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
+                        { value: 'en_cotizacion', label: 'En Cotización', icon: 'calculator-outline', color: '#f59e0b' },
+                        { value: 'en_ejecucion', label: 'En Ejecución', icon: 'construct-outline', color: '#3b82f6' },
+                        { value: 'cerrado', label: 'Por Revisar', icon: 'checkmark-circle-outline', color: '#10b981' },
+                      ].map((estado) => {
+                        const isActive = filtroEstado.includes(estado.value);
+                        return (
+                          <TouchableOpacity
+                            key={estado.value}
+                            onPress={() => toggleFiltroEstado(estado.value)}
+                            style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: estado.color }]}
+                          >
+                            <Ionicons name={estado.icon as any} size={14} color={isActive ? estado.color : '#94a3b8'} />
+                            <Text style={[styles.filtroChipText, { fontFamily }, isActive && { ...styles.filtroChipTextActive, color: estado.color }]}>{estado.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.filtroSection}>
+                    <Text style={[styles.filtroLabel, { fontFamily }]}>Prioridad</Text>
+                    <View style={styles.filtroChips}>
+                      {[
+                        { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                        { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                        { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                      ].map((p) => {
+                        const isActive = filtroPrioridad.includes(p.value);
+                        return (
+                          <TouchableOpacity
+                            key={p.value}
+                            onPress={() => toggleFiltroPrioridad(p.value)}
+                            style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: p.color }]}
+                          >
+                            <Ionicons name={p.icon as any} size={14} color={isActive ? p.color : '#94a3b8'} />
+                            <Text style={[styles.filtroChipText, { fontFamily }, isActive && { ...styles.filtroChipTextActive, color: p.color }]}>{p.label}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  {/* Fila 1: Equipo + ID */}
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 0 : 8 }}>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por Equipo / Servicio</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        searchQuery.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <Ionicons name="search-outline" size={isMobile ? 14 : 18} color={searchQuery.length > 0 ? '#06b6d4' : '#64748b'} />
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder={isMobile ? "Equipo o comentario" : "Nombre o comentario..."}
+                          placeholderTextColor="#64748b"
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>ID</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        filtroID.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder="ID..."
+                          placeholderTextColor="#64748b"
+                          value={filtroID}
+                          onChangeText={setFiltroID}
+                        />
+                        {filtroID.length > 0 && (
+                          <TouchableOpacity onPress={() => setFiltroID('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Fila 2: Fecha */}
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 8 : 0 }}>
+                    <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                      {!isMobile && (
+                        <View style={[styles.searchFilterLabelPro]}>
+                          <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Fecha</Text>
+                        </View>
+                      )}
+                      <View style={[
+                        styles.searchFilterInputWrapperPro,
+                        filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
+                        isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                      ]}>
+                        <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
+                        <TextInput
+                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                          placeholder="YYYY/MM/DD..."
+                          placeholderTextColor="#64748b"
+                          value={filtroFecha}
+                          keyboardType="numeric"
+                          maxLength={10}
+                          onChangeText={(text) => {
+                            const digits = text.replace(/[^0-9]/g, '');
+                            let formatted = digits;
+                            if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
+                            if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
+                            setFiltroFecha(formatted);
+                          }}
+                        />
+                        {filtroFecha.length > 0 && (
+                          <TouchableOpacity onPress={() => setFiltroFecha('')}>
+                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {!loadingReportes && (
+                    <View style={styles.filtrosResultados}>
+                      <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                      <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                        Mostrando {activosFiltrados.length} de {activos.length} reportes
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
             </View>
+
 
             {loadingReportes && (
               <View style={styles.reportCard}>
@@ -1496,104 +1960,6 @@ function ClientePanelContent() {
 
             {!loadingReportes && !errorReportes && activos.length > 0 ? (
               <>
-                {showFiltros && (
-                  <View style={styles.filtroPanel}>
-                    <View style={styles.filtroPanelHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="options-outline" size={16} color="#06b6d4" />
-                        <Text style={[styles.filtroTitulo, { fontFamily }]}>Filtros</Text>
-                      </View>
-                      {(filtroEstado.length > 0 || filtroPrioridad.length > 0) && (
-                        <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
-                          <Ionicons name="close-circle" size={16} color="#f87171" />
-                          <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    <View style={styles.filtroSection}>
-                      <Text style={[styles.filtroLabel, { fontFamily }]}>Estado</Text>
-                      <View style={styles.filtroChips}>
-                        {[
-                          { value: 'en_espera', label: 'En Espera', icon: 'time-outline', color: '#eab308' },
-                          { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
-                          { value: 'en_cotizacion', label: 'En Cotización', icon: 'calculator-outline', color: '#f59e0b' },
-                          { value: 'en_ejecucion', label: 'En Ejecución', icon: 'construct-outline', color: '#3b82f6' },
-                          { value: 'cerrado', label: 'Por Revisar', icon: 'checkmark-circle-outline', color: '#10b981' },
-                        ].map((estado) => {
-                          const isActive = filtroEstado.includes(estado.value);
-                          return (
-                            <TouchableOpacity
-                              key={estado.value}
-                              onPress={() => toggleFiltroEstado(estado.value)}
-                              style={[
-                                styles.filtroChip,
-                                isActive && { ...styles.filtroChipActive, borderColor: estado.color }
-                              ]}
-                            >
-                              <Ionicons
-                                name={estado.icon as any}
-                                size={14}
-                                color={isActive ? estado.color : '#94a3b8'}
-                              />
-                              <Text style={[
-                                styles.filtroChipText,
-                                { fontFamily },
-                                isActive && { ...styles.filtroChipTextActive, color: estado.color }
-                              ]}>
-                                {estado.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    <View style={styles.filtroSection}>
-                      <Text style={[styles.filtroLabel, { fontFamily }]}>Prioridad</Text>
-                      <View style={styles.filtroChips}>
-                        {[
-                          { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
-                          { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
-                          { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
-                        ].map((prioridad) => {
-                          const isActive = filtroPrioridad.includes(prioridad.value);
-                          return (
-                            <TouchableOpacity
-                              key={prioridad.value}
-                              onPress={() => toggleFiltroPrioridad(prioridad.value)}
-                              style={[
-                                styles.filtroChip,
-                                isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }
-                              ]}
-                            >
-                              <Ionicons
-                                name={prioridad.icon as any}
-                                size={14}
-                                color={isActive ? prioridad.color : '#94a3b8'}
-                              />
-                              <Text style={[
-                                styles.filtroChipText,
-                                { fontFamily },
-                                isActive && { ...styles.filtroChipTextActive, color: prioridad.color }
-                              ]}>
-                                {prioridad.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    <View style={styles.filtroResumen}>
-                      <Ionicons name="information-circle-outline" size={14} color="#94a3b8" />
-                      <Text style={[styles.filtroResumenText, { fontFamily }]}>
-                        Mostrando {activosFiltrados.length} de {activos.length} reportes
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
                 <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 16 }}>
                   <View style={styles.reportsContainer}>
                     {Object.keys(activosPorEstado).length === 0 ? (
@@ -1813,7 +2179,12 @@ function ClientePanelContent() {
           <View style={styles.detailContainer}>
             <View style={styles.detailHeader}>
               <View style={styles.detailHeaderText}>
-                <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del reporte</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={[styles.detailTitle, { fontFamily }]}>Detalles del reporte</Text>
+                  <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                    <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', fontFamily }}>Reporte ID: {selectedReporte.id}</Text>
+                  </View>
+                </View>
               </View>
               <TouchableOpacity
                 onPress={() => {
@@ -2328,7 +2699,9 @@ function ClientePanelContent() {
             <View style={[styles.largeModal, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 0 }]}>
               <View style={styles.largeModalHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.largeModalTitle, { fontFamily }]}>Cotizaciones</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={[styles.largeModalTitle, { fontFamily }]}>Cotizaciones</Text>
+                  </View>
                   <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Cotizaciones de tus reportes</Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -2352,24 +2725,158 @@ function ClientePanelContent() {
                 </View>
               </View>
 
+              {/* ─── Panel de filtros avanzado: Cotizaciones ─── */}
+              <View style={styles.filtroPanel}>
+                <View style={styles.filtroPanelHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="options-outline" size={16} color="#06b6d4" />
+                    <Text style={[styles.filtroTitulo, { fontFamily }]}>Filtros</Text>
+                    {(filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                      <View style={{ backgroundColor: '#06b6d4', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
+                        <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>
+                          {(filtroID.trim() ? 1 : 0) + (filtroFecha.trim() ? 1 : 0) + (searchQuery.trim() ? 1 : 0)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {(filtroID.trim() || filtroFecha.trim() || searchQuery.trim()) && (
+                      <TouchableOpacity onPress={limpiarFiltros} style={styles.limpiarFiltrosButtonSmall}>
+                        <Ionicons name="close-circle" size={16} color="#f87171" />
+                        <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => setShowFiltros(prev => !prev)}>
+                      <Ionicons name={showFiltros ? 'chevron-up' : 'chevron-down'} size={20} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {showFiltros && (
+                  <>
+                    {/* Fila 1: Equipo + ID */}
+                    <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 0 : 8 }}>
+                      <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                        {!isMobile && (
+                          <View style={[styles.searchFilterLabelPro]}>
+                            <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Buscar por Equipo / Servicio</Text>
+                          </View>
+                        )}
+                        <View style={[
+                          styles.searchFilterInputWrapperPro,
+                          searchQuery.length > 0 && styles.searchFilterInputWrapperFocused,
+                          isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                        ]}>
+                          <Ionicons name="search-outline" size={isMobile ? 14 : 18} color={searchQuery.length > 0 ? '#06b6d4' : '#64748b'} />
+                          <TextInput
+                            style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                            placeholder={isMobile ? "Equipo o comentario" : "Nombre de equipo..."}
+                            placeholderTextColor="#64748b"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                          />
+                          {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                              <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                      <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                        {!isMobile && (
+                          <View style={[styles.searchFilterLabelPro]}>
+                            <Text style={[styles.searchFilterLabelText, { fontFamily }]}>ID</Text>
+                          </View>
+                        )}
+                        <View style={[
+                          styles.searchFilterInputWrapperPro,
+                          filtroID.length > 0 && styles.searchFilterInputWrapperFocused,
+                          isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                        ]}>
+                          <TextInput
+                            style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                            placeholder="ID..."
+                            placeholderTextColor="#64748b"
+                            value={filtroID}
+                            onChangeText={setFiltroID}
+                          />
+                          {filtroID.length > 0 && (
+                            <TouchableOpacity onPress={() => setFiltroID('')}>
+                              <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Fila 2: Fecha */}
+                    <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 8 : 0 }}>
+                      <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                        {!isMobile && (
+                          <View style={[styles.searchFilterLabelPro]}>
+                            <Text style={[styles.searchFilterLabelText, { fontFamily }]}>Fecha</Text>
+                          </View>
+                        )}
+                        <View style={[
+                          styles.searchFilterInputWrapperPro,
+                          filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
+                          isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                        ]}>
+                          <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
+                          <TextInput
+                            style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                            placeholder="YYYY/MM/DD..."
+                            placeholderTextColor="#64748b"
+                            value={filtroFecha}
+                            keyboardType="numeric"
+                            maxLength={10}
+                            onChangeText={(text) => {
+                              const digits = text.replace(/[^0-9]/g, '');
+                              let formatted = digits;
+                              if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
+                              if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
+                              setFiltroFecha(formatted);
+                            }}
+                          />
+                          {filtroFecha.length > 0 && (
+                            <TouchableOpacity onPress={() => setFiltroFecha('')}>
+                              <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.filtrosResultados}>
+                      <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                      <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                        Mostrando {cotizacionesFiltradas.length} de {cotizaciones.length} cotizaciones
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+
               {loadingCotizaciones && (
                 <View style={styles.infoBox}>
                   <Text style={[styles.infoText, { fontFamily }]}>Cargando cotizaciones...</Text>
                 </View>
               )}
 
-              {!loadingCotizaciones && cotizaciones.length === 0 && (
+              {!loadingCotizaciones && cotizacionesFiltradas.length === 0 && (
                 <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>No tienes cotizaciones pendientes.</Text>
+                  <Text style={[styles.infoText, { fontFamily }]}>
+                    {searchQuery ? 'No se encontraron cotizaciones.' : 'No tienes cotizaciones pendientes.'}
+                  </Text>
                 </View>
               )}
 
-              {!loadingCotizaciones && cotizaciones.length > 0 && (
+              {!loadingCotizaciones && cotizacionesFiltradas.length > 0 && (
                 <View style={{ flex: 1, width: '100%' }}>
                   <View style={{ alignItems: 'center', marginVertical: 12 }}>
                     <View style={{ backgroundColor: '#10b98120', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 }}>
                       <Text style={[styles.infoText, { fontFamily, color: '#10b981', fontSize: 13, fontWeight: '600' }]}>
-                        Mostrando {cotizaciones.length} cotizacion{cotizaciones.length !== 1 ? 'es' : ''}
+                        Mostrando {cotizacionesFiltradas.length} cotizacion{cotizacionesFiltradas.length !== 1 ? 'es' : ''}
                       </Text>
                     </View>
                   </View>
@@ -2378,7 +2885,7 @@ function ClientePanelContent() {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}
                   >
-                    {cotizaciones.map((cot: any) => {
+                    {cotizacionesFiltradas.map((cot: any) => {
                       logDebug('[RENDER] Renderizando cotización:', cot.id, cot.estado);
                       return (
                         <View
@@ -2503,7 +3010,12 @@ function ClientePanelContent() {
             <View style={[styles.largeModal, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 0 }]}>
               <View style={styles.largeModalHeader}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.largeModalTitle, { fontFamily }]}>Detalle de Cotización</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={[styles.largeModalTitle, { fontFamily }]}>Detalle de Cotización</Text>
+                    <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                      <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', fontFamily }}>Reporte ID: {cotizacionSeleccionada.reporte_id || cotizacionSeleccionada.id}</Text>
+                    </View>
+                  </View>
                   <Text style={[styles.largeModalSubtitle, { fontFamily }]}>Revisión de cotización</Text>
                 </View>
                 <TouchableOpacity onPress={() => {
@@ -4370,6 +4882,57 @@ const styles = StyleSheet.create({
   },
   modalOverlayMobile: {
     padding: 12,
+  },
+  // ─── Pro Filter Input Styles ─────────────────────────────
+  searchFilterContainerPro: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    gap: 6,
+  },
+  searchFilterLabelPro: {
+    paddingHorizontal: 4,
+  },
+  searchFilterLabelText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  searchFilterInputWrapperPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.8)',
+    gap: 8,
+  },
+  searchFilterInputWrapperFocused: {
+    borderColor: 'rgba(6, 182, 212, 0.5)',
+    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+  },
+  searchInputPro: {
+    flex: 1,
+    color: '#f1f5f9',
+    fontSize: 14,
+  },
+  searchFilterContainerMobile: {
+    marginHorizontal: 12,
+    marginBottom: 6,
+  },
+  filtrosResultados: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  filtrosResultadosText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
 

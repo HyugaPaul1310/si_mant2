@@ -97,6 +97,14 @@ function EmpleadoPanelContent() {
   const [listaReportesTerminados, setListaReportesTerminados] = useState<any[]>([]);
   const [loadingHistorialReportes, setLoadingHistorialReportes] = useState(false);
   const [showInventarioModal, setShowInventarioModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  // Advanced filters for Mis Reportes
+  const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
+  const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
+  const [filtroID, setFiltroID] = useState('');
+  const [filtroFecha, setFiltroFecha] = useState('');
+  const [filtroCliente, setFiltroCliente] = useState('');
+  const [mostrarFiltros, setMostrarFiltros] = useState(true);
   const [listaHerramientas, setListaHerramientas] = useState<any[]>([]);
   const [loadingHerramientas, setLoadingHerramientas] = useState(false);
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
@@ -168,6 +176,107 @@ function EmpleadoPanelContent() {
     };
     obtenerUsuario();
   }, [router]);
+
+  // Hooks de filtrado
+  const reportesFiltrados = useMemo(() => {
+    let filtrados = listaReportes;
+
+    // Filtrar por estado
+    if (filtrosEstado.length > 0) {
+      filtrados = filtrados.filter((r) => {
+        const estado = (r.estado || '').toLowerCase();
+        return filtrosEstado.some(f => {
+          if (f === 'en_espera') return estado === 'pendiente' || estado === 'en_espera' || estado === 'en espera';
+          if (f === 'asignado') return estado === 'asignado';
+          if (f === 'en_cotizacion') return estado === 'en_cotizacion' || estado === 'en cotizacion' || estado === 'cotizado' || estado === 'en_espera_confirmacion' || estado === 'en espera confirmacion';
+          if (f === 'en_ejecucion') return estado === 'en_proceso' || estado === 'en proceso' || estado === 'en_ejecucion' || estado === 'en ejecucion' || estado === 'aceptado_por_cliente' || estado === 'finalizado_por_tecnico' || estado === 'listo_para_encuesta';
+          return estado === f;
+        });
+      });
+    }
+
+    // Filtrar por prioridad
+    if (filtrosPrioridad.length > 0) {
+      filtrados = filtrados.filter((r) => {
+        const prioridad = (r.prioridad || 'media').toLowerCase();
+        return filtrosPrioridad.includes(prioridad);
+      });
+    }
+
+    // Filtrar por ID
+    if (filtroID.trim() !== '') {
+      filtrados = filtrados.filter((r) => String(r.id).toLowerCase().includes(filtroID.toLowerCase()));
+    }
+
+    // Filtrar por fecha
+    if (filtroFecha.trim() !== '') {
+      const search = filtroFecha.replace(/\//g, '-').toLowerCase();
+      filtrados = filtrados.filter((r) => {
+        const fecha = (r.fecha_reporte || '').toLowerCase();
+        const created = (r.created_at || '').toLowerCase();
+        return fecha.includes(search) || created.includes(search);
+      });
+    }
+
+    // Filtrar por cliente (nombre, email, empresa)
+    if (filtroCliente.trim() !== '') {
+      const search = filtroCliente.toLowerCase();
+      filtrados = filtrados.filter((r) => {
+        const nombre = (r.usuario_nombre || '').toLowerCase();
+        const apellido = (r.usuario_apellido || '').toLowerCase();
+        const nombreCompleto = `${nombre} ${apellido}`.trim();
+        const email = (r.usuario_email || '').toLowerCase();
+        const empresa = (r.empresa || '').toLowerCase();
+        return nombreCompleto.includes(search) || nombre.includes(search) || apellido.includes(search) || email.includes(search) || empresa.includes(search);
+      });
+    }
+
+    // Filtrar por búsqueda de equipo/servicio (searchQuery)
+    if (searchQuery.trim() !== '') {
+      const search = searchQuery.toLowerCase();
+      filtrados = filtrados.filter((r) => {
+        const equipo = (r.equipo_descripcion || '').toLowerCase();
+        const comentario = (r.comentario || '').toLowerCase();
+        const titulo = (r.titulo || '').toLowerCase();
+        const id = String(r.id).toLowerCase();
+        return equipo.includes(search) || comentario.includes(search) || titulo.includes(search) || id.includes(search);
+      });
+    }
+
+    return filtrados;
+  }, [listaReportes, filtrosEstado, filtrosPrioridad, filtroID, filtroFecha, filtroCliente, searchQuery]);
+
+  const reportesTerminadosFiltrados = useMemo(() => {
+    if (!searchQuery.trim()) return listaReportesTerminados;
+    const search = searchQuery.toLowerCase();
+    return listaReportesTerminados.filter((r) => {
+      const equipo = (r.equipo_descripcion || '').toLowerCase();
+      const comentario = (r.comentario || '').toLowerCase();
+      const id = String(r.id).toLowerCase();
+      return equipo.includes(search) || comentario.includes(search) || id.includes(search);
+    });
+  }, [listaReportesTerminados, searchQuery]);
+
+  const tareasFiltradas = useMemo(() => {
+    if (!searchQuery.trim()) return listaTareas;
+    const search = searchQuery.toLowerCase();
+    return listaTareas.filter((t) => (t.descripcion || '').toLowerCase().includes(search));
+  }, [listaTareas, searchQuery]);
+
+  const tareasTerminadasFiltradas = useMemo(() => {
+    if (!searchQuery.trim()) return listaTareasTerminadas;
+    const search = searchQuery.toLowerCase();
+    return listaTareasTerminadas.filter((t) => (t.descripcion || '').toLowerCase().includes(search));
+  }, [listaTareasTerminadas, searchQuery]);
+
+  const inventarioFiltrado = useMemo(() => {
+    if (!searchQuery.trim()) return listaHerramientas;
+    const search = searchQuery.toLowerCase();
+    return listaHerramientas.filter((h) =>
+      (h.nombre_herramienta || '').toLowerCase().includes(search) ||
+      (h.categoria || '').toLowerCase().includes(search)
+    );
+  }, [listaHerramientas, searchQuery]);
 
   const params = useLocalSearchParams();
 
@@ -1251,60 +1360,97 @@ function EmpleadoPanelContent() {
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                 <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando tareas...</Text>
               </View>
-            ) : listaTareas.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <Ionicons name="checkmark-done" size={56} color="#10b981" style={{ marginBottom: 16, opacity: 0.6 }} />
-                <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
-                  No tienes tareas asignadas
-                </Text>
-              </View>
             ) : (
-              <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
-                {listaTareas.map((tarea: any, index: number) => {
-                  const estadoColor =
-                    tarea.estado === 'pendiente'
-                      ? '#f59e0b'
-                      : tarea.estado === 'en_proceso'
-                        ? '#3b82f6'
-                        : '#10b981';
+              <>
+                <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#111827',
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: '#374151'
+                  }}>
+                    <Ionicons name="search-outline" size={18} color="#64748b" />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        color: 'white',
+                        paddingVertical: 10,
+                        paddingHorizontal: 10,
+                        fontFamily,
+                        fontSize: 14
+                      }}
+                      placeholder="Buscar por descripción..."
+                      placeholderTextColor="#64748b"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Ionicons name="close-circle" size={18} color="#64748b" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
 
-                  return (
-                    <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
-                      <View style={[styles.cardAccentLeft, { backgroundColor: estadoColor }]} />
-                      <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
-                        <View style={styles.cardHeader}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
-                            <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Asignada por: {tarea.admin_nombre}</Text>
+                {tareasFiltradas.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                    <Ionicons name="checkmark-done" size={56} color="#10b981" style={{ marginBottom: 16, opacity: 0.6 }} />
+                    <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
+                      {searchQuery ? 'No se encontraron tareas' : 'No tienes tareas asignadas'}
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
+                    {tareasFiltradas.map((tarea: any, index: number) => {
+                      const estadoColor =
+                        tarea.estado === 'pendiente'
+                          ? '#f59e0b'
+                          : tarea.estado === 'en_proceso'
+                            ? '#3b82f6'
+                            : '#10b981';
+
+                      return (
+                        <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
+                          <View style={[styles.cardAccentLeft, { backgroundColor: estadoColor }]} />
+                          <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
+                            <View style={styles.cardHeader}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
+                                <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Asignada por: {tarea.admin_nombre}</Text>
+                              </View>
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setTareaSeleccionada(tarea);
+                                  setShowTareasModal(false);
+                                  setShowTareaDetalle(true);
+                                }}
+                                activeOpacity={0.7}
+                                style={styles.cardEyeButton}
+                              >
+                                <Ionicons name="eye-outline" size={22} color="#64748b" />
+                              </TouchableOpacity>
+                            </View>
+                            <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{tarea.descripcion}</Text>
+                            <View style={styles.cardFooter}>
+                              <Text style={[styles.cardDate, { fontFamily }]}>
+                                {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </Text>
+                              <View style={[styles.statusBadge, { backgroundColor: `${estadoColor}25`, borderColor: `${estadoColor}50` }]}>
+                                <Text style={[styles.statusBadgeText, { color: estadoColor, fontFamily }]}>
+                                  {tarea.estado === 'pendiente' ? 'Pendiente' : tarea.estado === 'en_proceso' ? 'En Proceso' : 'Completada'}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
-                          <TouchableOpacity
-                            onPress={() => {
-                              setTareaSeleccionada(tarea);
-                              setShowTareasModal(false);
-                              setShowTareaDetalle(true);
-                            }}
-                            activeOpacity={0.7}
-                            style={styles.cardEyeButton}
-                          >
-                            <Ionicons name="eye-outline" size={22} color="#64748b" />
-                          </TouchableOpacity>
                         </View>
-                        <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{tarea.descripcion}</Text>
-                        <View style={styles.cardFooter}>
-                          <Text style={[styles.cardDate, { fontFamily }]}>
-                            {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
-                          <View style={[styles.statusBadge, { backgroundColor: `${estadoColor}25`, borderColor: `${estadoColor}50` }]}>
-                            <Text style={[styles.statusBadgeText, { color: estadoColor, fontFamily }]}>
-                              {tarea.estado === 'pendiente' ? 'Pendiente' : tarea.estado === 'en_proceso' ? 'En Proceso' : 'Completada'}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
-              </ScrollView>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -1432,49 +1578,86 @@ function EmpleadoPanelContent() {
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                 <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando historial...</Text>
               </View>
-            ) : listaTareasTerminadas.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <Ionicons name="folder-open-outline" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
-                <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
-                  No hay tareas completadas
-                </Text>
-              </View>
             ) : (
-              <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
-                {listaTareasTerminadas.map((tarea: any, index: number) => (
-                  <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
-                    <View style={[styles.cardAccentLeft, { backgroundColor: '#10b981' }]} />
-                    <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
-                      <View style={styles.cardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
-                          <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Asignada por: {tarea.admin_nombre}</Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            setTareaSeleccionada(tarea);
-                            setShowHistorialTareasModal(false);
-                            setShowTareaDetalle(true);
-                          }}
-                          activeOpacity={0.7}
-                          style={styles.cardEyeButton}
-                        >
-                          <Ionicons name="eye-outline" size={22} color="#64748b" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{tarea.descripcion}</Text>
-                      <View style={styles.cardFooter}>
-                        <Text style={[styles.cardDate, { fontFamily }]}>
-                          {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: '#10b98125', borderColor: '#10b98150' }]}>
-                          <Text style={[styles.statusBadgeText, { color: '#10b981', fontFamily }]}>Completada</Text>
-                        </View>
-                      </View>
-                    </View>
+              <>
+                <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#111827',
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: '#374151'
+                  }}>
+                    <Ionicons name="search-outline" size={18} color="#64748b" />
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        color: 'white',
+                        paddingVertical: 10,
+                        paddingHorizontal: 10,
+                        fontFamily,
+                        fontSize: 14
+                      }}
+                      placeholder="Buscar por descripción..."
+                      placeholderTextColor="#64748b"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <Ionicons name="close-circle" size={18} color="#64748b" />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ))}
-              </ScrollView>
+                </View>
+
+                {tareasTerminadasFiltradas.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                    <Ionicons name="folder-open-outline" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
+                    <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
+                      {searchQuery ? 'No se encontraron tareas completadas' : 'No hay tareas completadas'}
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
+                    {tareasTerminadasFiltradas.map((tarea: any, index: number) => (
+                      <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
+                        <View style={[styles.cardAccentLeft, { backgroundColor: '#10b981' }]} />
+                        <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
+                          <View style={styles.cardHeader}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
+                              <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Asignada por: {tarea.admin_nombre}</Text>
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setTareaSeleccionada(tarea);
+                                setShowHistorialTareasModal(false);
+                                setShowTareaDetalle(true);
+                              }}
+                              activeOpacity={0.7}
+                              style={styles.cardEyeButton}
+                            >
+                              <Ionicons name="eye-outline" size={22} color="#64748b" />
+                            </TouchableOpacity>
+                          </View>
+                          <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{tarea.descripcion}</Text>
+                          <View style={styles.cardFooter}>
+                            <Text style={[styles.cardDate, { fontFamily }]}>
+                              {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                            <View style={[styles.statusBadge, { backgroundColor: '#10b98125', borderColor: '#10b98150' }]}>
+                              <Text style={[styles.statusBadgeText, { color: '#10b981', fontFamily }]}>Completada</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -1507,70 +1690,301 @@ function EmpleadoPanelContent() {
               <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                 <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando reportes...</Text>
               </View>
-            ) : listaReportes.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                <Ionicons name="document-text" size={56} color="#94a3b8" style={{ marginBottom: 16, opacity: 0.4 }} />
-                <Text style={[{ color: '#cbd5e1', fontSize: 15, textAlign: 'center', fontWeight: '600' }, { fontFamily }]}>
-                  No tienes reportes asignados
-                </Text>
-              </View>
             ) : (
-              <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
-                {listaReportes.map((reporte: any) => (
-                  <View key={reporte.id} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
-                    <View style={[styles.cardAccentLeft, { backgroundColor: '#d97706' }]} />
-                    <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
-                      <View style={styles.cardHeader}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{reporte.equipo_descripcion}</Text>
-                          <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>
-                            {reporte.usuario_nombre}
-                          </Text>
-                          <Text style={[styles.cardCompanyInfo, { fontFamily }]} numberOfLines={1}>
-                            {reporte.empresa} • {reporte.sucursal}
-                          </Text>
-                        </View>
-                        <TouchableOpacity
-                          onPress={async () => {
-                            setReporteSeleccionado(reporte);
-                            setShowReportesModal(false);
-                            setShowReporteDetalle(true);
-                            // Cargar archivos del reporte
-                            setCargandoArchivos(true);
-                            const resultado = await obtenerArchivosReporteBackend(reporte.id);
-                            if (resultado.success) {
-                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
-                              setArchivosReporte(soloMedia);
-                            }
-                            setCargandoArchivos(false);
-                          }}
-                          activeOpacity={0.7}
-                          style={styles.cardEyeButton}
-                        >
-                          <Ionicons name="eye-outline" size={22} color="#64748b" />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{reporte.comentario || 'Sin descripción'}</Text>
-                      <View style={styles.cardFooter}>
-                        <Text style={[styles.cardDate, { fontFamily }]}>
-                          {new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
-                        <View style={[styles.statusBadge, {
-                          backgroundColor: `${obtenerColorEstado(reporte.estado)}25`,
-                          borderColor: `${obtenerColorEstado(reporte.estado)}50`
-                        }]}>
-                          <Text style={[styles.statusBadgeText, {
-                            color: obtenerColorEstado(reporte.estado),
-                            fontFamily
-                          }]}>
-                            {obtenerNombreEstado(reporte.estado)}
+              <>
+                {/* Filtros */}
+                <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
+                  <TouchableOpacity
+                    style={styles.filtrosHeader}
+                    onPress={() => setMostrarFiltros(!mostrarFiltros)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.filtrosHeaderLeft}>
+                      <Ionicons name="filter-outline" size={18} color="#22d3ee" />
+                      <Text style={[styles.filtrosTitle, { fontFamily }]}>Filtros</Text>
+                      {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0 || filtroID.length > 0 || filtroFecha.length > 0 || filtroCliente.length > 0 || searchQuery.length > 0) && (
+                        <View style={styles.filtrosActiveBadge}>
+                          <Text style={[styles.filtrosActiveBadgeText, { fontFamily }]}>
+                            {[filtrosEstado.length > 0, filtrosPrioridad.length > 0, filtroID.length > 0, filtroFecha.length > 0, filtroCliente.length > 0, searchQuery.length > 0].filter(Boolean).length}
                           </Text>
                         </View>
-                      </View>
+                      )}
                     </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      {(filtrosEstado.length > 0 || filtrosPrioridad.length > 0 || filtroID.length > 0 || filtroFecha.length > 0 || filtroCliente.length > 0 || searchQuery.length > 0) && (
+                        <TouchableOpacity onPress={() => { setFiltrosEstado([]); setFiltrosPrioridad([]); setFiltroID(''); setFiltroFecha(''); setFiltroCliente(''); setSearchQuery(''); }} style={styles.limpiarFiltrosButtonSmall}>
+                          <Ionicons name="close-circle" size={16} color="#f87171" />
+                          <Text style={[styles.limpiarFiltrosTextSmall, { fontFamily }]}>Limpiar</Text>
+                        </TouchableOpacity>
+                      )}
+                      <Ionicons name={mostrarFiltros ? "chevron-up" : "chevron-down"} size={24} color="#22d3ee" />
+                    </View>
+                  </TouchableOpacity>
+
+                  {mostrarFiltros && (
+                    <>
+                      {/* Chips Estado */}
+                      <View style={[styles.filtroSection, isMobile && { gap: 2 }]}>
+                        <Text style={[styles.filtroLabel, { fontFamily }, isMobile && { fontSize: 11 }]}>
+                          <Ionicons name="flag-outline" size={isMobile ? 12 : 14} color="#94a3b8" /> Estado
+                        </Text>
+                        <View style={styles.filtroChips}>
+                          {[
+                            { value: 'en_espera', label: 'En espera', icon: 'time-outline', color: '#f59e0b' },
+                            { value: 'asignado', label: 'Asignado', icon: 'person-add-outline', color: '#06b6d4' },
+                            { value: 'en_cotizacion', label: 'En cotización', icon: 'calculator-outline', color: '#8b5cf6' },
+                            { value: 'en_ejecucion', label: 'En ejecución', icon: 'construct-outline', color: '#3b82f6' },
+                          ].map((estado) => {
+                            const isActive = filtrosEstado.includes(estado.value);
+                            return (
+                              <TouchableOpacity
+                                key={estado.value}
+                                onPress={() => setFiltrosEstado(prev => isActive ? prev.filter(f => f !== estado.value) : [...prev, estado.value])}
+                                style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: estado.color }, isMobile && { paddingHorizontal: 6, paddingVertical: 4 }]}
+                              >
+                                <Ionicons name={estado.icon as any} size={isMobile ? 12 : 14} color={isActive ? estado.color : '#94a3b8'} />
+                                <Text style={[styles.filtroChipText, { fontFamily }, isMobile && { fontSize: 10 }, isActive && { ...styles.filtroChipTextActive, color: estado.color }]}>
+                                  {estado.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+
+                      {/* Chips Prioridad */}
+                      <View style={[styles.filtroSection, isMobile && { gap: 2 }]}>
+                        <Text style={[styles.filtroLabel, { fontFamily }, isMobile && { fontSize: 11 }]}>
+                          <Ionicons name="alert-circle-outline" size={isMobile ? 12 : 14} color="#94a3b8" /> Prioridad
+                        </Text>
+                        <View style={styles.filtroChips}>
+                          {[
+                            { value: 'baja', label: 'Baja', icon: 'chevron-down-outline', color: '#10b981' },
+                            { value: 'media', label: 'Media', icon: 'remove-outline', color: '#f59e0b' },
+                            { value: 'alta', label: 'Urgente', icon: 'chevron-up-outline', color: '#ef4444' },
+                          ].map((prioridad) => {
+                            const isActive = filtrosPrioridad.includes(prioridad.value);
+                            return (
+                              <TouchableOpacity
+                                key={prioridad.value}
+                                onPress={() => setFiltrosPrioridad(prev => isActive ? prev.filter(f => f !== prioridad.value) : [...prev, prioridad.value])}
+                                style={[styles.filtroChip, isActive && { ...styles.filtroChipActive, borderColor: prioridad.color }, isMobile && { paddingHorizontal: 6, paddingVertical: 4 }]}
+                              >
+                                <Ionicons name={prioridad.icon as any} size={isMobile ? 12 : 14} color={isActive ? prioridad.color : '#94a3b8'} />
+                                <Text style={[styles.filtroChipText, { fontFamily }, isMobile && { fontSize: 10 }, isActive && { ...styles.filtroChipTextActive, color: prioridad.color }]}>
+                                  {prioridad.label}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+
+                      {/* Fila 1: Buscar por Equipo + Buscar por Cliente */}
+                      <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 0 : 8 }}>
+                        <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                          {!isMobile && (
+                            <View style={[styles.searchFilterLabelPro, isMobile && { marginBottom: 4 }]}>
+                              <Text style={[styles.searchFilterLabelText, { fontFamily }, isMobile && { fontSize: 10 }]}>Buscar por Equipo / Servicio</Text>
+                            </View>
+                          )}
+                          <View style={[
+                            styles.searchFilterInputWrapperPro,
+                            searchQuery.length > 0 && styles.searchFilterInputWrapperFocused,
+                            isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                          ]}>
+                            <Ionicons name="search-outline" size={isMobile ? 14 : 18} color={searchQuery.length > 0 ? '#06b6d4' : '#64748b'} />
+                            <TextInput
+                              style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                              placeholder={isMobile ? 'Equipo o servicio' : 'Nombre o descripción...'}
+                              placeholderTextColor="#64748b"
+                              value={searchQuery}
+                              onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+
+                        <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                          {!isMobile && (
+                            <View style={[styles.searchFilterLabelPro, isMobile && { marginBottom: 4 }]}>
+                              <Text style={[styles.searchFilterLabelText, { fontFamily }, isMobile && { fontSize: 10 }]}>Buscar por Cliente / Empresa</Text>
+                            </View>
+                          )}
+                          <View style={[
+                            styles.searchFilterInputWrapperPro,
+                            filtroCliente.length > 0 && styles.searchFilterInputWrapperFocused,
+                            isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                          ]}>
+                            <Ionicons name="person-outline" size={isMobile ? 14 : 18} color={filtroCliente.length > 0 ? '#06b6d4' : '#64748b'} />
+                            <TextInput
+                              style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                              placeholder={isMobile ? 'Cliente o empresa' : 'Nombre o empresa...'}
+                              placeholderTextColor="#64748b"
+                              value={filtroCliente}
+                              onChangeText={setFiltroCliente}
+                            />
+                            {filtroCliente.length > 0 && (
+                              <TouchableOpacity onPress={() => setFiltroCliente('')}>
+                                <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Fila 2: ID + Fecha */}
+                      <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 0 : 12, marginBottom: isMobile ? 8 : 0 }}>
+                        <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                          {!isMobile && (
+                            <View style={[styles.searchFilterLabelPro, isMobile && { marginBottom: 4 }]}>
+                              <Text style={[styles.searchFilterLabelText, { fontFamily }, isMobile && { fontSize: 10 }]}>ID</Text>
+                            </View>
+                          )}
+                          <View style={[
+                            styles.searchFilterInputWrapperPro,
+                            filtroID.length > 0 && styles.searchFilterInputWrapperFocused,
+                            isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                          ]}>
+                            <TextInput
+                              style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                              placeholder="ID..."
+                              placeholderTextColor="#64748b"
+                              value={filtroID}
+                              onChangeText={setFiltroID}
+                            />
+                            {filtroID.length > 0 && (
+                              <TouchableOpacity onPress={() => setFiltroID('')}>
+                                <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+
+                        <View style={[styles.searchFilterContainerPro, isMobile ? styles.searchFilterContainerMobile : { flex: 1, marginBottom: 0 }]}>
+                          {!isMobile && (
+                            <View style={[styles.searchFilterLabelPro, isMobile && { marginBottom: 4 }]}>
+                              <Text style={[styles.searchFilterLabelText, { fontFamily }, isMobile && { fontSize: 10 }]}>Fecha</Text>
+                            </View>
+                          )}
+                          <View style={[
+                            styles.searchFilterInputWrapperPro,
+                            filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
+                            isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
+                          ]}>
+                            <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
+                            <TextInput
+                              style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
+                              placeholder="YYYY/MM/DD"
+                              placeholderTextColor="#64748b"
+                              value={filtroFecha}
+                              keyboardType="numeric"
+                              maxLength={10}
+                              onChangeText={(text) => {
+                                const digits = text.replace(/[^0-9]/g, '');
+                                let formatted = digits;
+                                if (digits.length > 4) {
+                                  formatted = digits.slice(0, 4) + '/' + digits.slice(4);
+                                }
+                                if (digits.length > 6) {
+                                  formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
+                                }
+                                setFiltroFecha(formatted);
+                              }}
+                            />
+                            {filtroFecha.length > 0 && (
+                              <TouchableOpacity onPress={() => setFiltroFecha('')}>
+                                <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+
+                      {!loadingReportes && (
+                        <View style={styles.filtrosResultados}>
+                          <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                          <Text style={[styles.filtrosResultadosText, { fontFamily }]}>
+                            Mostrando {reportesFiltrados.length} de {listaReportes.length} reportes
+                          </Text>
+                        </View>
+                      )}
+                    </>
+                  )}
+                </View>
+
+                {reportesFiltrados.length === 0 ? (
+                  <View style={styles.noResultadosContainer || { alignItems: 'center', paddingVertical: 40 }}>
+                    <Ionicons name="search-outline" size={48} color="#475569" />
+                    <Text style={[{ color: '#94a3b8', fontSize: 15, textAlign: 'center', fontWeight: '600', marginTop: 12 }, { fontFamily }]}>
+                      {listaReportes.length === 0 ? 'No tienes reportes asignados' : 'No se encontraron resultados'}
+                    </Text>
+                    <Text style={[{ color: '#64748b', fontSize: 13, textAlign: 'center', marginTop: 8 }, { fontFamily }]}>
+                      {listaReportes.length === 0 ? '' : 'Intenta ajustar los filtros.'}
+                    </Text>
                   </View>
-                ))}
-              </ScrollView>
+                ) : (
+                  <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                    <View style={styles.listSpacing}>
+                      {reportesFiltrados.map((reporte: any) => {
+                        const badgeColor = obtenerColorEstado(reporte.estado);
+                        return (
+                          <View key={reporte.id} style={styles.reportCard}>
+                            <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
+                              <View style={styles.reportHeaderText}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                  <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
+                                    {reporte.equipo_descripcion || 'Equipo / servicio'}
+                                  </Text>
+                                  <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                                    <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {reporte.id}</Text>
+                                  </View>
+                                </View>
+                                <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
+                                  {reporte.usuario_nombre} {reporte.usuario_apellido} · {reporte.usuario_email}
+                                </Text>
+                                <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
+                                  {reporte.empresa || 'Sin empresa'} • {reporte.sucursal || 'Sin sucursal'}
+                                </Text>
+                              </View>
+                              <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
+                                <TouchableOpacity
+                                  onPress={async () => {
+                                    setReporteSeleccionado(reporte);
+                                    setShowReportesModal(false);
+                                    setShowReporteDetalle(true);
+                                    setCargandoArchivos(true);
+                                    const resultado = await obtenerArchivosReporteBackend(reporte.id);
+                                    if (resultado.success) {
+                                      const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                                      setArchivosReporte(soloMedia);
+                                    }
+                                    setCargandoArchivos(false);
+                                  }}
+                                  style={styles.eyeCard}
+                                >
+                                  <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                                </TouchableOpacity>
+                                <View style={[styles.estadoBadge, { backgroundColor: `${badgeColor}25`, borderColor: `${badgeColor}50` }]}>
+                                  <Text style={[styles.estadoBadgeText, { fontFamily, color: badgeColor }]}>{obtenerNombreEstado(reporte.estado)}</Text>
+                                </View>
+                              </View>
+                            </View>
+
+                            <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
+                              {reporte.comentario || ''}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -3776,5 +4190,224 @@ const styles = StyleSheet.create({
   archivoModalNameMobile: {
     fontSize: 12,
   },
+  // ─── Filter panel styles (admin-style) ──────────────────────────
+  filtrosContainer: {
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 211, 238, 0.2)',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  filtrosContainerMobile: {
+    marginHorizontal: 8,
+    borderRadius: 12,
+  },
+  filtrosHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  filtrosHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filtrosTitle: {
+    color: '#22d3ee',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  filtrosActiveBadge: {
+    backgroundColor: '#22d3ee',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  filtrosActiveBadgeText: {
+    color: '#0f172a',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  limpiarFiltrosButtonSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  limpiarFiltrosTextSmall: {
+    color: '#f87171',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filtroSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  filtroLabel: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  filtroChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filtroChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(71, 85, 105, 0.5)',
+  },
+  filtroChipActive: {
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+  },
+  filtroChipText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  filtroChipTextActive: {
+    fontWeight: '700',
+  },
+  searchFilterContainerPro: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    gap: 6,
+  },
+  searchFilterContainerMobile: {
+    marginHorizontal: 12,
+    marginBottom: 6,
+  },
+  searchFilterLabelPro: {
+    paddingHorizontal: 4,
+  },
+  searchFilterLabelText: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  searchFilterInputWrapperPro: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.8)',
+    gap: 8,
+  },
+  searchFilterInputWrapperFocused: {
+    borderColor: 'rgba(6, 182, 212, 0.5)',
+    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+  },
+  searchInputPro: {
+    flex: 1,
+    color: '#f1f5f9',
+    fontSize: 14,
+  },
+  filtrosResultados: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+  },
+  filtrosResultadosText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  noResultadosContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  noResultadosTitle: {
+    color: '#94a3b8',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  noResultadosText: {
+    color: '#64748b',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  // ─── Admin-style Report Card styles ─────────────────────────────
+  listScroll: { maxHeight: 450 },
+  listScrollMobile: { maxHeight: 350 },
+  listSpacing: { gap: 12 },
+  reportCard: {
+    backgroundColor: 'rgba(30,41,59,0.5)',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+  },
+  reportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reportHeaderMobile: {
+    gap: 8,
+    paddingRight: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  reportHeaderText: { flex: 1, paddingRight: 12 },
+  reportTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  reportTitleMobile: { fontSize: 14, fontWeight: '600' },
+  reportSubtitle: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+  reportSubtitleMobile: { fontSize: 11 },
+  reportMeta: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  reportMetaMobile: { fontSize: 11 },
+  reportActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reportActionsMobile: { gap: 6 },
+  eyeCard: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#334155',
+    borderWidth: 1,
+    borderColor: '#475569',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  estadoBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  estadoBadgeText: { fontSize: 12, fontWeight: '700' },
+  reportComment: { color: '#cbd5e1', fontSize: 13 },
 });
 
