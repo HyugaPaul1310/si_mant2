@@ -697,44 +697,40 @@ function EmpleadoPanelContent() {
   };
 
   const seleccionarFotoRevision = async () => {
-    if (fotosRevisionUris.length >= 5) {
-      showToast('Límite de 5 fotos de revisión alcanzado', 'warning');
-      return;
-    }
     try {
-      const result = await ImagePicker.launchCameraAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
+        allowsMultipleSelection: true,
         quality: 0.7,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setFotosRevisionUris(prev => [...prev, result.assets[0].uri]);
+        const newUris = result.assets.map(asset => asset.uri);
+        setFotosRevisionUris(prev => [...prev, ...newUris]);
       }
     } catch (error) {
-      console.error('Error al capturar foto:', error);
-      showToast('Error al abrir la cámara', 'error');
+      console.error('Error al abrir la galería:', error);
+      showToast('Error al abrir la galería', 'error');
     }
   };
 
   const seleccionarFotoPostproceso = async () => {
-    if (fotosPostprocesoUris.length >= 5) {
-      showToast('Límite de 5 imágenes de finalización alcanzado', 'warning');
-      return;
-    }
     try {
-      const result = await ImagePicker.launchCameraAsync({
+      const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
+        allowsMultipleSelection: true,
         quality: 0.7,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setFotosPostprocesoUris(prev => [...prev, result.assets[0].uri]);
+        const newUris = result.assets.map(asset => asset.uri);
+        setFotosPostprocesoUris(prev => [...prev, ...newUris]);
       }
     } catch (error) {
-      console.error('Error al capturar imagen de finalización:', error);
-      showToast('Error al abrir la cámara', 'error');
+      console.error('Error al abrir la galería:', error);
+      showToast('Error al abrir la galería', 'error');
     }
   };
 
@@ -2191,18 +2187,16 @@ function EmpleadoPanelContent() {
                       )}
 
                       {/* Botón para tomar foto */}
-                      {fotosRevisionUris.length < 5 && (
-                        <TouchableOpacity
-                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
-                          onPress={seleccionarFotoRevision}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="camera" size={24} color="#fff" />
-                          <Text style={[styles.audioButtonText, { fontFamily }]}>
-                            {fotosRevisionUris.length === 0 ? 'Tomar Foto' : `Añadir Foto (${fotosRevisionUris.length}/5)`}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      <TouchableOpacity
+                        style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
+                        onPress={seleccionarFotoRevision}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="images" size={24} color="#fff" />
+                        <Text style={[styles.audioButtonText, { fontFamily }]}>
+                          {fotosRevisionUris.length === 0 ? 'Elegir Imágenes' : `Imágenes Seleccionadas: ${fotosRevisionUris.length} (Añadir más)`}
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 ) : (reporteSeleccionado.analisis_general && (
@@ -2411,16 +2405,16 @@ function EmpleadoPanelContent() {
                         )}
 
                         {/* Botón para tomar imagen de finalización */}
-                        {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && fotosPostprocesoUris.length < 5 && (
+                        {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
                           <TouchableOpacity
                             style={[styles.audioRecordButton, { backgroundColor: '#10b981', marginTop: 4 }]}
                             onPress={seleccionarFotoPostproceso}
                             activeOpacity={0.7}
                             disabled={guardandoFase2}
                           >
-                            <Ionicons name="camera" size={24} color="#fff" />
+                            <Ionicons name="images" size={24} color="#fff" />
                             <Text style={[styles.audioButtonText, { fontFamily }]}>
-                              {fotosPostprocesoUris.length === 0 ? 'Capturar Imagen de Finalización' : `Añadir Imagen de Finalización (${fotosPostprocesoUris.length}/5)`}
+                              {fotosPostprocesoUris.length === 0 ? 'Elegir Imágenes de Finalización' : `Imágenes Seleccionadas: ${fotosPostprocesoUris.length} (Añadir más)`}
                             </Text>
                           </TouchableOpacity>
                         )}

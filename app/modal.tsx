@@ -89,20 +89,17 @@ export default function GenerarReporteScreen() {
   };
 
   const seleccionarImagen = async () => {
-    if (imagenes.length >= 3) {
-      Alert.alert('Límite alcanzado', 'Solo puedes agregar hasta 3 imágenes');
-      return;
-    }
-
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
+        allowsMultipleSelection: true,
         quality: 0.7,
       });
 
-      if (!result.canceled && result.assets[0].uri) {
-        setImagenes([...imagenes, result.assets[0].uri]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newUris = result.assets.map(asset => asset.uri);
+        setImagenes([...imagenes, ...newUris]);
       }
     } catch (error) {
       Alert.alert('Error', 'No se pudo cargar la imagen');
@@ -120,13 +117,13 @@ export default function GenerarReporteScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
         allowsEditing: false,
         quality: 0.7,
-        videoMaxDuration: 30,
+        videoMaxDuration: 180,
       });
 
       if (!result.canceled && result.assets[0].uri) {
         const duration = result.assets[0].duration;
-        if (duration && duration > 30000) {
-          Alert.alert('Video muy largo', 'El video debe durar máximo 30 segundos');
+        if (duration && duration > 180000) {
+          Alert.alert('Video muy largo', 'El video debe durar máximo 3 minutos');
           return;
         }
         setVideo(result.assets[0].uri);
@@ -462,9 +459,11 @@ export default function GenerarReporteScreen() {
             <View style={styles.mediaBox}>
               <View style={styles.mediaHeader}>
                 <Text style={[styles.fieldLabel, { fontFamily }]}>Imágenes del equipo</Text>
-                <View style={styles.counterBadge}>
-                  <Text style={[styles.counterText, { fontFamily }]}>{imagenes.length}/3</Text>
-                </View>
+                {imagenes.length > 0 && (
+                  <View style={styles.counterBadge}>
+                    <Text style={[styles.counterText, { fontFamily }]}>{imagenes.length}</Text>
+                  </View>
+                )}
               </View>
 
               {imagenes.length > 0 && (
@@ -494,16 +493,15 @@ export default function GenerarReporteScreen() {
 
               <TouchableOpacity
                 onPress={seleccionarImagen}
-                disabled={imagenes.length >= 3}
-                style={[styles.addMediaButton, imagenes.length >= 3 ? styles.addMediaButtonDisabled : styles.addMediaButtonActive]}
+                style={[styles.addMediaButton, styles.addMediaButtonActive]}
               >
                 <Ionicons
-                  name="camera"
+                  name="images"
                   size={16}
-                  color={imagenes.length >= 3 ? '#475569' : '#06b6d4'}
+                  color="#06b6d4"
                 />
-                <Text style={[styles.addMediaButtonText, { fontFamily, color: imagenes.length >= 3 ? '#64748b' : '#22d3ee' }]}>
-                  {imagenes.length >= 3 ? 'Límite alcanzado' : 'Agregar imagen'}
+                <Text style={[styles.addMediaButtonText, { fontFamily, color: '#22d3ee' }]}>
+                  Elegir imágenes de la galería
                 </Text>
               </TouchableOpacity>
             </View>
@@ -521,7 +519,7 @@ export default function GenerarReporteScreen() {
                 <View style={styles.videoPreviewContainer}>
                   <View style={styles.videoPreview}>
                     <Ionicons name="videocam" size={24} color="#06b6d4" />
-                    <Text style={[styles.videoText, { fontFamily }]} numberOfLines={1}>Video seleccionado (máx 30s)</Text>
+                    <Text style={[styles.videoText, { fontFamily }]} numberOfLines={1}>Video seleccionado (máx 3m)</Text>
                     <TouchableOpacity
                       onPress={eliminarVideo}
                       style={styles.deleteVideoButton}
@@ -543,7 +541,7 @@ export default function GenerarReporteScreen() {
                   color={video ? '#475569' : '#06b6d4'}
                 />
                 <Text style={[styles.addMediaButtonText, { fontFamily, color: video ? '#64748b' : '#22d3ee' }]}>
-                  {video ? 'Video agregado' : 'Agregar video (máx 30s)'}
+                  {video ? 'Video agregado' : 'Agregar video (máx 3m)'}
                 </Text>
               </TouchableOpacity>
             </View>
