@@ -278,14 +278,16 @@ function AdminPanelContent() {
   const rechazadosCount = useMemo(() => {
     return reportes.filter((r: any) =>
       (r.estado || '').toLowerCase() === 'cancelado' ||
-      (r.estado || '').toLowerCase() === 'rechazado'
+      (r.estado || '').toLowerCase() === 'rechazado' ||
+      (r.estado || '').toLowerCase() === 'cotizacionnueva'
     ).length;
   }, [reportes]);
 
   const reportesRechazados = useMemo(() => {
     return reportes.filter((r: any) =>
       (r.estado || '').toLowerCase() === 'cancelado' ||
-      (r.estado || '').toLowerCase() === 'rechazado'
+      (r.estado || '').toLowerCase() === 'rechazado' ||
+      (r.estado || '').toLowerCase() === 'cotizacionnueva'
     );
   }, [reportes]);
 
@@ -391,7 +393,7 @@ function AdminPanelContent() {
 
   const cotizacionesPendientesCount = useMemo(() => {
     return reportes.filter((r: any) =>
-      r.estado === 'en_cotizacion' &&
+      (r.estado === 'en_cotizacion' || r.estado === 'revision completada') &&
       r.analisis_general &&
       r.analisis_general.trim() !== '' &&
       (!r.precio_cotizacion || r.precio_cotizacion === 0)
@@ -541,7 +543,8 @@ function AdminPanelContent() {
         // Actualizar conteo de finalizados
         const finalizados = data.filter((r: any) =>
           r.estado === 'finalizado_por_tecnico' ||
-          (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
+          (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion)) ||
+          r.estado === 'cerrado_por_cliente'
         );
         setFinalizadosCount(finalizados.length);
 
@@ -562,12 +565,13 @@ function AdminPanelContent() {
     const cargarFinalizados = async () => {
       setLoadingFinalizados(true);
       try {
-        // Filtrar reportes con estado "finalizado_por_tecnico"
+        // Filtrar reportes con estado "finalizado_por_tecnico" o "cerrado_por_cliente"
         const { success, data } = await obtenerReportesBackend();
         if (success && data) {
           const finalizados = data.filter((r: any) =>
             r.estado === 'finalizado_por_tecnico' ||
-            (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
+            (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion)) ||
+            r.estado === 'cerrado_por_cliente'
           );
           setReportesFinalizados(finalizados);
         } else {
@@ -629,9 +633,9 @@ function AdminPanelContent() {
               precio: r.precio_cotizacion
             })));
 
-            // Filtrar: estado = 'en_cotizacion' + analisis_general completo + sin precio_cotizacion
+            // Filtrar: estado = 'en_cotizacion' o 'revision completada' + analisis_general completo + sin precio_cotizacion
             const cotizacionesPendientes = respuesta.data.filter((r: any) => {
-              const pasaEstado = r.estado === 'en_cotizacion';
+              const pasaEstado = r.estado === 'en_cotizacion' || r.estado === 'revision completada';
               const pasaAnalisis = r.analisis_general && r.analisis_general.trim() !== '';
               const pasaPrecio = !r.precio_cotizacion || r.precio_cotizacion === 0;
 
@@ -681,9 +685,11 @@ function AdminPanelContent() {
           if (respuesta.success && respuesta.data) {
             // Filtrar: estado = 'finalizado_por_tecnico' (empleado completó Fase 2)
             // Filtrar: estado = 'finalizado_por_tecnico' O (estado = 'aceptado_por_cliente' Y tiene datos de Fase 2)
+            // O cerrado_por_cliente (aceptación de cotización express)
             const finalizadosPorEmpleado = respuesta.data.filter((r: any) =>
               r.estado === 'finalizado_por_tecnico' ||
-              (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
+              (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion)) ||
+              r.estado === 'cerrado_por_cliente'
             );
 
             console.log('[ADMIN-FINALIZADOS] Reportes finalizados encontrados:', finalizadosPorEmpleado.length);
@@ -1149,8 +1155,13 @@ function AdminPanelContent() {
         }
       }
 
+      let nuevoEstado = 'en_espera_confirmacion';
+      if (reporteACotizar.estado === 'revision completada' || reporteACotizar.estado === 'revision pendiente cotizacion' || reporteACotizar.estado === 'revision pendiente cotizacion(nueva)') {
+        nuevoEstado = 'revision pendiente cotizacion';
+      }
+
       const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
-        estado: 'en_espera_confirmacion',
+        estado: nuevoEstado,
         precioCotizacion: precioNumerico,
         moneda: moneda,
       });
@@ -3535,7 +3546,7 @@ function AdminPanelContent() {
                     const { success, data } = await obtenerReportesBackend();
                     if (success && data) {
                       const cotizacionesPendientes = data.filter((r: any) =>
-                        r.estado === 'en_cotizacion' &&
+                        (r.estado === 'en_cotizacion' || r.estado === 'revision completada') &&
                         r.analisis_general &&
                         r.analisis_general.trim() !== '' &&
                         (!r.precio_cotizacion || r.precio_cotizacion === 0)
@@ -3735,6 +3746,42 @@ function AdminPanelContent() {
                     </Text>
                   </View>
                 </View>
+
+                {/* Detalles de Reparación Express */}
+                {(reporteACotizar.reparacion || reporteACotizar.materiales_refacciones || reporteACotizar.recomendaciones) && (
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="build-outline" size={14} color="#10b981" />
+                      <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>DATOS DE REPARACIÓN (EXPRESS)</Text>
+                    </View>
+                    <View style={{ gap: 8 }}>
+                      {reporteACotizar.reparacion && (
+                        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', borderLeftWidth: 4, borderLeftColor: '#10b981' }}>
+                          <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>REPARACIÓN REALIZADA</Text>
+                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
+                            {reporteACotizar.reparacion}
+                          </Text>
+                        </View>
+                      )}
+                      {reporteACotizar.materiales_refacciones && (
+                        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', borderLeftWidth: 4, borderLeftColor: '#10b981' }}>
+                          <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>MATERIALES / REFACCIONES</Text>
+                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
+                            {reporteACotizar.materiales_refacciones}
+                          </Text>
+                        </View>
+                      )}
+                      {reporteACotizar.recomendaciones && (
+                        <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.2)', borderLeftWidth: 4, borderLeftColor: '#f59e0b' }}>
+                          <Text style={[{ fontSize: 11, color: '#f59e0b', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>RECOMENDACIONES O PRÓXIMOS MANTENIMIENTOS</Text>
+                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
+                            {reporteACotizar.recomendaciones}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
 
                 {/* IMAGENES DE ANALISIS */}
                 {!cargandoArchivos && (
@@ -4131,8 +4178,13 @@ function AdminPanelContent() {
 
                     setEditandoCotizacion(true);
                     setEditarCotizacionError(null);
+                    let estadoNuevaCoti = 'cotizacionnueva';
+                    if (reporteACotizar.reparacion || reporteACotizar.materiales_refacciones || reporteACotizar.recomendaciones) {
+                      estadoNuevaCoti = 'revision pendiente cotizacion(nueva)';
+                    }
+
                     const { success, error } = await actualizarReporteBackend(reporteACotizar.id, {
-                      estado: 'cotizacionnueva',
+                      estado: estadoNuevaCoti,
                       precioCotizacion: precioNumerico,
                       moneda: monedaEdit,
                       cotizacion_explicacion: explicacionLimpia,
@@ -4547,7 +4599,8 @@ function AdminPanelContent() {
                       if (success2 && data) {
                         const finalizadosPorEmpleado = data.filter((r: any) =>
                           r.estado === 'finalizado_por_tecnico' ||
-                          (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion))
+                          (r.estado === 'aceptado_por_cliente' && (r.revision || r.reparacion)) ||
+                          r.estado === 'cerrado_por_cliente'
                         );
                         setReportesFinalizadosPorEmpleado(finalizadosPorEmpleado);
                       }
@@ -4729,35 +4782,33 @@ function AdminPanelContent() {
                           </Text>
                         </View>
 
-                        {String(rep.estado || '').toLowerCase() !== 'cotizacionnueva' && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              setReporteACotizar(rep);
-                              setPrecioCotizacionEdit(formatNumberWithCommas(String(rep.precio_cotizacion || '')));
-                              setMonedaEdit(rep.moneda || 'MXN');
-                              setExplicacionCotizacionEdit(rep.cotizacion_explicacion || '');
-                              setEditarCotizacionError(null);
-                              setShowRechazadosModal(false);
-                              setShowEditarCotizacionModal(true);
-                            }}
-                            style={{
-                              marginTop: 10,
-                              alignSelf: 'flex-start',
-                              backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                              borderColor: '#f59e0b',
-                              borderWidth: 1,
-                              borderRadius: 8,
-                              paddingVertical: 8,
-                              paddingHorizontal: 12,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            <Ionicons name="pencil-outline" size={16} color="#f59e0b" />
-                            <Text style={[{ color: '#fbbf24', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Editar cotización</Text>
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          onPress={() => {
+                            setReporteACotizar(rep);
+                            setPrecioCotizacionEdit(formatNumberWithCommas(String(rep.precio_cotizacion || '')));
+                            setMonedaEdit(rep.moneda || 'MXN');
+                            setExplicacionCotizacionEdit(rep.cotizacion_explicacion || '');
+                            setEditarCotizacionError(null);
+                            setShowRechazadosModal(false);
+                            setShowEditarCotizacionModal(true);
+                          }}
+                          style={{
+                            marginTop: 10,
+                            alignSelf: 'flex-start',
+                            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                            borderColor: '#f59e0b',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            paddingVertical: 8,
+                            paddingHorizontal: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <Ionicons name="pencil-outline" size={16} color="#f59e0b" />
+                          <Text style={[{ color: '#fbbf24', fontSize: 12, fontWeight: '600' }, { fontFamily }]}>Editar cotización</Text>
+                        </TouchableOpacity>
 
                         <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'flex-end' }}>
                           <Text style={{ color: '#94a3b8', fontSize: 10 }}>
@@ -4959,13 +5010,13 @@ function AdminPanelContent() {
                       {(() => {
                         const estado = String(selectedReporteDetail.estado || '').toLowerCase();
                         const puedeEditar =
-                          (estado === 'en_cotizacion' ||
+                          detalleOrigen === 'rechazados' ||
+                          ((estado === 'en_cotizacion' ||
                             estado === 'en cotizacion' ||
                             estado === 'cotizado' ||
                             estado === 'en_espera_confirmacion' ||
                             estado === 'en espera confirmacion') &&
-                          estado !== 'cotizacionnueva' &&
-                          detalleOrigen === 'rechazados';
+                            estado !== 'cotizacionnueva');
                         if (!puedeEditar) return null;
                         return (
                           <TouchableOpacity

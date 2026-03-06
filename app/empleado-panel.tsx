@@ -112,6 +112,7 @@ function EmpleadoPanelContent() {
   const [showArchivoModal, setShowArchivoModal] = useState(false);
   const [archivoVisualizando, setArchivoVisualizando] = useState<any | null>(null);
   const [showCotizarModal, setShowCotizarModal] = useState(false);
+  const [showExpressModal, setShowExpressModal] = useState(false);
   const [descripcionTrabajo, setDescripcionTrabajo] = useState('');
   const [precioCotizacion, setPrecioCotizacion] = useState('');
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false);
@@ -824,6 +825,95 @@ function EmpleadoPanelContent() {
       showToast('Error al guardar la cotización', 'error');
     } finally {
       setGuardandoCotizacion(false);
+    }
+  };
+
+  const enviarAnalisisYReparacionExpress = async () => {
+    if (!reporteSeleccionado?.id) return;
+
+    setGuardandoCotizacion(true); // Using this to show loading state
+    setGuardandoFase2(true);      // Also this one
+
+    try {
+      // Data needed for Phase 2.1 (Analisis)
+      const analisisTexto = descripcionTrabajo.trim();
+
+      // Data needed for Phase 3.1 (Reparacion)
+      const fase2Data = {
+        revision: revision, // Opcional o no usado en nueva versión pero se envía
+        recomendaciones,
+        reparacion,
+        recomendaciones_adicionales: recomendacionesAdicionales,
+        materiales_refacciones: materialesRefacciones,
+      };
+
+      console.log('[EMPLEADO-EXPRESS] Enviando análisis y reparación express', { analisisTexto, fase2Data });
+
+      // Change state to 'revision completada' and send both payloads
+      const respuesta = await actualizarEstadoReporteAsignado(
+        reporteSeleccionado.id,
+        'revision completada',      // El nuevo estado express
+        analisisTexto,              // El texto del análisis (descripcion_trabajo)
+        precioCotizacion || null,
+        fase2Data                   // Detalles de reparación
+      );
+
+      if (respuesta.success) {
+        // Now upload images and audio if any
+        let hasUploadError = false;
+
+        // 1. Photos for Analysis
+        if (fotosRevisionUris.length > 0 || audioUri) {
+          showToast('Subiendo análisis...', 'info');
+          const uploadRes = await subirArchivosReporte(
+            reporteSeleccionado.id,
+            [], // without photos array (we use fotosRevisionUris here manually or next)
+            undefined, // video
+            audioUri || undefined, // audio
+            fotosRevisionUris, // fotosRevision
+            undefined // fotosPostproceso
+          );
+          if (!uploadRes.success) hasUploadError = true;
+        }
+
+        // 2. Photos for Repair (Postproceso)
+        if (fotosPostprocesoUris.length > 0) {
+          showToast('Subiendo imágenes de finalización...', 'info');
+          const uploadRes2 = await subirArchivosReporte(
+            reporteSeleccionado.id,
+            [],
+            undefined,
+            undefined,
+            undefined,
+            fotosPostprocesoUris
+          );
+          if (!uploadRes2.success) hasUploadError = true;
+        }
+
+        if (hasUploadError) {
+          showToast('Servicio completado. Hubo un error al subir algunos archivos multimedia.', 'warning');
+        } else {
+          showToast('¡Servicio Express completado exitosamente!', 'success');
+        }
+
+        // Cleanup and close
+        setFotosRevisionUris([]);
+        setFotosPostprocesoUris([]);
+        deleteRecording();
+        setShowExpressModal(false);
+        cerrarModalReporteDetalle();
+        cargarReportes();
+
+      } else {
+        console.error('[EMPLEADO-EXPRESS] Error en respuesta:', respuesta);
+        showToast('Error al enviar servicio express', 'error');
+      }
+    } catch (error) {
+      console.error('Error al guardar servicio express:', error);
+      showToast('Error inesperado al ejecutar el servicio express.', 'error');
+    } finally {
+      setGuardandoCotizacion(false);
+      setGuardandoFase2(false);
     }
   };
 
@@ -1989,14 +2079,39 @@ function EmpleadoPanelContent() {
       {showReporteDetalle && reporteSeleccionado && (
         <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
           <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-            <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile]}>
+            <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile, { alignItems: 'flex-start' }]}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Detalles del reporte</Text>
                 <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily }]} numberOfLines={1}>Resumen completo del ticket</Text>
               </View>
-              <TouchableOpacity onPress={() => cerrarModalReporteDetalle()} activeOpacity={0.7}>
-                <Ionicons name="close" size={isMobile ? 20 : 24} color="#94a3b8" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                {(reporteSeleccionado.estado === 'asignado' || reporteSeleccionado.estado === 'pendiente' || (reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general)) && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowReporteDetalle(false);
+                      setShowExpressModal(true);
+                    }}
+                    activeOpacity={0.85}
+                    style={{
+                      backgroundColor: '#ef4444',
+                      paddingHorizontal: isMobile ? 8 : 12,
+                      paddingVertical: isMobile ? 6 : 8,
+                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <Ionicons name="flash" size={14} color="#fff" />
+                    <Text style={[{ color: '#fff', fontSize: isMobile ? 11 : 13, fontWeight: 'bold', fontFamily }]}>
+                      Express
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => cerrarModalReporteDetalle()} activeOpacity={0.7} style={{ padding: 4 }}>
+                  <Ionicons name="close" size={isMobile ? 20 : 26} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Aviso prominente cuando el cliente aceptó la cotización */}
@@ -2545,67 +2660,73 @@ function EmpleadoPanelContent() {
               )}
 
               {reporteSeleccionado.estado === 'asignado' && (
-                <LinearGradient
-                  colors={['#d97706', '#f59e0b']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
-                >
-                  <TouchableOpacity
-                    onPress={confirmarEnvioAnalisis}
-                    disabled={guardandoCotizacion}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                <View style={{ gap: 10, width: '100%' }}>
+                  <LinearGradient
+                    colors={['#d97706', '#f59e0b']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.detailActionButton}
                   >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+                    <TouchableOpacity
+                      onPress={confirmarEnvioAnalisis}
+                      disabled={guardandoCotizacion}
+                      activeOpacity={0.85}
+                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                        {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                </View>
               )}
 
               {reporteSeleccionado.estado === 'pendiente' && (
-                <LinearGradient
-                  colors={['#d97706', '#f59e0b']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
-                >
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowReporteDetalle(false);
-                      setShowCotizarModal(true);
-                    }}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                <View style={{ gap: 10, width: '100%' }}>
+                  <LinearGradient
+                    colors={['#d97706', '#f59e0b']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.detailActionButton}
                   >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      Enviar Análisis
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowReporteDetalle(false);
+                        setShowCotizarModal(true);
+                      }}
+                      activeOpacity={0.85}
+                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                        Enviar Análisis
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                </View>
               )}
 
               {reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general && (
-                <LinearGradient
-                  colors={['#d97706', '#f59e0b']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
-                >
-                  <TouchableOpacity
-                    onPress={() => {
-                      setShowReporteDetalle(false);
-                      setShowCotizarModal(true);
-                    }}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                <View style={{ gap: 10, width: '100%' }}>
+                  <LinearGradient
+                    colors={['#d97706', '#f59e0b']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.detailActionButton}
                   >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      Enviar Análisis
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setShowReporteDetalle(false);
+                        setShowCotizarModal(true);
+                      }}
+                      activeOpacity={0.85}
+                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    >
+                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                        Enviar Análisis
+                      </Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
+                </View>
               )}
 
               {/* Botón de Finalizar Trabajo movido arriba para consistencia con el modal de cierre */}
@@ -2766,6 +2887,218 @@ function EmpleadoPanelContent() {
                   ))}
                 </ScrollView>
               )}
+            </View>
+          </View>
+        )
+      }
+
+      {
+        showExpressModal && reporteSeleccionado && (
+          <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
+              <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile, { backgroundColor: '#7f1d1d' }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Análisis y Reparación Express</Text>
+                  <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily, color: '#fca5a5' }]} numberOfLines={1}>Completa fase 2.1 y 3.1 al mismo tiempo</Text>
+                </View>
+                <TouchableOpacity onPress={() => {
+                  setShowExpressModal(false);
+                  setShowReporteDetalle(true);
+                  // Reseteamos campos compartidos
+                  setDescripcionTrabajo('');
+                  setFotosRevisionUris([]);
+                  setReparacion('');
+                  setMaterialesRefacciones('');
+                  setRecomendaciones('');
+                  setRecomendacionesAdicionales('');
+                  setFotosPostprocesoUris([]);
+                }} activeOpacity={0.7}>
+                  <Ionicons name="close" size={isMobile ? 20 : 24} color="#fca5a5" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.detailScroll} showsVerticalScrollIndicator={false}>
+                <View style={[styles.detailContent, isMobile && styles.detailContentMobile]}>
+                  {/* FASE 2.1: Análisis */}
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ fontFamily, color: '#f59e0b', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>1. ANÁLISIS GENERAL (Fase 2.1)</Text>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
+                        ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA)
+                      </Text>
+                      <TextInput
+                        style={[styles.textInputArea, { fontFamily }]}
+                        value={descripcionTrabajo}
+                        onChangeText={setDescripcionTrabajo}
+                        placeholder="Ingresa el análisis general del reporte..."
+                        placeholderTextColor="#64748b"
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                      />
+                    </View>
+
+                    {/* Sección de Foto de Revisión */}
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
+                        IMAGENES DE ANALISIS
+                      </Text>
+                      <View style={{ marginTop: 8 }}>
+                        {fotosRevisionUris.length > 0 && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                            {fotosRevisionUris.map((uri, index) => (
+                              <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                <TouchableOpacity
+                                  style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderRadius: 12, padding: 2, zIndex: 1 }}
+                                  onPress={() => eliminarFotoRevision(index)}
+                                >
+                                  <Ionicons name="close" size={14} color="#fff" />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        )}
+                        <TouchableOpacity
+                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
+                          onPress={seleccionarFotoRevision}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="images" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>
+                            {fotosRevisionUris.length === 0 ? 'Elegir Imágenes' : `Imágenes Seleccionadas: ${fotosRevisionUris.length} (Añadir más)`}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={{ height: 1, backgroundColor: '#1e293b', marginVertical: 16 }} />
+
+                  {/* FASE 3.1: Reparación */}
+                  <View style={{ marginBottom: 16 }}>
+                    <Text style={{ fontFamily, color: '#10b981', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>2. TRABAJO REALIZADO (Fase 3.1)</Text>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Detalla lo que fue reparado..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={3}
+                        value={reparacion}
+                        onChangeText={setReparacion}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Materiales o refacciones utilizadas..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={2}
+                        value={materialesRefacciones}
+                        onChangeText={setMaterialesRefacciones}
+                      />
+                    </View>
+
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Recomendaciones para el cliente..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={3}
+                        value={recomendaciones}
+                        onChangeText={setRecomendaciones}
+                      />
+                    </View>
+
+                    {/* Imágenes de finalización */}
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold' }]}>
+                        IMAGENES DE FINALIZACION
+                      </Text>
+                      <View style={{ marginTop: 8 }}>
+                        {fotosPostprocesoUris.length > 0 && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                            {fotosPostprocesoUris.map((uri, index) => (
+                              <View key={index} style={{ marginRight: 10, position: 'relative' }}>
+                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                <TouchableOpacity
+                                  style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderRadius: 12, padding: 2, zIndex: 1 }}
+                                  onPress={() => eliminarFotoPostproceso(index)}
+                                >
+                                  <Ionicons name="close" size={14} color="#fff" />
+                                </TouchableOpacity>
+                              </View>
+                            ))}
+                          </ScrollView>
+                        )}
+                        <TouchableOpacity
+                          style={[styles.audioRecordButton, { backgroundColor: '#10b981' }]}
+                          onPress={seleccionarFotoPostproceso}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="images" size={24} color="#fff" />
+                          <Text style={[styles.audioButtonText, { fontFamily }]}>
+                            {fotosPostprocesoUris.length === 0 ? 'Elegir Imágenes de Finalización' : `Imágenes Seleccionadas: ${fotosPostprocesoUris.length} (Añadir más)`}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+
+                </View>
+              </ScrollView>
+
+              <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
+                <TouchableOpacity
+                  style={styles.detailCloseButton}
+                  onPress={() => {
+                    setShowExpressModal(false);
+                    setShowReporteDetalle(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <LinearGradient
+                  colors={['#ef4444', '#b91c1c']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.detailActionButton}
+                >
+                  <TouchableOpacity
+                    onPress={async () => {
+                      if (!descripcionTrabajo.trim()) {
+                        showToast('Por favor escribe el Análisis General', 'warning');
+                        return;
+                      }
+                      if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
+                        showToast('Completa los campos de Reparación, Materiales y Recomendaciones', 'warning');
+                        return;
+                      }
+
+                      // Here is where we fire the API update to 'revision completada'
+                      await enviarAnalisisYReparacionExpress();
+                    }}
+                    disabled={guardandoCotizacion || guardandoFase2}
+                    activeOpacity={0.85}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                      {(guardandoCotizacion || guardandoFase2) ? 'Guardando...' : 'Finalizar Servicio Express'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
+              </View>
             </View>
           </View>
         )

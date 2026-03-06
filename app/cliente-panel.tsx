@@ -308,7 +308,23 @@ function ClientePanelContent() {
           if (comentarioMatch) comentario = comentarioMatch[1].trim();
 
           const idNum = Number(r.id);
-          const estadoOverride = canceladosLocal.has(idNum) ? 'rechazado' : r.estado;
+          const esCotizacionValida = r.estado === 'cotizado' ||
+            r.estado === 'en_espera_confirmacion' ||
+            r.estado === 'en_cotizacion' ||
+            r.estado === 'revision pendiente cotizacion' ||
+            r.estado === 'revision pendiente cotizacion(nueva)' ||
+            r.estado === 'cotizacionnueva';
+
+          if (esCotizacionValida && canceladosLocal.has(idNum)) {
+            setCanceladosLocal((prev) => {
+              const next = new Set(prev);
+              next.delete(idNum);
+              AsyncStorage.setItem('reportes_cancelados_local', JSON.stringify(Array.from(next)));
+              return next;
+            });
+          }
+
+          const estadoOverride = (canceladosLocal.has(idNum) && !esCotizacionValida) ? 'rechazado' : r.estado;
 
           return {
             ...r,
@@ -367,12 +383,27 @@ function ClientePanelContent() {
           // Filtrar reportes en proceso de cotización o ya cotizados
           const cotizacionesFiltradas = resultado.data.filter((r: any) => {
             const idNum = Number(r.id);
-            if (canceladosLocal.has(idNum)) return false;
 
             const estadoValido = r.estado === 'cotizado' ||
               r.estado === 'en_espera_confirmacion' ||
               r.estado === 'en_cotizacion' ||
+              r.estado === 'revision pendiente cotizacion' ||
+              r.estado === 'revision pendiente cotizacion(nueva)' ||
               r.estado === 'cotizacionnueva';
+
+            // Si el estado es válido desde el backend, pero estaba en nuestros cancelados locales,
+            // significa que el admin lo recotizó. Lo sacamos de nuestra lista negra local.
+            if (estadoValido && canceladosLocal.has(idNum)) {
+              setCanceladosLocal((prev) => {
+                const next = new Set(prev);
+                next.delete(idNum);
+                AsyncStorage.setItem('reportes_cancelados_local', JSON.stringify(Array.from(next)));
+                return next;
+              });
+              return true; // Ya no lo filtramos
+            }
+
+            if (canceladosLocal.has(idNum)) return false;
 
             if (!estadoValido) logDebug(`[FILTRO] Reporte ${r.id}: estado inválido (${r.estado})`);
 
@@ -451,7 +482,23 @@ function ClientePanelContent() {
 
           const dataConOverride = (resultado.data || []).map((r: any) => {
             const idNum = Number(r.id);
-            return canceladosLocal.has(idNum) ? { ...r, estado: 'rechazado' } : r;
+            const esCotizacionValida = r.estado === 'cotizado' ||
+              r.estado === 'en_espera_confirmacion' ||
+              r.estado === 'en_cotizacion' ||
+              r.estado === 'revision pendiente cotizacion' ||
+              r.estado === 'revision pendiente cotizacion(nueva)' ||
+              r.estado === 'cotizacionnueva';
+
+            if (esCotizacionValida && canceladosLocal.has(idNum)) {
+              setCanceladosLocal((prev) => {
+                const next = new Set(prev);
+                next.delete(idNum);
+                AsyncStorage.setItem('reportes_cancelados_local', JSON.stringify(Array.from(next)));
+                return next;
+              });
+            }
+
+            return (canceladosLocal.has(idNum) && !esCotizacionValida) ? { ...r, estado: 'rechazado' } : r;
           });
 
           const finalizados = dataConOverride.filter((r: any) =>
@@ -866,7 +913,7 @@ function ClientePanelContent() {
   const enCotizacionCount = useMemo(
     () => todosLosReportes.filter((r) => {
       const st = (r.estado || '').toLowerCase().replace(/\s+/g, '_');
-      return st === 'en_cotizacion' || st === 'cotizado' || st === 'en_espera_confirmacion';
+      return st === 'en_cotizacion' || st === 'cotizado' || st === 'en_espera_confirmacion' || st === 'revision_pendiente_cotizacion' || st === 'revision_pendiente_cotizacion(nueva)';
     }).length,
     [todosLosReportes]
   );
@@ -2539,7 +2586,7 @@ function ClientePanelContent() {
               </TouchableOpacity>
 
               {/* Botón Responder Encuesta - solo cuando hubo trabajo y no fue cancelado */}
-              {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'terminado') &&
+              {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'terminado' || selectedReporte.estado === 'cerrado_por_cliente') &&
                 selectedReporte.estado !== 'cancelado' &&
                 !selectedReporte.esCancelado &&
                 !encuestasEnviadas.has(selectedReporte.id) &&
@@ -3314,18 +3361,22 @@ function ClientePanelContent() {
                   )}
 
                   {/* Acciones */}
-                  {(cotizacionSeleccionada.estado === 'cotizado' || cotizacionSeleccionada.estado === 'en_espera_confirmacion' || cotizacionSeleccionada.estado === 'cotizacionnueva') && (
+                  {(cotizacionSeleccionada.estado === 'cotizado' || cotizacionSeleccionada.estado === 'en_espera_confirmacion' || cotizacionSeleccionada.estado === 'cotizacionnueva' || cotizacionSeleccionada.estado === 'revision pendiente cotizacion' || cotizacionSeleccionada.estado === 'revision pendiente cotizacion(nueva)') && (
                     <View style={styles.detailActions}>
                       <TouchableOpacity
                         style={[styles.actionButton, { backgroundColor: '#10b981' }]}
                         onPress={async () => {
                           try {
-                            // Cuando el cliente acepta, cambiar estado a 'aceptado_por_cliente'
-                            // Esto permite que el empleado trabaje pero que no aparezca en Cotizaciones
-                            logDebug('[CLIENTE] Aceptando cotización, cambiando a aceptado_por_cliente');
+                            // Cuando el cliente acepta, cambiar estado a 'aceptado_por_cliente' (o cerrado_por_cliente si express)
+                            logDebug('[CLIENTE] Aceptando cotización...');
+
+                            let nuevoEstado = 'aceptado_por_cliente';
+                            if (cotizacionSeleccionada.estado === 'revision pendiente cotizacion' || cotizacionSeleccionada.estado === 'revision pendiente cotizacion(nueva)') {
+                              nuevoEstado = 'cerrado_por_cliente';
+                            }
 
                             const resultado = await actualizarReporteBackend(cotizacionSeleccionada.id, {
-                              estado: 'aceptado_por_cliente'
+                              estado: nuevoEstado
                             });
 
                             if (!resultado.success) {
@@ -3341,7 +3392,7 @@ function ClientePanelContent() {
                             // Cerrar el modal inmediatamente
                             setShowCotizacionDetalleModal(false);
 
-                            showToast('Cotización aceptada. El técnico puede comenzar el trabajo.', 'success');
+                            showToast(nuevoEstado === 'cerrado_por_cliente' ? 'Aceptada. Reporte finalizado (Express).' : 'Cotización aceptada. El técnico puede comenzar el trabajo.', 'success');
 
                             // Recargar cotizaciones en background sin bloquear
                             setTimeout(() => {
@@ -3702,14 +3753,15 @@ function ClientePanelContent() {
                   }}
                   onPress={async () => {
                     if (!reporteARechazar) return;
-                    const esSegundaCotizacion = reporteARechazar.estado === 'cotizacionnueva';
+                    const esSegundaCotizacion = reporteARechazar.estado === 'cotizacionnueva' || reporteARechazar.estado === 'revision pendiente cotizacion(nueva)';
+                    const esExpress = reporteARechazar.estado === 'revision pendiente cotizacion';
 
-                    if (stepRechazo === 1 && !esSegundaCotizacion) {
+                    if (stepRechazo === 1 && !esSegundaCotizacion && !esExpress) {
                       setStepRechazo(2);
                       return;
                     }
 
-                    if (!esSegundaCotizacion && !motivoRechazo.trim()) {
+                    if (!esSegundaCotizacion && !esExpress && !motivoRechazo.trim()) {
                       showToast('Por favor ingresa un motivo', 'warning');
                       return;
                     }
@@ -3717,15 +3769,22 @@ function ClientePanelContent() {
                     setRechazandoReporte(true);
                     try {
                       logDebug('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado');
-                      const estadoRechazo = 'rechazado';
+                      let estadoRechazo = 'rechazado';
+                      let motivoCan = motivoRechazo.trim();
+
+                      if (esSegundaCotizacion) {
+                        motivoCan = 'Rechazo de cotizacion nueva';
+                      } else if (esExpress) {
+                        estadoRechazo = 'cotizacionnueva';
+                        motivoCan = 'Rechazo de cotizacion exprés';
+                      }
+
                       const payload: any = {
                         estado: estadoRechazo,
                         precio_cotizacion: 0
                       };
-                      if (esSegundaCotizacion) {
-                        payload.motivo_cancelacion = 'Rechazo de cotizacion nueva';
-                      } else {
-                        payload.motivo_cancelacion = motivoRechazo.trim();
+                      if (motivoCan) {
+                        payload.motivo_cancelacion = motivoCan;
                       }
                       const resultado = await actualizarReporteBackend(reporteARechazar.id, payload);
 
@@ -3744,7 +3803,7 @@ function ClientePanelContent() {
                       // Recargar datos
                       cargarReportes(usuario?.email);
                       cargarCotizaciones(usuario?.email);
-                      if (esSegundaCotizacion) {
+                      if (esSegundaCotizacion || esExpress) {
                         setCanceladosLocal((prev) => {
                           const next = new Set(prev);
                           next.add(Number(reporteARechazar.id));
@@ -3753,7 +3812,7 @@ function ClientePanelContent() {
                         });
                         setCotizaciones((prev) => prev.filter((c) => c.id !== reporteARechazar.id));
                         setReportesFinalizados((prev) => [
-                          { ...reporteARechazar, estado: 'rechazado', esCancelado: true },
+                          { ...reporteARechazar, estado: estadoRechazo, esCancelado: true },
                           ...prev.filter((r) => r.id !== reporteARechazar.id)
                         ]);
                       }
@@ -3771,7 +3830,7 @@ function ClientePanelContent() {
                   <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>
                     {rechazandoReporte
                       ? 'Procesando...'
-                      : (reporteARechazar?.estado === 'cotizacionnueva'
+                      : ((reporteARechazar?.estado === 'cotizacionnueva' || reporteARechazar?.estado === 'revision pendiente cotizacion' || reporteARechazar?.estado === 'revision pendiente cotizacion(nueva)')
                         ? 'Sí, cancelar'
                         : (stepRechazo === 1 ? 'Sí, continuar' : 'Confirmar Cancelación'))}
                   </Text>

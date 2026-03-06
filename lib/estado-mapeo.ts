@@ -21,6 +21,11 @@ export const estadoMapeo: Record<string, string> = {
   'en espera confirmacion': 'Pendiente de Confirmación',
   'cotizacionnueva': 'Cotización Nueva',
 
+  // Flujo Express / Fast-Track
+  'revision completada': 'Revisión Express',
+  'revision pendiente cotizacion': 'Cotización Express',
+  'revision pendiente cotizacion(nueva)': 'Cotización Express',
+
   // Flujo de ejecución
   'en_proceso': 'En Proceso',
   'en proceso': 'En Proceso',
@@ -68,6 +73,8 @@ export const obtenerColorEstado = (estado: string): string => {
     'Por Revisar': '#8b5cf6',    // Violeta
     'Cerrado': '#6366f1',        // Indigo
     'Rechazado': '#ef4444',      // Rojo
+    'Revisión Express': '#ef4444', // Rojo (Rayito Express)
+    'Cotización Express': '#f43f5e', // Rosa fuerte
   };
 
   return colores[nombreVisual] || '#94a3b8'; // Gris por defecto
@@ -89,6 +96,8 @@ export const obtenerIconoEstado = (estado: string): string => {
     'Por Revisar': 'checkbox-outline',
     'Cerrado': 'checkmark-done-outline',
     'Rechazado': 'close-circle-outline',
+    'Revisión Express': 'flash-outline',
+    'Cotización Express': 'flash-outline',
   };
 
   return iconos[nombreVisual] || 'help-outline';
