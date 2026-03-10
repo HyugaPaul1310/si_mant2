@@ -1,0 +1,169 @@
+server {
+    server_name si-mant.com www.si-mant.com;  # Pon tu dominio aquí si ya lo tienes (ej: simant.com)
+
+    # Aumentar tamaño máximo de subida (para que no fallen fotos grandes)
+    client_max_body_size 120M;
+
+    # 1. Aplicación Next.js
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/clientes {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/nosotros {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+    location /api/servicios {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/trabajos {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # =========================================================================
+    # 🚨 RUTAS EXCLUSIVAS DE LA APP MÓVIL Y BACKEND PRINCIPAL (NODE.JS) 🚨
+    # =========================================================================
+    # Por favor NO agregar bloques específicos como /api/auth/ aquí arriba que
+    # apunten al puerto 3000. Todo lo que empiece con /api/ debe caer en este
+    # bloque para ser procesado por Node.js (puerto 3001) y recibir los headers CORS.
+    location /api/ {
+
+	if ($request_method = 'OPTIONS') {
+           add_header 'Access-Control-Allow-Origin' 'http://localhost:8081' always;
+           add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE' always;
+           add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization' always;
+           add_header 'Access-Control-Max-Age' 1728000;
+           add_header 'Content-Type' 'text/plain; charset=utf-8';
+           add_header 'Content-Length' 0;
+           return 204;
+        }
+
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+    }
+
+    location /upload/ {
+        proxy_pass http://127.0.0.1:5001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # 2. RUTAS DIRECTAS PARA IMÁGENES (Solución definitiva)
+    # Ajusta estas rutas si tienes otras carpetas (ej: /uploads/)
+    location /servicios/ {
+        alias /var/www/Si-Mant/public/servicios/;
+        autoindex off;
+    }
+
+    location /clientes/ {
+        alias /var/www/Si-Mant/public/clientes/;
+    }
+
+    location /productos/ {
+        alias /var/www/Si-Mant/public/productos/;
+    }
+
+    location /trabajos/ {
+        alias /var/www/Si-Mant/public/trabajos/;
+    }
+
+    location /catalogo/ {
+        alias /var/www/Si-Mant/public/catalogo/;
+        autoindex off;
+    }
+
+
+    location /app/ {
+    alias /var/www/app/web/;
+    try_files $uri $uri/ /index.html;
+    index index.html;
+    autoindex off;  # Prevent directory listing
+    expires 1d;
+    }
+
+        # --- APLICACIÓN DESKTOP (/desktop) ---
+    location ^~ /desktop {
+        alias /var/www/si-mant-desktop/web;
+        try_files $uri $uri/ /desktop/index.html;
+    }
+
+    # --- API DESKTOP (/api-desktop) ---
+    location ^~ /api-desktop {
+        rewrite ^/api-desktop/(.*) /api/$1 break;
+        proxy_pass http://localhost:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/si-mant.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/si-mant.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+
+
+server {
+    if ($host = www.si-mant.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    if ($host = si-mant.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    server_name si-mant.com www.si-mant.com;
+    return 404; # managed by Certbot
+
+
+
+
+}

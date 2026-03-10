@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -3411,8 +3411,11 @@ function ClientePanelContent() {
                         style={[styles.actionButton, { backgroundColor: '#ef4444' }]}
                         onPress={() => {
                           setReporteARechazar(cotizacionSeleccionada);
-                          setReporteARechazar(cotizacionSeleccionada);
-                          setStepRechazo(1);
+                          if (cotizacionSeleccionada.estado === 'revision pendiente cotizacion') {
+                            setStepRechazo(2);
+                          } else {
+                            setStepRechazo(1);
+                          }
                           setMotivoRechazo('');
                           setShowConfirmarRechazoModal(true);
                         }}
@@ -3681,11 +3684,11 @@ function ClientePanelContent() {
                 </View>
               </View>
 
-              {reporteARechazar?.estado === 'cotizacionnueva' ? (
+              {reporteARechazar?.estado === 'cotizacionnueva' || reporteARechazar?.estado === 'revision pendiente cotizacion(nueva)' ? (
                 <Text style={{ fontFamily, color: '#94a3b8', fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
                   Al cancelar, el reporte quedará en estado cancelado y ya no aparecerá en seguimiento. Esta acción no se puede deshacer.
                 </Text>
-              ) : stepRechazo === 1 ? (
+              ) : stepRechazo === 1 && reporteARechazar?.estado !== 'revision pendiente cotizacion' ? (
                 <Text style={{ fontFamily, color: '#94a3b8', fontSize: 15, lineHeight: 22, marginBottom: 24 }}>
                   ¿Estás seguro de que deseas cancelar este reporte? Esta acción no se puede deshacer y el reporte se eliminará de su seguimiento.
                 </Text>
@@ -3735,7 +3738,7 @@ function ClientePanelContent() {
                     setStepRechazo(1);
                   }}
                 >
-                  <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>No, Volver</Text>
+                  <Text style={{ fontFamily, color: '#e2e8f0', fontWeight: '600' }}>Cancelar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -3761,22 +3764,20 @@ function ClientePanelContent() {
                       return;
                     }
 
-                    if (!esSegundaCotizacion && !esExpress && !motivoRechazo.trim()) {
+                    if (!esSegundaCotizacion && !motivoRechazo.trim()) {
                       showToast('Por favor ingresa un motivo', 'warning');
                       return;
                     }
 
                     setRechazandoReporte(true);
                     try {
-                      logDebug('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado');
+                      logDebug('[CLIENTE] Cancelando reporte (rechazando cotización), cambiando a rechazado/cancelado');
                       let estadoRechazo = 'rechazado';
                       let motivoCan = motivoRechazo.trim();
 
                       if (esSegundaCotizacion) {
+                        estadoRechazo = 'cancelado';
                         motivoCan = 'Rechazo de cotizacion nueva';
-                      } else if (esExpress) {
-                        estadoRechazo = 'cotizacionnueva';
-                        motivoCan = 'Rechazo de cotizacion exprés';
                       }
 
                       const payload: any = {
@@ -3817,7 +3818,6 @@ function ClientePanelContent() {
                         ]);
                       }
                       setShowCotizacionDetalleModal(false);
-
                     } catch (error) {
                       console.error('[CLIENTE] Error al rechazar:', error);
                       showToast('Error inesperado al rechazar', 'error');

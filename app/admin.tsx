@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
@@ -277,17 +277,15 @@ function AdminPanelContent() {
 
   const rechazadosCount = useMemo(() => {
     return reportes.filter((r: any) =>
-      (r.estado || '').toLowerCase() === 'cancelado' ||
       (r.estado || '').toLowerCase() === 'rechazado' ||
-      (r.estado || '').toLowerCase() === 'cotizacionnueva'
+      ((r.estado || '').toLowerCase() === 'cotizacionnueva' && (!r.precio_cotizacion || r.precio_cotizacion === 0))
     ).length;
   }, [reportes]);
 
   const reportesRechazados = useMemo(() => {
     return reportes.filter((r: any) =>
-      (r.estado || '').toLowerCase() === 'cancelado' ||
       (r.estado || '').toLowerCase() === 'rechazado' ||
-      (r.estado || '').toLowerCase() === 'cotizacionnueva'
+      ((r.estado || '').toLowerCase() === 'cotizacionnueva' && (!r.precio_cotizacion || r.precio_cotizacion === 0))
     );
   }, [reportes]);
 
