@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, eliminarReporteBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -133,6 +133,11 @@ function AdminPanelContent() {
   const [showEmpleadoDropdownReporte, setShowEmpleadoDropdownReporte] = useState(false);
   const [asignandoReporte, setAsignandoReporte] = useState(false);
   const [asignarError, setAsignarError] = useState<string | null>(null);
+
+  // Estados para Eliminación Directa de Reporte por Admin
+  const [showEliminarReporteModal, setShowEliminarReporteModal] = useState(false);
+  const [reporteAEliminar, setReporteAEliminar] = useState<any>(null);
+  const [eliminandoReporte, setEliminandoReporte] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [filtrosEstado, setFiltrosEstado] = useState<string[]>([]);
   const [filtrosPrioridad, setFiltrosPrioridad] = useState<string[]>([]);
@@ -1593,6 +1598,34 @@ function AdminPanelContent() {
       setAsignarError('Error al asignar reporte. Intenta de nuevo.');
     } finally {
       setAsignandoReporte(false);
+    }
+  };
+
+  const handleEliminarReporte = async () => {
+    if (!reporteAEliminar) return;
+
+    setEliminandoReporte(true);
+    try {
+      const result = await eliminarReporteBackend(reporteAEliminar.id);
+
+      if (result.success) {
+        Alert.alert('Éxito', 'Reporte rechazado y eliminado permanentemente');
+        
+        // Remover de la lista activa
+        setReportes(prev => prev.filter(r => r.id !== reporteAEliminar.id));
+        
+        // Cerrar modales
+        setShowEliminarReporteModal(false);
+        setReporteAEliminar(null);
+        setShowHistorialModal(false); // Por si se abrió desde el historial
+      } else {
+        Alert.alert('Error', result.error || 'Error al eliminar el reporte');
+      }
+    } catch (error) {
+      console.error('[ADMIN] Error eliminando reporte:', error);
+      Alert.alert('Error', 'Error inesperado al eliminar el reporte');
+    } finally {
+      setEliminandoReporte(false);
     }
   };
 
@@ -3166,33 +3199,61 @@ function AdminPanelContent() {
                         {/* Removidos botones de cambio manual de estado para automatización */}
 
                         {(rep.estado === 'pendiente' || !rep.estado) && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              setReporteAAsignar(rep);
-                              setSelectedEmpleadoReporte('');
-                              setAsignarError(null);
-                              setShowHistorialModal(false);
-                              setShowAsignarEmpleadoModal(true);
-                            }}
-                            style={{
-                              marginTop: 12,
-                              backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                              borderColor: '#3b82f6',
-                              borderWidth: 1,
-                              borderRadius: 8,
-                              paddingVertical: 8,
-                              paddingHorizontal: 12,
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
-                            <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
-                              Asignar a empleado
-                            </Text>
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setReporteAAsignar(rep);
+                                setSelectedEmpleadoReporte('');
+                                setAsignarError(null);
+                                setShowHistorialModal(false);
+                                setShowAsignarEmpleadoModal(true);
+                              }}
+                              style={{
+                                flex: 1,
+                                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                borderColor: '#3b82f6',
+                                borderWidth: 1,
+                                borderRadius: 8,
+                                paddingVertical: 8,
+                                paddingHorizontal: 12,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                              }}
+                            >
+                              <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
+                              <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
+                                Asignar a empleado
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              onPress={() => {
+                                setReporteAEliminar(rep);
+                                setShowEliminarReporteModal(true);
+                                setShowHistorialModal(false);
+                              }}
+                              style={{
+                                flex: 1,
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                borderColor: '#ef4444',
+                                borderWidth: 1,
+                                borderRadius: 8,
+                                paddingVertical: 8,
+                                paddingHorizontal: 12,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                              }}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                              <Text style={[{ color: '#ef4444', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
+                                Rechazar / Eliminar
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         )}
                       </View>
                     );
@@ -7315,6 +7376,67 @@ function AdminPanelContent() {
           </View>
         )
       }
+      {/* Modal Rechazar / Eliminar Reporte */}
+      {showEliminarReporteModal && reporteAEliminar && (
+        <View style={styles.overlayHeavy}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeaderRow}>
+              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: 'rgba(239, 68, 68, 0.5)' }]}>
+                <Ionicons name="trash-outline" size={22} color="#ef4444" />
+              </View>
+              <Text style={[styles.modalTitle, { fontFamily, color: '#ef4444' }]}>Eliminar Reporte</Text>
+            </View>
+            
+            <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: '#ef4444' }}>
+              <Text style={{ fontFamily, color: '#ef4444', fontWeight: '700', fontSize: 14, marginBottom: 4 }}>
+                ⚠️ Acción Irreversible
+              </Text>
+              <Text style={{ fontFamily, color: '#f87171', fontSize: 13 }}>
+                Se eliminará permanentemente de la base de datos el reporte ID: {reporteAEliminar.id}.
+              </Text>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={[styles.formLabel, { fontFamily }]}>Reportado por:</Text>
+              <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
+                <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
+                  {reporteAEliminar.usuario_nombre} {reporteAEliminar.usuario_apellido || ''}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalSecondary}
+                onPress={() => {
+                  setShowEliminarReporteModal(false);
+                  setReporteAEliminar(null);
+                }}
+                disabled={eliminandoReporte}
+              >
+                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['#ef4444', '#b91c1c']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.modalPrimary}
+              >
+                <TouchableOpacity
+                  onPress={handleEliminarReporte}
+                  disabled={eliminandoReporte}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    {eliminandoReporte ? 'Eliminando...' : 'Sí, Eliminar'}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+            </View>
+          </View>
+        </View>
+      )}
+
     </SafeAreaView >
   );
 }
