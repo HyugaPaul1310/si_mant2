@@ -77,16 +77,16 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear reporte
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { titulo, descripcion, estado, prioridad } = req.body;
+    const { titulo, descripcion, estado, prioridad, equipo_id } = req.body;
 
     const [user] = await pool.query('SELECT empresa_id FROM usuarios WHERE id = ?', [req.user.id]);
     const empresa_id = user[0]?.empresa_id;
 
-    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id, prioridad });
+    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id, prioridad, equipo_id });
 
     const result = await pool.query(
-      'INSERT INTO reportes (titulo, descripcion, estado, prioridad, usuario_id, empresa_id, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-      [titulo, descripcion, estado || 'pendiente', prioridad || 'media', req.user.id, empresa_id]
+      'INSERT INTO reportes (titulo, descripcion, estado, prioridad, usuario_id, empresa_id, equipo_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+      [titulo, descripcion, estado || 'pendiente', prioridad || 'media', req.user.id, empresa_id, equipo_id || null]
     );
 
     console.log('[BACKEND] result completo:', result);
@@ -260,6 +260,73 @@ router.put('/:id/asignar', verifyToken, requireRole(['admin']), async (req, res)
     return res.json({ success: true, data: reporte[0] });
   } catch (error) {
     console.error('Error al asignar reporte:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Rechazar asignación de un empleado
+router.put('/:id/rechazar-asignacion', verifyToken, requireRole(['empleado', 'admin']), async (req, res) => {
+  try {
+    const { motivo } = req.body;
+    const notaRechazo = motivo ? `\n[RECHAZADO POR TÉCNICO: ${motivo}]` : '\n[RECHAZADO POR TÉCNICO]';
+
+    console.log('[BACKEND-RECHAZO] Rechazando asignación de reporte:', req.params.id, 'Motivo:', motivo);
+
+    // Obtener el comentario actual para conservar el historial y hacer un append
+    const [reporteActual] = await pool.query('SELECT comentario FROM reportes WHERE id = ?', [req.params.id]);
+    if (reporteActual.length === 0) {
+      return res.status(404).json({ success: false, error: 'Reporte no encontrado' });
+    }
+
+    const comentarioActual = reporteActual[0].comentario || '';
+    const nuevoComentario = (comentarioActual + notaRechazo).trim();
+
+    // Actualizar reporte
+    await pool.query(
+      `UPDATE reportes SET 
+        empleado_asignado_id = NULL, 
+        empleado_asignado_email = NULL, 
+        empleado_asignado_nombre = NULL, 
+        estado = "pendiente", 
+        comentario = ? 
+       WHERE id = ?`,
+      [nuevoComentario, req.params.id]
+    );
+
+    const [reporte] = await pool.query('SELECT * FROM reportes WHERE id = ?', [req.params.id]);
+    
+    // Crear notificación para administradores
+    try {
+      const dbMotivo = motivo || 'Sin motivo especificado';
+      const mensajeNotificacion = `El empleado ${req.user.email} ha rechazado el reporte #${req.params.id}. Motivo: ${dbMotivo}`;
+      
+      // Obtener todos los IDs de administradores (asumiendo que rol='admin')
+      const [admins] = await pool.query('SELECT id FROM usuarios WHERE rol = "admin"');
+      
+      if (admins.length > 0) {
+        // Preparar las inserciones de notificaciones (mensaje, tipo='sistema', leida=False)
+        const insertNotificacionesStr = admins.map(() => '(?, ?, "sistema", ?, FALSE)').join(', ');
+        const insertValues = [];
+        
+        admins.forEach(admin => {
+          insertValues.push(admin.id, req.params.id, mensajeNotificacion);
+        });
+        
+        await pool.query(
+          `INSERT INTO notificaciones (usuario_id, reporte_id, tipo, mensaje, leida) VALUES ${insertNotificacionesStr}`,
+          insertValues
+        );
+        console.log(`[BACKEND-RECHAZO] Notificaciones creadas para ${admins.length} administradores`);
+      }
+    } catch (notifError) {
+      console.error('[BACKEND-RECHAZO] Error creando notificaciones de rechazo (no bloqueante):', notifError);
+    }
+
+    console.log('[BACKEND-RECHAZO] ✓ Asignación rechazada y estado revertido a "pendiente"');
+
+    return res.json({ success: true, data: reporte[0] });
+  } catch (error) {
+    console.error('Error al rechazar asignación:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });

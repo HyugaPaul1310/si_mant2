@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { obtenerSucursalesCliente } from '@/lib/api-backend';
+import { obtenerEquiposSucursal } from '@/lib/empresas';
 import { crearReporte, subirArchivosReporte } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,6 +51,11 @@ export default function GenerarReporteScreen() {
   const [video, setVideo] = useState<string | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
 
+  // Equipos de la sucursal seleccionada
+  const [equiposSucursal, setEquiposSucursal] = useState([]);
+  const [showEquipoPicker, setShowEquipoPicker] = useState(false);
+  const [equipoSeleccionado, setEquipoSeleccionado] = useState(null);
+
   useEffect(() => {
     const cargarUsuario = async () => {
       try {
@@ -80,6 +86,23 @@ export default function GenerarReporteScreen() {
     cargarUsuario();
     solicitarPermisos();
   }, [router]);
+
+  // Cargar equipos cuando cambia la sucursal
+  useEffect(() => {
+    if (sucursalSeleccionada?.id) {
+      obtenerEquiposSucursal(String(sucursalSeleccionada.id)).then(res => {
+        if (res.success) setEquiposSucursal(res.data);
+        else setEquiposSucursal([]);
+      });
+      // Reset equipo seleccionado al cambiar sucursal
+      setEquipoSeleccionado(null);
+      setEquipoDescripcion('');
+      setEquipoModelo('');
+      setEquipoSerie('');
+    } else {
+      setEquiposSucursal([]);
+    }
+  }, [sucursalSeleccionada?.id]);
 
   const solicitarPermisos = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -181,6 +204,7 @@ export default function GenerarReporteScreen() {
         equipo_descripcion: equipoDescripcion.trim(),
         equipo_modelo: equipoModelo.trim() || undefined,
         equipo_serie: equipoSerie.trim() || undefined,
+        equipo_id: equipoSeleccionado?.id ? String(equipoSeleccionado.id) : undefined,
         comentario: comentario.trim(),
         prioridad,
         direccion_sucursal: sucursalSeleccionada.direccion,
@@ -358,6 +382,82 @@ export default function GenerarReporteScreen() {
                     {sucursalSeleccionada.direccion}
                   </Text>
                 </View>
+              </View>
+            )}
+
+            {/* Equipos registrados en la sucursal */}
+            {sucursalSeleccionada && equiposSucursal.length > 0 && (
+              <View style={styles.fieldContainer}>
+                <Text style={[styles.fieldLabel, { fontFamily }]}>
+                  Equipo registrado <Text style={{ color: '#94a3b8', textTransform: 'none', fontSize: 11, fontWeight: '400' }}>(selecciona para pre-cargar datos)</Text>
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowEquipoPicker(!showEquipoPicker)}
+                  style={[
+                    styles.priorityButton,
+                    equipoSeleccionado && { borderColor: '#06b6d4', borderWidth: 1.5 }
+                  ]}
+                >
+                  <View style={styles.priorityButtonContent}>
+                    <Ionicons name="hardware-chip-outline" size={16} color="#06b6d4" />
+                    <Text style={[styles.priorityText, { fontFamily, color: equipoSeleccionado ? '#06b6d4' : '#94a3b8', fontSize: 13 }]}>
+                      {equipoSeleccionado ? equipoSeleccionado.nombre : 'Seleccionar equipo de la sucursal...'}
+                    </Text>
+                  </View>
+                  <Ionicons name={showEquipoPicker ? 'chevron-up' : 'chevron-down'} size={16} color="#475569" />
+                </TouchableOpacity>
+
+                {showEquipoPicker && (
+                  <View style={[styles.priorityPicker, { maxHeight: 260, zIndex: 20 }]}>
+                    <ScrollView scrollEnabled nestedScrollEnabled showsVerticalScrollIndicator>
+                      {/* Opción: ninguno / manual */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setEquipoSeleccionado(null);
+                          setEquipoDescripcion('');
+                          setEquipoModelo('');
+                          setEquipoSerie('');
+                          setShowEquipoPicker(false);
+                        }}
+                        style={[styles.priorityOption, styles.priorityOptionBorder]}
+                      >
+                        <Ionicons name="create-outline" size={16} color="#64748b" />
+                        <Text style={[styles.priorityOptionText, { fontFamily, color: '#64748b', fontSize: 13 }]}>Ingresar manualmente</Text>
+                      </TouchableOpacity>
+
+                      {equiposSucursal.map((eq, index) => (
+                        <TouchableOpacity
+                          key={eq.id}
+                          onPress={() => {
+                            setEquipoSeleccionado(eq);
+                            setEquipoDescripcion(eq.nombre || '');
+                            setEquipoModelo(eq.modelo || '');
+                            setEquipoSerie(eq.serie || '');
+                            setShowEquipoPicker(false);
+                          }}
+                          style={[
+                            styles.priorityOption,
+                            index < equiposSucursal.length - 1 && styles.priorityOptionBorder,
+                          ]}
+                        >
+                          <Ionicons
+                            name={equipoSeleccionado?.id === eq.id ? 'checkmark-circle' : 'hardware-chip-outline'}
+                            size={16}
+                            color={equipoSeleccionado?.id === eq.id ? '#06b6d4' : '#475569'}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.priorityOptionText, { fontFamily, fontSize: 13 }]}>{eq.nombre}</Text>
+                            {(eq.modelo || eq.serie) ? (
+                              <Text style={{ color: '#64748b', fontSize: 11, marginTop: 1 }}>
+                                {[eq.modelo && `Modelo: ${eq.modelo}`, eq.serie && `Serie: ${eq.serie}`].filter(Boolean).join(' · ')}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
             )}
 

@@ -11,6 +11,7 @@ interface ReporteData {
   equipo_descripcion: string;
   equipo_modelo?: string;
   equipo_serie?: string;
+  equipo_id?: string;
   comentario: string;
   prioridad: 'baja' | 'media' | 'alta' | 'urgente';
   direccion_sucursal?: string;
@@ -57,10 +58,22 @@ Prioridad: ${datos.prioridad || 'media'}
       descripcion,
       estado: 'pendiente',
       prioridad: datos.prioridad || 'media',
+      equipo_id: datos.equipo_id || null,
     });
   } catch (error: any) {
     console.error('Exception en crearReporte:', error);
     return { success: false, error: error.message || 'Error desconocido' };
+  }
+}
+
+export async function obtenerHistorialEquipo(equipoId: string) {
+  try {
+    const data = await apiCall(`/empresas/equipos/${equipoId}/historial`, 'GET');
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data || [] };
+  } catch (error: any) {
+    console.error('Error al obtener historial del equipo:', error);
+    return { success: false, error: error.message, data: [] };
   }
 }
 

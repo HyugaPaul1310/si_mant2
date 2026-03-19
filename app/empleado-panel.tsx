@@ -6,7 +6,8 @@ import {
   obtenerArchivosReporteBackend,
   obtenerInventarioEmpleadoBackend,
   obtenerReportesAsignados,
-  obtenerTareasEmpleadoBackend
+  obtenerTareasEmpleadoBackend,
+  rechazarAsignacionBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
@@ -129,6 +130,12 @@ function EmpleadoPanelContent() {
   const [toastType, setToastType] = useState<'success' | 'error' | 'info' | 'warning'>('info');
   const [showConfirmarAnalisis, setShowConfirmarAnalisis] = useState(false);
   const [showConfirmarFinalizarModal, setShowConfirmarFinalizarModal] = useState(false);
+
+  // Estados para rechazo de asignación
+  const [showRechazarModal, setShowRechazarModal] = useState(false);
+  const [reporteARechazar, setReporteARechazar] = useState<any>(null);
+  const [rechazoMotivo, setRechazoMotivo] = useState('');
+  const [rechazandoAsignacion, setRechazandoAsignacion] = useState(false);
 
   // Estados para grabación de audio
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -582,6 +589,37 @@ function EmpleadoPanelContent() {
       console.error('Error al actualizar reporte:', error);
     } finally {
       setActualizandoReporte(false);
+    }
+  };
+
+  const confirmarRechazoAsignacion = async () => {
+    if (!reporteARechazar?.id) return;
+    
+    setRechazandoAsignacion(true);
+    try {
+      const result = await rechazarAsignacionBackend(reporteARechazar.id, rechazoMotivo);
+      
+      if (result.success) {
+        showToast('Asignación rechazada correctamente', 'success');
+        
+        // Remove from local list
+        setListaReportes(prev => prev.filter(r => r.id !== reporteARechazar.id));
+        setReportes(prev => Math.max(0, prev - 1));
+        
+        // Close modals
+        setShowRechazarModal(false);
+        setReporteARechazar(null);
+        setRechazoMotivo('');
+        setShowReporteDetalle(false);
+        setReporteSeleccionado(null);
+      } else {
+        showToast(result.error || 'Error al rechazar asignación', 'error');
+      }
+    } catch (error) {
+      console.error('[EMPLEADO] Error rechazando asignación:', error);
+      showToast('Error inesperado al rechazar asignación', 'error');
+    } finally {
+      setRechazandoAsignacion(false);
     }
   };
 
@@ -2678,6 +2716,19 @@ function EmpleadoPanelContent() {
                       </Text>
                     </TouchableOpacity>
                   </LinearGradient>
+                  
+                  <TouchableOpacity
+                    style={[styles.modalSecondary, { marginTop: 4 }]}
+                    onPress={() => {
+                      setReporteARechazar(reporteSeleccionado);
+                      setShowRechazarModal(true);
+                      setShowReporteDetalle(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color="#ef4444" style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalSecondaryText, { fontFamily, color: '#ef4444' }]}>Rechazar Asignación</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -3355,6 +3406,82 @@ function EmpleadoPanelContent() {
                     </Text>
                   </View>
                 )}
+              </View>
+            </View>
+          </View>
+        )
+      }
+
+      {
+        showRechazarModal && reporteARechazar && (
+          <View style={styles.overlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeaderRow}>
+                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444' }]}>
+                  <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+                </View>
+                <Text style={[styles.modalTitle, { fontFamily }]}>Rechazar Asignación</Text>
+              </View>
+              <Text style={[styles.modalBodyText, { fontFamily }]}>
+                ¿Por qué estás rechazando este reporte? (Opcional)
+              </Text>
+              
+              <TextInput
+                style={[
+                  styles.textInputArea, 
+                  { 
+                    fontFamily, 
+                    marginTop: 12, 
+                    marginBottom: 20, 
+                    minHeight: 80,
+                    backgroundColor: '#1e293b',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    padding: 12,
+                    color: '#f1f5f9'
+                  }
+                ]}
+                placeholder="Escribe el motivo del rechazo aquí..."
+                placeholderTextColor="#64748b"
+                multiline
+                numberOfLines={3}
+                value={rechazoMotivo}
+                onChangeText={setRechazoMotivo}
+                textAlignVertical="top"
+                editable={!rechazandoAsignacion}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.modalSecondary}
+                  onPress={() => {
+                    setShowRechazarModal(false);
+                    setRechazoMotivo('');
+                    setReporteARechazar(null);
+                    setShowReporteDetalle(true); // Vuelve al detalle
+                  }}
+                  disabled={rechazandoAsignacion}
+                >
+                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <LinearGradient
+                  colors={['#ef4444', '#b91c1c']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.modalPrimary}
+                >
+                  <TouchableOpacity
+                    onPress={confirmarRechazoAsignacion}
+                    disabled={rechazandoAsignacion}
+                    activeOpacity={0.85}
+                    style={{ width: '100%', alignItems: 'center' }}
+                  >
+                    <Text style={[styles.modalPrimaryText, { fontFamily, color: 'white' }]}>
+                      {rechazandoAsignacion ? 'Rechazando...' : 'Rechazar'}
+                    </Text>
+                  </TouchableOpacity>
+                </LinearGradient>
               </View>
             </View>
           </View>

@@ -10,11 +10,24 @@ export interface Sucursal {
   direccion: string;
   ciudad?: string;
   activo: boolean;
+  imagen_url?: string;
+  equipos_count?: number;
 }
 
 export interface Empresa {
   id: string;
   nombre: string;
+  logo_url?: string;
+  sucursales_count?: number;
+}
+
+export interface EquipoSucursal {
+  id: string;
+  sucursal_id: string;
+  nombre: string;
+  modelo?: string;
+  serie?: string;
+  imagen_url?: string;
 }
 
 /**
@@ -51,7 +64,7 @@ export async function crearEmpresa(nombre: string) {
 /**
  * Actualiza una empresa (solo admins)
  */
-export async function actualizarEmpresa(id: string, cambios: Partial<Empresa>) {
+export async function actualizarEmpresa(id: string, cambios: Partial<Empresa> & { logo_url?: string }) {
   try {
     const payload: any = {};
     if (cambios.nombre !== undefined) {
@@ -59,7 +72,8 @@ export async function actualizarEmpresa(id: string, cambios: Partial<Empresa>) {
       if (!limpio) return { success: false, error: 'El nombre es requerido' };
       payload.nombre = limpio;
     }
-    
+    if (cambios.logo_url !== undefined) payload.logo_url = cambios.logo_url;
+
     const data = await apiCall(`/empresas/${id}`, 'PUT', payload);
     if (!data.success) throw new Error(data.error);
     return { success: true, data: data.data };
@@ -105,13 +119,48 @@ export async function obtenerSucursalesPorEmpresa(empresaId: string) {
 /**
  * Actualiza una sucursal (solo admins)
  */
-export async function actualizarSucursal(id: string, cambios: Partial<Sucursal>) {
+export async function actualizarSucursal(id: string, cambios: Partial<Sucursal> & { imagen_url?: string }) {
   try {
     const data = await apiCall(`/empresas/${id}`, 'PUT', cambios);
     if (!data.success) throw new Error(data.error);
     return { success: true, data: data.data };
   } catch (error: any) {
     console.error('Error al actualizar sucursal:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// =========== EQUIPOS DE SUCURSAL ===========
+
+export async function obtenerEquiposSucursal(sucursalId: string) {
+  try {
+    const data = await apiCall(`/empresas/sucursal/${sucursalId}/equipos`, 'GET');
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: (data.data || []) as EquipoSucursal[] };
+  } catch (error: any) {
+    console.error('Error al obtener equipos:', error);
+    return { success: false, error: error.message, data: [] as EquipoSucursal[] };
+  }
+}
+
+export async function crearEquipoSucursal(sucursalId: string, datos: Omit<EquipoSucursal, 'id' | 'sucursal_id'>) {
+  try {
+    const data = await apiCall(`/empresas/sucursal/${sucursalId}/equipos`, 'POST', datos);
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data as EquipoSucursal };
+  } catch (error: any) {
+    console.error('Error al crear equipo:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function eliminarEquipoSucursal(equipoId: string) {
+  try {
+    const data = await apiCall(`/empresas/equipos/${equipoId}`, 'DELETE');
+    if (!data.success) throw new Error(data.error);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error al eliminar equipo:', error);
     return { success: false, error: error.message };
   }
 }

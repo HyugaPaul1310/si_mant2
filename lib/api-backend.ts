@@ -131,6 +131,11 @@ export async function asignarReporteAEmpleadoBackend(reporteId: string, empleado
   return apiCall(`/reportes/${reporteId}/asignar`, 'PUT', { empleado_id: empleadoId });
 }
 
+// Rechazar asignación de un reporte
+export async function rechazarAsignacionBackend(reporteId: string, motivo: string) {
+  return apiCall(`/reportes/${reporteId}/rechazar-asignacion`, 'PUT', { motivo });
+}
+
 // Obtener archivos de un reporte
 export async function obtenerArchivosReporteBackend(reporteId: string) {
   return apiCall(`/reportes/${reporteId}/archivos`, 'GET');
