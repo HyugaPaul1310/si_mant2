@@ -2468,12 +2468,18 @@ function AdminPanelContent() {
 
       {showEmailModal && (
         <View style={styles.overlay}>
-          <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-            <View style={styles.modalHeaderRow}>
-              <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(139, 92, 246, 0.2)', borderColor: 'rgba(139, 92, 246, 0.5)' }]}>
-                <Ionicons name="mail-outline" size={22} color="#a78bfa" />
+          <View style={[styles.modalCard, isMobile ? styles.modalCardMobile : { maxWidth: 550 }]}>
+            <View style={[styles.modalHeaderRow, { marginBottom: 24 }]}>
+              <LinearGradient
+                colors={['#8b5cf6', '#6366f1']}
+                style={[styles.modalIconWrapper, { borderWidth: 0, shadowColor: '#8b5cf6', shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }]}
+              >
+                <Ionicons name="person-add-outline" size={22} color="#fff" />
+              </LinearGradient>
+              <View>
+                <Text style={[styles.modalTitle, { fontFamily, fontSize: 20 }]}>Generar cuenta</Text>
+                <Text style={[{ color: '#64748b', fontSize: 13, marginTop: 2 }, { fontFamily }]}>Crea un nuevo acceso al sistema</Text>
               </View>
-              <Text style={[styles.modalTitle, { fontFamily }]}>Generar cuenta</Text>
             </View>
 
             {createError ? (
@@ -2487,22 +2493,24 @@ function AdminPanelContent() {
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Empresa</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="business-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Empresa</Text>
+                <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                  <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Ionicons name="business-outline" size={18} color="#8b5cf6" />
+                  </View>
                   <TouchableOpacity
-                    style={styles.selectInputPro}
+                    style={[styles.selectInputPro, { borderBottomWidth: 0, paddingRight: 10, flex: 1 }]}
                     onPress={() => setShowEmpresaPicker(!showEmpresaPicker)}
                     disabled={creatingUser}
                   >
-                    <Text style={[styles.selectInputText, { fontFamily, color: empresaSeleccionada ? '#e5e7eb' : '#64748b' }]}>
+                    <Text style={[styles.selectInputText, { fontFamily, color: empresaSeleccionada ? '#f1f5f9' : '#64748b', fontSize: 14 }]}>
                       {empresaSeleccionada?.nombre || 'Selecciona empresa'}
                     </Text>
                     <Ionicons name="chevron-down" size={18} color="#64748b" />
                   </TouchableOpacity>
                 </View>
                 {showEmpresaPicker && (
-                  <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                  <ScrollView style={[styles.selectDropdown, { backgroundColor: '#1e293b', borderRadius: 12, marginTop: 4, borderWeight: 1, borderColor: 'rgba(255, 255, 255, 0.05)' }]} scrollEnabled={true} nestedScrollEnabled={true}>
                     {empresas.length === 0 ? (
                       <View style={styles.selectItem}>
                         <Text style={[styles.selectItemText, { fontFamily, color: '#94a3b8' }]}>No hay empresas</Text>
@@ -2513,7 +2521,7 @@ function AdminPanelContent() {
                           key={emp.id}
                           style={[
                             styles.selectItem,
-                            empresaSeleccionada?.id === emp.id && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                            empresaSeleccionada?.id === emp.id && { backgroundColor: 'rgba(139, 92, 246, 0.15)', borderLeftWidth: 3, borderLeftColor: '#8b5cf6' }
                           ]}
                           onPress={() => {
                             setEmpresaSeleccionada(emp);
@@ -2521,47 +2529,55 @@ function AdminPanelContent() {
                             setShowEmpresaPicker(false);
                           }}
                         >
-                          <Text style={[styles.selectItemText, empresaSeleccionada?.id === emp.id && styles.selectItemTextHighlight, { fontFamily }]}>{emp.nombre}</Text>
+                          <Text style={[styles.selectItemText, empresaSeleccionada?.id === emp.id && { color: '#a78bfa', fontWeight: '700' }, { fontFamily }]}>{emp.nombre}</Text>
                         </TouchableOpacity>
                       ))
                     )}
                   </ScrollView>
                 )}
               </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Nombre</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
-                    value={newUserName}
-                    onChangeText={setNewUserName}
-                    placeholder="Nombre completo"
-                    placeholderTextColor="#6b7280"
-                    editable={!creatingUser}
-                  />
+              <View style={{ flexDirection: 'row', gap: 20, width: '100%' }}>
+                <View style={[styles.formGroup, { flex: 1, overflow: 'hidden' }]}>
+                  <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Nombre</Text>
+                  <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                    <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="person-outline" size={18} color="#8b5cf6" />
+                    </View>
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
+                      value={newUserName}
+                      onChangeText={setNewUserName}
+                      placeholder="Nombre"
+                      placeholderTextColor="#64748b"
+                      editable={!creatingUser}
+                    />
+                  </View>
+                </View>
+                <View style={[styles.formGroup, { flex: 1, overflow: 'hidden' }]}>
+                  <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Apellido</Text>
+                  <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                    <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="person-outline" size={18} color="#8b5cf6" />
+                    </View>
+                    <TextInput
+                      style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
+                      value={newUserLastName}
+                      onChangeText={setNewUserLastName}
+                      placeholder="Apellido"
+                      placeholderTextColor="#64748b"
+                      editable={!creatingUser}
+                    />
+                  </View>
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Apellido</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="person-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Correo electrónico</Text>
+                <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                  <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="mail-outline" size={18} color="#8b5cf6" />
+                  </View>
                   <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
-                    value={newUserLastName}
-                    onChangeText={setNewUserLastName}
-                    placeholder="Apellido"
-                    placeholderTextColor="#6b7280"
-                    editable={!creatingUser}
-                  />
-                </View>
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Correo electrónico</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="mail-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
+                    style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
                     value={newUserEmail}
                     onChangeText={setNewUserEmail}
                     placeholder="usuario@correo.com"
@@ -2571,84 +2587,95 @@ function AdminPanelContent() {
                     autoComplete="off"
                     textContentType="none"
                     importantForAutofill="no"
-                    placeholderTextColor="#6b7280"
+                    placeholderTextColor="#64748b"
                     editable={!creatingUser}
                   />
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Teléfono</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="call-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Teléfono</Text>
+                <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                  <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="call-outline" size={18} color="#8b5cf6" />
+                  </View>
                   <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
+                    style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
                     value={newUserPhone}
                     onChangeText={handlePhoneChange}
-                    placeholder="1234567890"
+                    placeholder="10 dígitos"
                     keyboardType="phone-pad"
-                    placeholderTextColor="#6b7280"
+                    placeholderTextColor="#64748b"
                     editable={!creatingUser}
                   />
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="calendar-outline" size={18} color="#64748b" style={styles.inputIcon} />
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Fecha de nacimiento (opcional)</Text>
+                <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                  <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Ionicons name="calendar-outline" size={18} color="#8b5cf6" />
+                  </View>
                   <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
+                    style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
                     value={newUserBirth}
                     onChangeText={handleBirthChange}
                     placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#6b7280"
+                    placeholderTextColor="#64748b"
                     editable={!creatingUser}
                   />
                 </View>
               </View>
               <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Ciudad (opcional)</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="location-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TextInput
-                    style={[styles.formInputPro, { fontFamily }]}
-                    value={newUserCity}
-                    onChangeText={setNewUserCity}
-                    placeholder="Ciudad"
-                    placeholderTextColor="#6b7280"
-                    editable={!creatingUser}
-                  />
-                </View>
-              </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Estado (Opcional)</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="map-outline" size={18} color="#64748b" style={styles.inputIcon} />
-                  <TouchableOpacity
-                    style={styles.selectInputPro}
-                    onPress={() => setShowStatePicker(!showStatePicker)}
-                    disabled={creatingUser}
-                  >
-                    <Text style={[styles.selectInputText, { fontFamily, color: newUserState ? '#e5e7eb' : '#64748b' }]}>
-                      {newUserState || 'Selecciona estado'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={18} color="#64748b" />
-                  </TouchableOpacity>
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Ubicación (opcional)</Text>
+                <View style={{ flexDirection: 'row', gap: 20, width: '100%' }}>
+                  <View style={{ flex: 1, overflow: 'hidden' }}>
+                    <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="location-outline" size={18} color="#8b5cf6" />
+                      </View>
+                      <TextInput
+                        style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
+                        value={newUserCity}
+                        onChangeText={setNewUserCity}
+                        placeholder="Ciudad"
+                        placeholderTextColor="#64748b"
+                        editable={!creatingUser}
+                      />
+                    </View>
+                  </View>
+                  <View style={{ flex: 1.2, overflow: 'hidden' }}>
+                    <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                      <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="map-outline" size={18} color="#8b5cf6" />
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.selectInputPro, { borderBottomWidth: 0, paddingRight: 10, flex: 1 }]}
+                        onPress={() => setShowStatePicker(!showStatePicker)}
+                        disabled={creatingUser}
+                      >
+                        <Text style={[styles.selectInputText, { fontFamily, color: newUserState ? '#f1f5f9' : '#64748b', fontSize: 13 }]} numberOfLines={1}>
+                          {newUserState || 'Estado'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={16} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
                 {showStatePicker && (
-                  <ScrollView style={styles.selectDropdown} scrollEnabled={true} nestedScrollEnabled={true}>
+                  <ScrollView style={[styles.selectDropdown, { backgroundColor: '#1e293b', borderRadius: 12, marginTop: 4, maxHeight: 200 }]} scrollEnabled={true} nestedScrollEnabled={true}>
                     {['Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco', 'México', 'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas'].map((estado) => (
                       <TouchableOpacity
                         key={estado}
                         style={[
                           styles.selectItem,
-                          newUserState === estado && { backgroundColor: 'rgba(37, 99, 235, 0.15)', borderLeftWidth: 3, borderLeftColor: '#2563eb' }
+                          newUserState === estado && { backgroundColor: 'rgba(139, 92, 246, 0.15)', borderLeftWidth: 3, borderLeftColor: '#8b5cf6' }
                         ]}
                         onPress={() => {
                           setNewUserState(estado);
                           setShowStatePicker(false);
                         }}
                       >
-                        <Text style={[styles.selectItemText, newUserState === estado && styles.selectItemTextHighlight, { fontFamily }]}>
+                        <Text style={[styles.selectItemText, newUserState === estado && { color: '#a78bfa', fontWeight: '700' }, { fontFamily }]}>
                           {estado}
                         </Text>
                       </TouchableOpacity>
@@ -2656,13 +2683,15 @@ function AdminPanelContent() {
                   </ScrollView>
                 )}
               </View>
-              <View style={styles.formGroup}>
-                <Text style={[styles.formLabel, { fontFamily }]}>Contraseña</Text>
-                <View style={styles.inputWrapper}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.inputIcon} />
+              <View style={[styles.formGroup, { marginBottom: 20 }]}>
+                <Text style={[{ color: '#94a3b8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }, { fontFamily }]}>Contraseña</Text>
+                <View style={[styles.inputWrapper, { height: 52, borderRadius: 14, backgroundColor: 'rgba(30, 41, 59, 0.5)', overflow: 'hidden' }]}>
+                  <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Ionicons name="lock-closed-outline" size={18} color="#8b5cf6" />
+                  </View>
                   <TextInput
                     key={`pwd-${passwordFieldKey}`}
-                    style={[styles.formInputPro, { fontFamily }]}
+                    style={[styles.formInputPro, { fontFamily, color: '#f1f5f9', flex: 1 }]}
                     value={newUserPassword}
                     onChangeText={setNewUserPassword}
                     placeholder="••••••••"
@@ -2671,19 +2700,19 @@ function AdminPanelContent() {
                     autoComplete="off"
                     textContentType="none"
                     importantForAutofill="no"
-                    placeholderTextColor="#6b7280"
+                    placeholderTextColor="#64748b"
                     editable={!creatingUser}
                   />
-                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} disabled={creatingUser}>
+                  <TouchableOpacity onPress={() => setShowNewPassword((v) => !v)} disabled={creatingUser} style={{ padding: 10 }}>
                     <Ionicons name={showNewPassword ? 'eye-off' : 'eye'} size={18} color="#64748b" />
                   </TouchableOpacity>
                 </View>
               </View>
             </ScrollView>
 
-            <View style={[styles.modalActions, isMobile && styles.modalActionsMobile]}>
+            <View style={[styles.modalActions, isMobile && styles.modalActionsMobile, { borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.05)', paddingVertical: 20 }]}>
               <TouchableOpacity
-                style={styles.modalSecondary}
+                style={[styles.modalSecondary, { height: 50, borderRadius: 14, flex: 1 }]}
                 onPress={() => {
                   setShowEmailModal(false);
                   setNewUserCompany('');
@@ -2702,13 +2731,13 @@ function AdminPanelContent() {
                   setShowEmpresaPicker(false);
                 }}
               >
-                <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                <Text style={[styles.modalSecondaryText, { fontFamily, fontWeight: '700' }]}>Cancelar</Text>
               </TouchableOpacity>
               <LinearGradient
-                colors={creatingUser ? ['#6b7280', '#6b7280'] : ['#8b5cf6', '#7c3aed']}
+                colors={creatingUser ? ['#374151', '#374151'] : ['#8b5cf6', '#6366f1']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.modalPrimary}
+                style={{ flex: 1.5, borderRadius: 14, overflow: 'hidden', shadowColor: '#8b5cf6', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
               >
                 <TouchableOpacity
                   disabled={creatingUser}
@@ -2795,8 +2824,10 @@ function AdminPanelContent() {
                     }
                   }}
                   activeOpacity={0.85}
+                  style={{ height: 50, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
                 >
-                  <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                  <Ionicons name="person-add" size={18} color="#fff" />
+                  <Text style={[styles.modalPrimaryText, { fontFamily, fontWeight: '800', letterSpacing: 0.5 }]}>
                     {creatingUser ? 'Generando…' : 'Generar'}
                   </Text>
                 </TouchableOpacity>
@@ -8501,6 +8532,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     gap: 10,
+    overflow: 'hidden',
   },
   inputIcon: {
     marginRight: 2,
