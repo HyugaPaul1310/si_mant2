@@ -808,8 +808,9 @@ function AdminPanelContent() {
     const filtrados = empleadosInventario.filter(emp => {
       const nombre = (emp.nombre || '').toLowerCase();
       const apellido = (emp.apellido || '').toLowerCase();
+      const fullName = `${nombre} ${apellido}`.toLowerCase();
       const idStr = String(emp.id || '').toLowerCase();
-      return nombre.includes(query) || apellido.includes(query) || idStr.includes(query);
+      return nombre.includes(query) || apellido.includes(query) || fullName.includes(query) || idStr.includes(query);
     });
     setEmpleadosInventarioFiltrados(filtrados);
   }, [searchInventario, empleadosInventario]);
