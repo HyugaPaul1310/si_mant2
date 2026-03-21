@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
@@ -2166,7 +2166,7 @@ function AdminPanelContent() {
                           onChangeText={setSearchInventario}
                         />
                         {searchInventario.length > 0 && (
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             onPress={() => setSearchInventario('')}
                             style={{ padding: 4 }}
                           >
@@ -2230,7 +2230,7 @@ function AdminPanelContent() {
                                       </Text>
                                     </View>
                                   </View>
-                                  
+
                                   <View style={styles.actionButtonPremium}>
                                     <Ionicons name="chevron-forward" size={18} color="#06b6d4" />
                                   </View>
@@ -7041,8 +7041,8 @@ function AdminPanelContent() {
                     </View>
                   </View>
                 </View>
-                <TouchableOpacity 
-                  onPress={() => setShowInventarioModal(false)} 
+                <TouchableOpacity
+                  onPress={() => setShowInventarioModal(false)}
                   activeOpacity={0.7}
                   style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(30, 41, 59, 0.5)', alignItems: 'center', justifyContent: 'center' }}
                 >
@@ -7065,8 +7065,8 @@ function AdminPanelContent() {
                   </Text>
                 </View>
               ) : (
-                <ScrollView 
-                  style={[styles.listScroll, isMobile && styles.listScrollMobile, { marginTop: 20 }]} 
+                <ScrollView
+                  style={[styles.listScroll, isMobile && styles.listScrollMobile, { marginTop: 20 }]}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 20 }}
                 >
@@ -7141,7 +7141,7 @@ function AdminPanelContent() {
                                     </TouchableOpacity>
                                   </View>
                                   <TouchableOpacity
-                                    onPress={() => {/* TODO: Edición */}}
+                                    onPress={() => {/* TODO: Edición */ }}
                                     style={{ height: 36, borderRadius: 10, backgroundColor: 'rgba(139, 92, 246, 0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)', flexDirection: 'row', gap: 6 }}
                                   >
                                     <Ionicons name="create-outline" size={14} color="#a78bfa" />
