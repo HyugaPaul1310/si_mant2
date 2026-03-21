@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
@@ -48,6 +48,21 @@ function AdminPanelContent() {
   const [activeTab, setActiveTab] = useState<'inicio' | 'reportes' | 'encuestas' | 'tareas' | 'inventario' | 'usuarios'>('inicio');
 
   const [usuario, setUsuario] = useState<Admin | null>(null);
+
+  // Helper para obtener colores según calificación
+  const obtenerColorCalificacion = (valor: string | number) => {
+    const v = String(valor).toLowerCase();
+    if (v.includes('excelente') || v.includes('muy bueno') || v === '5' || v === '4') {
+      return { text: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', icon: '#10b981' };
+    }
+    if (v.includes('bueno') || v.includes('regular') || v === '3' || v === '2') {
+      return { text: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)', icon: '#f59e0b' };
+    }
+    if (v.includes('malo') || v === '1' || v === '0') {
+      return { text: '#f87171', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.3)', icon: '#ef4444' };
+    }
+    return { text: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.2)', icon: '#94a3b8' };
+  };
   // Contadores dinámicos basados en los reportes
   const [showLogout, setShowLogout] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -1885,20 +1900,30 @@ function AdminPanelContent() {
                 </View>
                 <TouchableOpacity
                   onPress={cargarEncuestasData}
-                  style={{
-                    backgroundColor: '#1e293b',
-                    padding: 0,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: '#334155',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 36,
-                    height: 36
-                  }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="refresh-outline" size={18} color="#22d3ee" />
+                  <LinearGradient
+                    colors={['#1e293b', '#0f172a']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: 'rgba(6, 182, 212, 0.3)',
+                      gap: 8,
+                      shadowColor: '#06b6d4',
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
+                      shadowOffset: { width: 0, height: 2 },
+                    }}
+                  >
+                    <Ionicons name="refresh-outline" size={16} color="#22d3ee" />
+                    <Text style={[{ color: '#22d3ee', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>Actualizar</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
 
@@ -1963,106 +1988,113 @@ function AdminPanelContent() {
               ) : null}
 
               {!loadingEncuestas && !errorEncuestas && encuestasFiltradas.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                <View style={{ flex: 1, marginTop: 24 }}>
+                  <ScrollView 
+                    style={[styles.listScroll, isMobile && styles.listScrollMobile]} 
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                  >
                   <View style={styles.listSpacing}>
                     {encuestasFiltradas.map((encuesta: any) => (
                       <TouchableOpacity
                         key={encuesta.id}
-                        style={styles.reportCard}
+                        activeOpacity={0.9}
+                        style={{ marginBottom: 16 }}
                         onPress={() => {
                           setSelectedEncuesta(encuesta);
                           setShowEncuestaDetailModal(true);
                         }}
                       >
-                        {/* En Web: Mostrar todo, En Mobile: Solo lo esencial */}
-                        {!isMobile ? (
-                          <>
-                            <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
-                              <View style={styles.reportHeaderText}>
-                                <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
-                                  {encuesta.reporte_titulo || encuesta.titulo || 'Encuesta de Satisfacción'}
+                        <LinearGradient
+                          colors={['rgba(30, 41, 59, 0.8)', 'rgba(15, 23, 42, 0.9)']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.reportCardPremium}
+                        >
+                          <View style={styles.cardGlow} />
+                          
+                          <View style={styles.reportHeaderPremium}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.reportTitlePremium, { fontFamily }]} numberOfLines={1}>
+                                {encuesta.reporte_titulo || encuesta.titulo || 'Encuesta de Satisfacción'}
+                              </Text>
+                              <View style={styles.clientInfoRow}>
+                                <Ionicons name="mail-outline" size={12} color="#94a3b8" />
+                                <Text style={[styles.reportSubtitlePremium, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.cliente_email || 'Sin cliente'}
                                 </Text>
-                                <Text style={[styles.reportSubtitle, isMobile && styles.reportSubtitleMobile, { fontFamily }]} numberOfLines={1}>
-                                  {encuesta.cliente_email || 'Sin cliente'} · {encuesta.empresa || 'Sin empresa'}
-                                </Text>
-                                <Text style={[styles.reportMeta, isMobile && styles.reportMetaMobile, { fontFamily }]} numberOfLines={1}>
-                                  Calificación: {encuesta.satisfaccion || 'N/A'} / 5
+                                <Text style={{ color: '#475569', marginHorizontal: 6 }}>•</Text>
+                                <Ionicons name="business-outline" size={12} color="#94a3b8" />
+                                <Text style={[styles.reportSubtitlePremium, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.empresa || 'Sin empresa'}
                                 </Text>
                               </View>
-                              <View style={[styles.reportActions, isMobile && styles.reportActionsMobile]}>
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    setSelectedEncuesta(encuesta);
-                                    setShowEncuestaDetailModal(true);
-                                  }}
-                                  style={styles.eyeCard}
-                                >
-                                  <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                                </TouchableOpacity>
+                            </View>
+                            
+                            <View style={[styles.ratingBadge, { 
+                              backgroundColor: obtenerColorCalificacion(encuesta.satisfaccion).bg,
+                              borderColor: obtenerColorCalificacion(encuesta.satisfaccion).border
+                            }]}>
+                              <Ionicons 
+                                name="star" 
+                                size={14} 
+                                color={obtenerColorCalificacion(encuesta.satisfaccion).icon} 
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text style={[styles.ratingText, { 
+                                color: obtenerColorCalificacion(encuesta.satisfaccion).text,
+                                fontFamily 
+                              }]}>
+                                {encuesta.satisfaccion || '0'}/5
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.cardDivider} />
+
+                          <View style={styles.metaContainerPremium}>
+                            <View style={styles.metaItem}>
+                              <View style={styles.metaIconWrapper}>
+                                <Ionicons name="person-outline" size={12} color="#06b6d4" />
+                              </View>
+                              <View>
+                                <Text style={styles.metaLabel}>REALIZADO POR</Text>
+                                <Text style={[styles.metaValue, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.empleado_nombre || 'Sin nombre'}
+                                </Text>
                               </View>
                             </View>
 
-                            <View style={{ marginTop: 12, gap: 8 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="person-outline" size={14} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
-                                  Realizado por: {encuesta.empleado_nombre || 'Sin nombre'}
-                                </Text>
+                            <View style={styles.metaItem}>
+                              <View style={styles.metaIconWrapper}>
+                                <Ionicons name="calendar-outline" size={12} color="#06b6d4" />
                               </View>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="business-outline" size={14} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
-                                  Empresa: {encuesta.empresa || 'Sin empresa'}
-                                </Text>
-                              </View>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 12 }, { fontFamily }]}>
+                              <View>
+                                <Text style={styles.metaLabel}>FECHA</Text>
+                                <Text style={[styles.metaValue, { fontFamily }]}>
                                   {formatDateToLocal(encuesta.created_at)}
                                 </Text>
                               </View>
                             </View>
-                          </>
-                        ) : (
-                          <>
-                            {/* Vista Mobile: Solo lo esencial */}
-                            <View style={{ gap: 10 }}>
-                              <View style={{ gap: 6 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <Ionicons name="business-outline" size={16} color="#06b6d4" />
-                                  <Text style={[{ color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 }, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.empresa || 'Sin empresa'}
-                                  </Text>
-                                </View>
-                              </View>
-
-                              <View style={{ gap: 4, paddingLeft: 24 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <Ionicons name="person-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
-                                    Realizó: {encuesta.empleado_nombre || 'Sin nombre'}
-                                  </Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <Ionicons name="person-circle-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
-                                    Cliente: {encuesta.cliente_nombre || 'Sin nombre'}
-                                  </Text>
-                                </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                  <Ionicons name="calendar-outline" size={14} color="#94a3b8" />
-                                  <Text style={[{ color: '#cbd5e1', fontSize: 11 }, { fontFamily }]}>
-                                    {formatDateToLocal(encuesta.created_at)}
-                                  </Text>
-                                </View>
-                              </View>
-                            </View>
-                          </>
-                        )}
+                            
+                            {!isMobile && (
+                              <TouchableOpacity
+                                style={styles.actionButtonPremium}
+                                onPress={() => {
+                                  setSelectedEncuesta(encuesta);
+                                  setShowEncuestaDetailModal(true);
+                                }}
+                              >
+                                <Ionicons name="chevron-forward" size={18} color="#06b6d4" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </LinearGradient>
                       </TouchableOpacity>
                     ))}
                   </View>
                 </ScrollView>
+              </View>
               ) : null}
             </View>
           )}
@@ -5486,7 +5518,7 @@ function AdminPanelContent() {
                   {selectedEncuesta.empleado_nombre ? (
                     <View style={{ gap: 4 }}>
                       <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '600' }, { fontFamily }]}>
-                        EVALUADOR
+                        EVALUADO
                       </Text>
                       <View>
                         <Text style={[{ fontSize: isMobile ? 12 : 13, color: '#fff', fontWeight: '600' }, { fontFamily }]}>
@@ -5544,15 +5576,15 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.equipo_tecnico ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Desempeño del equipo técnico
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.equipo_tecnico}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.equipo_tecnico}
                           </Text>
@@ -5562,15 +5594,15 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.personal_administrativo ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.personal_administrativo).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.personal_administrativo).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Atención del personal administrativo
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.personal_administrativo).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.personal_administrativo}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.personal_administrativo).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.personal_administrativo}
                           </Text>
@@ -5580,15 +5612,15 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.rapidez ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.rapidez).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.rapidez).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Rapidez en la solución del problema
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.rapidez).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.rapidez}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.rapidez).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.rapidez}
                           </Text>
@@ -5598,15 +5630,15 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.costo_calidad ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.costo_calidad).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.costo_calidad).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Relación costo - calidad
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.costo_calidad).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.costo_calidad}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.costo_calidad).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.costo_calidad}
                           </Text>
@@ -5616,15 +5648,15 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.recomendacion ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.recomendacion).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.recomendacion).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         ¿Recomendaría nuestros servicios a otros clientes?
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.recomendacion).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.recomendacion}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.recomendacion).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.recomendacion}
                           </Text>
@@ -5634,12 +5666,12 @@ function AdminPanelContent() {
                   ) : null}
 
                   {selectedEncuesta.satisfaccion ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.satisfaccion).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.satisfaccion).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Nivel de satisfacción general
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.satisfaccion).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.satisfaccion} / 5
                           </Text>
@@ -9241,5 +9273,103 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  reportCardPremium: {
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  cardGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  reportHeaderPremium: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  reportTitlePremium: {
+    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  clientInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reportSubtitlePremium: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  ratingText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginVertical: 4,
+    marginBottom: 16,
+  },
+  metaContainerPremium: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  metaIconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  metaLabel: {
+    color: '#64748b',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  metaValue: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionButtonPremium: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
   },
 });
