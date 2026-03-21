@@ -1,5 +1,5 @@
-// @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarUsuarioBackend, eliminarReporteBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+﻿// @ts-nocheck
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -393,6 +393,11 @@ function AdminPanelContent() {
   const [nuevaHerramientaCategoria, setNuevaHerramientaCategoria] = useState('');
   const [crearHerramientaLoading, setCrearHerramientaLoading] = useState(false);
   const [crearHerramientaError, setCrearHerramientaError] = useState<string | null>(null);
+
+  // Estados para confirmación devuelto/perdida
+  const [herramientaConfirmar, setHerramientaConfirmar] = useState<any | null>(null);
+  const [showConfirmarDevuelta, setShowConfirmarDevuelta] = useState(false);
+  const [showConfirmarPerdida, setShowConfirmarPerdida] = useState(false);
 
   const cotizacionesPendientesCount = useMemo(() => {
     return reportes.filter((r: any) =>
@@ -1610,10 +1615,10 @@ function AdminPanelContent() {
 
       if (result.success) {
         Alert.alert('Éxito', 'Reporte rechazado y eliminado permanentemente');
-        
+
         // Remover de la lista activa
         setReportes(prev => prev.filter(r => r.id !== reporteAEliminar.id));
-        
+
         // Cerrar modales
         setShowEliminarReporteModal(false);
         setReporteAEliminar(null);
@@ -4988,8 +4993,8 @@ function AdminPanelContent() {
                           <Text style={{ color: '#ef4444', fontSize: 13, fontWeight: '700', fontFamily, marginBottom: 4 }}>RECHAZADO POR EL TÉCNICO</Text>
                           <Text style={{ color: '#fca5a5', fontSize: 12, fontFamily, lineHeight: 18 }}>
                             {(() => {
-                               const match = selectedReporteDetail.comentario.match(/\[RECHAZADO POR TÉCNICO:?(.*?)\]/);
-                               return match && match[1].trim() ? match[1].trim() : 'El técnico rechazó la asignación sin dar motivo específico.';
+                              const match = selectedReporteDetail.comentario.match(/\[RECHAZADO POR TÉCNICO:?(.*?)\]/);
+                              return match && match[1].trim() ? match[1].trim() : 'El técnico rechazó la asignación sin dar motivo específico.';
                             })()}
                           </Text>
                         </View>
@@ -6942,7 +6947,7 @@ function AdminPanelContent() {
                           ]}
                         >
                           <View style={{ flex: 2, marginBottom: isMobile ? 12 : 0 }}>
-                            <Text style={[styles.modalCellText, { fontFamily, fontSize: isMobile ? 15 : 13 }]} numberOfLines={1}>
+                            <Text style={[styles.modalCellText, { fontFamily, fontSize: isMobile ? 15 : 13 }]}>
                               {herramienta.herramienta_nombre}
                             </Text>
                             {isMobile && (
@@ -6954,8 +6959,8 @@ function AdminPanelContent() {
                                 </Text>
                               </View>
                             )}
-                            {herramienta.observaciones && !isMobile && (
-                              <Text style={[styles.modalCellSubText, { fontFamily }]} numberOfLines={1}>
+                            {herramienta.observaciones && (
+                              <Text style={[styles.modalCellSubText, { fontFamily, marginTop: 4 }]}>
                                 {herramienta.observaciones}
                               </Text>
                             )}
@@ -6977,42 +6982,83 @@ function AdminPanelContent() {
                             </View>
                           )}
 
-                          <View style={{ flex: 2.5, flexDirection: 'row', justifyContent: isMobile ? 'space-between' : 'center', gap: 6 }}>
+                          <View style={{ flex: 2.5, flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
                             {herramienta.estado === 'asignada' ? (
                               <>
+                                <View style={{ flexDirection: 'row', gap: 8, justifyContent: isMobile ? 'stretch' : 'center' }}>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: isMobile ? 1 : undefined,
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: 6,
+                                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 20,
+                                      borderWidth: 1,
+                                      borderColor: 'rgba(16, 185, 129, 0.25)',
+                                    }}
+                                    onPress={() => {
+                                      setHerramientaConfirmar(herramienta);
+                                      setShowConfirmarDevuelta(true);
+                                    }}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Ionicons name="checkmark-circle" size={14} color="#34d399" />
+                                    <Text style={[{ color: '#34d399', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }, { fontFamily }]}>Devuelto</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={{
+                                      flex: isMobile ? 1 : undefined,
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: 6,
+                                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                      paddingHorizontal: 14,
+                                      paddingVertical: 8,
+                                      borderRadius: 20,
+                                      borderWidth: 1,
+                                      borderColor: 'rgba(239, 68, 68, 0.25)',
+                                    }}
+                                    onPress={() => {
+                                      setHerramientaConfirmar(herramienta);
+                                      setShowConfirmarPerdida(true);
+                                    }}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Ionicons name="alert-circle" size={14} color="#f87171" />
+                                    <Text style={[{ color: '#f87171', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }, { fontFamily }]}>Perdida</Text>
+                                  </TouchableOpacity>
+                                </View>
                                 <TouchableOpacity
-                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.3)' }, isMobile && { flex: 1 }]}
-                                  onPress={async () => {
-                                    const { success } = await marcarHerramientaComoDevueltaBackend(herramienta.id);
-                                    if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
-                                      if (s2) setInventarioEmpleado(data || []);
-                                    }
+                                  style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 8,
+                                    borderRadius: 20,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(139, 92, 246, 0.2)',
+                                  }}
+                                  onPress={() => {
+                                    // TODO: Implementar funcionalidad de edición
                                   }}
                                   activeOpacity={0.7}
                                 >
-                                  <Text style={[{ color: '#10b981', fontSize: 10, fontWeight: '700' }, { fontFamily }]}>Devuelto</Text>
-                                  <Ionicons name="return-down-back" size={12} color="#10b981" style={{ marginLeft: 4 }} />
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={[styles.modalActionBtnLarge, { backgroundColor: 'rgba(239, 68, 68, 0.12)', borderColor: 'rgba(239, 68, 68, 0.3)' }, isMobile && { flex: 1 }]}
-                                  onPress={async () => {
-                                    const { success } = await marcarHerramientaComoPerdidaBackend(herramienta.id);
-                                    if (success) {
-                                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
-                                      if (s2) setInventarioEmpleado(data || []);
-                                    }
-                                  }}
-                                  activeOpacity={0.7}
-                                >
-                                  <Ionicons name="close-circle-outline" size={12} color="#ef4444" style={{ marginRight: 4 }} />
-                                  <Text style={[{ color: '#ef4444', fontSize: 10, fontWeight: '700' }, { fontFamily }]}>Perdida</Text>
+                                  <Ionicons name="create-outline" size={14} color="#a78bfa" />
+                                  <Text style={[{ color: '#a78bfa', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 }, { fontFamily }]}>Editar</Text>
                                 </TouchableOpacity>
                               </>
                             ) : (
-                              <View style={{ height: 32, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: isMobile ? 'flex-end' : 'flex-start', width: isMobile ? '100%' : 'auto' }}>
-                                <Ionicons name="checkmark-done" size={16} color="#475569" />
-                                <Text style={[{ color: '#475569', fontSize: 11, fontWeight: '600' }, { fontFamily }]}>Completado</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8 }}>
+                                <Ionicons name="checkmark-done-circle" size={16} color="#475569" />
+                                <Text style={[{ color: '#64748b', fontSize: 11, fontWeight: '600' }, { fontFamily }]}>Completado</Text>
                               </View>
                             )}
                           </View>
@@ -7044,43 +7090,155 @@ function AdminPanelContent() {
           </View>
         )
       }
+      {/* Modal Confirmar Devuelta */}
+      {
+        showConfirmarDevuelta && herramientaConfirmar && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 2, borderColor: 'rgba(16, 185, 129, 0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <Ionicons name="checkmark-circle" size={30} color="#34d399" />
+                </View>
+                <Text style={[{ color: '#f0f9ff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }, { fontFamily }]}>Confirmar Devolución</Text>
+                <Text style={[{ color: '#94a3b8', fontSize: 14, textAlign: 'center', lineHeight: 22 }, { fontFamily }]}>
+                  ¿Estás seguro de marcar como devuelta?
+                </Text>
+                <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, marginTop: 12, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.15)' }}>
+                  <Text style={[{ color: '#34d399', fontSize: 14, fontWeight: '700', textAlign: 'center' }, { fontFamily }]}>{herramientaConfirmar.herramienta_nombre}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', alignItems: 'center' }}
+                  onPress={() => { setShowConfirmarDevuelta(false); setHerramientaConfirmar(null); }}
+                >
+                  <Text style={[{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1.2, paddingVertical: 14, borderRadius: 14, backgroundColor: '#10b981', alignItems: 'center' }}
+                  onPress={async () => {
+                    const { success } = await marcarHerramientaComoDevueltaBackend(herramientaConfirmar.id);
+                    if (success) {
+                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
+                      if (s2) setInventarioEmpleado(data || []);
+                    }
+                    setShowConfirmarDevuelta(false);
+                    setHerramientaConfirmar(null);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '800' }, { fontFamily }]}>Sí, Devuelta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )
+      }
+
+      {/* Modal Confirmar Perdida */}
+      {
+        showConfirmarPerdida && herramientaConfirmar && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(239, 68, 68, 0.15)', borderWidth: 2, borderColor: 'rgba(239, 68, 68, 0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <Ionicons name="alert-circle" size={30} color="#f87171" />
+                </View>
+                <Text style={[{ color: '#f0f9ff', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }, { fontFamily }]}>Confirmar Pérdida</Text>
+                <Text style={[{ color: '#94a3b8', fontSize: 14, textAlign: 'center', lineHeight: 22 }, { fontFamily }]}>
+                  ¿Estás seguro de marcar como perdida?{"\n"}Esta acción no se puede deshacer.
+                </Text>
+                <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.08)', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, marginTop: 12, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.15)' }}>
+                  <Text style={[{ color: '#f87171', fontSize: 14, fontWeight: '700', textAlign: 'center' }, { fontFamily }]}>{herramientaConfirmar.herramienta_nombre}</Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', alignItems: 'center' }}
+                  onPress={() => { setShowConfirmarPerdida(false); setHerramientaConfirmar(null); }}
+                >
+                  <Text style={[{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1.2, paddingVertical: 14, borderRadius: 14, backgroundColor: '#ef4444', alignItems: 'center' }}
+                  onPress={async () => {
+                    const { success } = await marcarHerramientaComoPerdidaBackend(herramientaConfirmar.id);
+                    if (success) {
+                      const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
+                      if (s2) setInventarioEmpleado(data || []);
+                    }
+                    setShowConfirmarPerdida(false);
+                    setHerramientaConfirmar(null);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '800' }, { fontFamily }]}>Sí, Perdida</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )
+      }
 
       {/* Modal Asignar Herramienta */}
       {
         showAsignarHerramientaModal && (
           <View style={styles.overlayHeavy}>
             <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-              <View style={styles.modalHeaderRow}>
-                <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'rgba(34, 197, 94, 0.5)' }]}>
-                  <Ionicons name="add-circle-outline" size={22} color="#86efac" />
+              {/* Header premium */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1e293b' }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(139, 92, 246, 0.15)', borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="construct" size={24} color="#a78bfa" />
                 </View>
-                <Text style={[styles.modalTitle, { fontFamily }]}>Asignar Herramienta</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[{ color: '#f0f9ff', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }, { fontFamily }]}>Asignar Herramienta</Text>
+                  <Text style={[{ color: '#64748b', fontSize: 12, marginTop: 2 }, { fontFamily }]}>Asigna una herramienta al empleado</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowAsignarHerramientaModal(false);
+                    setHerramientaNombreInput('');
+                    setCantidadHerramienta('1');
+                    setObservacionesHerramienta('');
+                    setErrorAsignacion(null);
+                  }}
+                  style={{ padding: 4 }}
+                >
+                  <Ionicons name="close" size={22} color="#64748b" />
+                </TouchableOpacity>
               </View>
 
               {errorAsignacion && (
-                <View style={styles.errorBox}>
-                  <Text style={[styles.errorText, { fontFamily }]}>{errorAsignacion}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                  <Ionicons name="alert-circle" size={18} color="#f87171" />
+                  <Text style={[{ color: '#f87171', fontSize: 13, flex: 1 }, { fontFamily }]}>{errorAsignacion}</Text>
                 </View>
               )}
 
-              <View style={styles.modalForm}>
-                {/* Empleado - Selección o Read Only */}
-                <View style={[styles.formGroup, { zIndex: 20 }]}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Empleado</Text>
+              <View style={{ gap: 16 }}>
+                {/* Empleado */}
+                <View style={{ zIndex: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Ionicons name="person" size={14} color="#8b5cf6" />
+                    <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Empleado</Text>
+                  </View>
                   {empleadoSelectedInventario ? (
-                    <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
-                      <Text style={[styles.formInputText, { color: '#f0f9ff' }]}>{empleadoSelectedInventario.nombre}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(139, 92, 246, 0.08)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(139, 92, 246, 0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                        <Ionicons name="person" size={16} color="#a78bfa" />
+                      </View>
+                      <Text style={[{ color: '#e2e8f0', fontSize: 14, fontWeight: '600', flex: 1 }, { fontFamily }]}>{empleadoSelectedInventario.nombre}</Text>
                       <TouchableOpacity
                         onPress={() => setEmpleadoSelectedInventario(null)}
-                        style={{ position: 'absolute', right: 10, padding: 4 }}
+                        style={{ padding: 4 }}
                       >
-                        <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                        <Ionicons name="close-circle" size={20} color="#64748b" />
                       </TouchableOpacity>
                     </View>
                   ) : (
                     <>
                       <TouchableOpacity
-                        style={[styles.formInput, { paddingRight: 12 }]}
+                        style={[styles.formInput, { paddingRight: 12, borderRadius: 12 }]}
                         onPress={() => setShowInventarioEmpleadoDropdown(!showInventarioEmpleadoDropdown)}
                       >
                         <Text style={[styles.formInputText, { color: '#9ca3af' }]}>
@@ -7121,40 +7279,51 @@ function AdminPanelContent() {
                   )}
                 </View>
 
-                {/* Herramienta */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Herramienta*</Text>
-                  <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Nombre de la herramienta"
-                    placeholderTextColor="#6b7280"
-                    value={herramientaNombreInput}
-                    onChangeText={setHerramientaNombreInput}
-                    editable={!asignandoHerramienta}
-                  />
+                {/* Herramienta y Cantidad en fila */}
+                <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+                  <View style={{ flex: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Ionicons name="hammer" size={14} color="#f59e0b" />
+                      <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Herramienta <Text style={{ color: '#ef4444' }}>*</Text></Text>
+                    </View>
+                    <TextInput
+                      style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 14, borderRadius: 12 }]}
+                      placeholder="Nombre de la herramienta"
+                      placeholderTextColor="#4b5563"
+                      value={herramientaNombreInput}
+                      onChangeText={setHerramientaNombreInput}
+                      editable={!asignandoHerramienta}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <Ionicons name="layers" size={14} color="#06b6d4" />
+                      <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Cantidad <Text style={{ color: '#ef4444' }}>*</Text></Text>
+                    </View>
+                    <TextInput
+                      style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 14, borderRadius: 12, textAlign: 'center' }]}
+                      placeholder="1"
+                      placeholderTextColor="#4b5563"
+                      keyboardType="numeric"
+                      value={cantidadHerramienta}
+                      onChangeText={(text) => setCantidadHerramienta(text.replace(/[^0-9]/g, ''))}
+                      editable={!asignandoHerramienta}
+                    />
+                  </View>
                 </View>
 
-                {/* Cantidad */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Cantidad*</Text>
+                {/* Comentarios */}
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Ionicons name="chatbubble-ellipses" size={14} color="#10b981" />
+                    <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Comentarios</Text>
+                    <Text style={[{ color: '#475569', fontSize: 11, fontWeight: '400', textTransform: 'none' }, { fontFamily }]}>(opcional)</Text>
+                  </View>
                   <TextInput
-                    style={[styles.formInput, { fontFamily, color: '#f0f9ff', paddingHorizontal: 12 }]}
-                    placeholder="Cantidad"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={cantidadHerramienta}
-                    onChangeText={setCantidadHerramienta}
-                    editable={!asignandoHerramienta}
-                  />
-                </View>
-
-                {/* Observaciones */}
-                <View style={styles.formGroup}>
-                  <Text style={[styles.formLabel, { fontFamily }]}>Observaciones</Text>
-                  <TextInput
-                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
-                    placeholder="Observaciones adicionales..."
-                    placeholderTextColor="#6b7280"
+                    style={[styles.formTextArea, { fontFamily, color: '#f0f9ff', borderRadius: 12, paddingHorizontal: 14 }]}
+                    placeholder="Comentarios adicionales..."
+                    placeholderTextColor="#4b5563"
                     multiline
                     numberOfLines={3}
                     value={observacionesHerramienta}
@@ -7164,9 +7333,10 @@ function AdminPanelContent() {
                 </View>
               </View>
 
-              <View style={styles.modalActions}>
+              {/* Botones */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
                 <TouchableOpacity
-                  style={styles.modalSecondary}
+                  style={{ flex: 1, paddingVertical: 14, borderRadius: 14, backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', alignItems: 'center', justifyContent: 'center' }}
                   onPress={() => {
                     setShowAsignarHerramientaModal(false);
                     setHerramientaNombreInput('');
@@ -7176,13 +7346,13 @@ function AdminPanelContent() {
                   }}
                   disabled={asignandoHerramienta}
                 >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                  <Text style={[{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>Cancelar</Text>
                 </TouchableOpacity>
                 <LinearGradient
-                  colors={['#22c55e', '#86efac']}
+                  colors={asignandoHerramienta ? ['#374151', '#374151'] : ['#8b5cf6', '#a855f7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={styles.modalPrimary}
+                  style={{ flex: 1.2, borderRadius: 14, overflow: 'hidden' }}
                 >
                   <TouchableOpacity
                     onPress={async () => {
@@ -7204,20 +7374,14 @@ function AdminPanelContent() {
                       });
 
                       if (success) {
-                        // Recargar inventario si se estaba viendo
                         const { success: s2, data } = await obtenerInventarioEmpleadoBackend(empleadoSelectedInventario.id);
                         if (s2) setInventarioEmpleado(data || []);
-
-                        // Recargar lista de empleados con inventario para actualizar contadores
                         cargarEmpleadosInventario();
-
                         setShowAsignarHerramientaModal(false);
                         setHerramientaNombreInput('');
                         setCantidadHerramienta('1');
                         setObservacionesHerramienta('');
                         setErrorAsignacion(null);
-                        // No reseteamos empleadoSelectedInventario aquí para que el usuario pueda seguir viendo/asignando
-                        // O si se prefiere resetear: setEmpleadoSelectedInventario(null);
                       } else {
                         setErrorAsignacion(error || 'Error al asignar herramienta');
                       }
@@ -7225,8 +7389,10 @@ function AdminPanelContent() {
                     }}
                     disabled={asignandoHerramienta}
                     activeOpacity={0.85}
+                    style={{ paddingVertical: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
                   >
-                    <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                    <Ionicons name="add-circle" size={18} color="#fff" />
+                    <Text style={[{ color: '#fff', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 }, { fontFamily }]}>
                       {asignandoHerramienta ? 'Asignando...' : 'Asignar'}
                     </Text>
                   </TouchableOpacity>
@@ -7405,7 +7571,7 @@ function AdminPanelContent() {
               </View>
               <Text style={[styles.modalTitle, { fontFamily, color: '#ef4444' }]}>Eliminar Reporte</Text>
             </View>
-            
+
             <View style={{ marginBottom: 16, padding: 12, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: 8, borderWidth: 1, borderColor: '#ef4444' }}>
               <Text style={{ fontFamily, color: '#ef4444', fontWeight: '700', fontSize: 14, marginBottom: 4 }}>
                 ⚠️ Acción Irreversible

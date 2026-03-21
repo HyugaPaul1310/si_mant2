@@ -389,7 +389,7 @@ export default function GenerarReporteScreen() {
             {sucursalSeleccionada && equiposSucursal.length > 0 && (
               <View style={styles.fieldContainer}>
                 <Text style={[styles.fieldLabel, { fontFamily }]}>
-                  Equipo registrado <Text style={{ color: '#94a3b8', textTransform: 'none', fontSize: 11, fontWeight: '400' }}>(selecciona para pre-cargar datos)</Text>
+                  Equipo registrado <Text style={{ color: '#94a3b8', textTransform: 'none', fontSize: 11, fontWeight: '400' }}>(Selecciona tu equipo)</Text>
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowEquipoPicker(!showEquipoPicker)}
