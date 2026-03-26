@@ -3330,7 +3330,7 @@ function AdminPanelContent() {
                             <View style={[styles.estadoBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
                               <Text style={[styles.estadoBadgeText, { fontFamily, color: badge.text }]}>{estadoDisplay(estado)}</Text>
                             </View>
-                            {rep.comentario?.includes('[RECHAZADO POR TÉCNICO') && (
+                            {rep.comentario?.includes('[RECHAZADO POR TÉCNICO') && (rep.estado || '').toLowerCase() !== 'en_cotizacion' && (
                               <View style={{ marginTop: 6, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.4)', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignItems: 'center' }}>
                                 <Text style={{ color: '#ef4444', fontSize: 10, fontWeight: '700', fontFamily, textAlign: 'center' }}>RECHAZO DE TÉCNICO</Text>
                               </View>
@@ -5122,7 +5122,7 @@ function AdminPanelContent() {
                         })()}
                       </Text>
                     </View>
-                    {selectedReporteDetail.comentario?.includes('[RECHAZADO POR TÉCNICO') && (
+                    {selectedReporteDetail.comentario?.includes('[RECHAZADO POR TÉCNICO') && (selectedReporteDetail.estado || '').toLowerCase() !== 'en_cotizacion' && (
                       <View style={{ marginTop: 10, backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.4)', borderWidth: 1, padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                         <Ionicons name="warning" size={20} color="#ef4444" style={{ marginTop: 2 }} />
                         <View style={{ flex: 1 }}>

@@ -94,6 +94,12 @@ export default function GestionEmpresasScreen() {
 
   const [error, setError] = useState('');
 
+  // --- confirmation modal ---
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMsg, setConfirmMsg] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => Promise<void>) | null>(null);
+
   // ─── Load ─────────────────────────────────────────────────────────────────
 
   useEffect(() => { cargarEmpresas(); }, []);
@@ -223,20 +229,18 @@ export default function GestionEmpresasScreen() {
     await cargarEmpresas();
   };
 
-  const handleEliminarEmpresa = () => {
+  const handleEliminarEmpresa = async () => {
     if (!empresaSeleccionada) return;
-    Alert.alert('Eliminar empresa', `¿Eliminar "${empresaSeleccionada.nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive', onPress: async () => {
-          const res = await eliminarEmpresa(empresaSeleccionada.id);
-          if (!res.success) { setError(res.error || 'Error'); return; }
-          const nuevas = empresas.filter(e => e.id !== empresaSeleccionada.id);
-          setEmpresas(nuevas);
-          setEmpresaSeleccionada(nuevas.length > 0 ? nuevas[0] : null);
-        }
-      }
-    ]);
+    setConfirmTitle('Eliminar empresa');
+    setConfirmMsg(`¿Eliminar "${empresaSeleccionada.nombre}" y todas sus sucursales? Esta acción no se puede deshacer.`);
+    setConfirmAction(() => async () => {
+      const res = await eliminarEmpresa(empresaSeleccionada.id);
+      if (!res.success) { setError(res.error || 'Error al eliminar'); return; }
+      const nuevas = empresas.filter(e => e.id !== empresaSeleccionada.id);
+      setEmpresas(nuevas);
+      setEmpresaSeleccionada(nuevas.length > 0 ? nuevas[0] : null);
+    });
+    setShowConfirmModal(true);
   };
 
   const handleCrearSucursal = async () => {
@@ -264,17 +268,15 @@ export default function GestionEmpresasScreen() {
   };
 
   const handleEliminarSucursal = (suc: Sucursal) => {
-    Alert.alert('Eliminar sucursal', `¿Eliminar "${suc.nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive', onPress: async () => {
-          const res = await eliminarSucursal(suc.id);
-          if (!res.success) { setError(res.error || 'Error'); return; }
-          if (sucursalSeleccionada?.id === suc.id) setSucursalSeleccionada(null);
-          await cargarSucursales(empresaSeleccionada!.id);
-        }
-      }
-    ]);
+    setConfirmTitle('Eliminar sucursal');
+    setConfirmMsg(`¿Eliminar "${suc.nombre}" y todos sus equipos? Esta acción no se puede deshacer.`);
+    setConfirmAction(() => async () => {
+      const res = await eliminarSucursal(suc.id);
+      if (!res.success) { setError(res.error || 'Error al eliminar'); return; }
+      if (sucursalSeleccionada?.id === suc.id) setSucursalSeleccionada(null);
+      await cargarSucursales(empresaSeleccionada!.id);
+    });
+    setShowConfirmModal(true);
   };
 
   const handleCrearEquipo = async () => {
@@ -803,6 +805,60 @@ export default function GestionEmpresasScreen() {
               </View>
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Custom Confirmation Modal */}
+      <Modal visible={showConfirmModal} transparent animationType="fade" onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={s.overlay}>
+          <View style={[s.modalCard, { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 }]}>
+            {/* Warning Icon */}
+            <View style={{
+              width: 60, height: 60, borderRadius: 30,
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              borderWidth: 2, borderColor: 'rgba(239, 68, 68, 0.25)',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+            }}>
+              <Ionicons name="trash-outline" size={28} color="#ef4444" />
+            </View>
+
+            <Text style={{ color: '#f8fafc', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 6 }}>
+              {confirmTitle}
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+              {confirmMsg}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity
+                onPress={() => { setShowConfirmModal(false); setConfirmAction(null); }}
+                style={{
+                  flex: 1, height: 46, borderRadius: 10,
+                  backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: '#334155',
+                }}
+              >
+                <Text style={{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  setShowConfirmModal(false);
+                  if (confirmAction) await confirmAction();
+                  setConfirmAction(null);
+                }}
+                style={{
+                  flex: 1, height: 46, borderRadius: 10,
+                  backgroundColor: '#ef4444',
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 6,
+                }}
+              >
+                <Ionicons name="trash" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
