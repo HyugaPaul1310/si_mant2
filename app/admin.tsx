@@ -1,5 +1,5 @@
-﻿// @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+// @ts-nocheck
+import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, editarAsignacionBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -415,6 +415,14 @@ function AdminPanelContent() {
   const [herramientaConfirmar, setHerramientaConfirmar] = useState<any | null>(null);
   const [showConfirmarDevuelta, setShowConfirmarDevuelta] = useState(false);
   const [showConfirmarPerdida, setShowConfirmarPerdida] = useState(false);
+
+  // Estados para editar herramienta
+  const [showEditarHerramientaModal, setShowEditarHerramientaModal] = useState(false);
+  const [herramientaEditando, setHerramientaEditando] = useState<any | null>(null);
+  const [editInvNombre, setEditInvNombre] = useState('');
+  const [editInvCantidad, setEditInvCantidad] = useState('1');
+  const [editInvObservaciones, setEditInvObservaciones] = useState('');
+  const [editandoHerramienta, setEditandoHerramienta] = useState(false);
 
   const cotizacionesPendientesCount = useMemo(() => {
     return reportes.filter((r: any) =>
@@ -7141,7 +7149,13 @@ function AdminPanelContent() {
                                     </TouchableOpacity>
                                   </View>
                                   <TouchableOpacity
-                                    onPress={() => {/* TODO: Edición */ }}
+                                    onPress={() => {
+                                      setHerramientaEditando(herramienta);
+                                      setEditInvNombre(herramienta.herramienta_nombre || '');
+                                      setEditInvCantidad(String(herramienta.cantidad || 1));
+                                      setEditInvObservaciones(herramienta.observaciones || '');
+                                      setShowEditarHerramientaModal(true);
+                                    }}
                                     style={{ height: 36, borderRadius: 10, backgroundColor: 'rgba(139, 92, 246, 0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)', flexDirection: 'row', gap: 6 }}
                                   >
                                     <Ionicons name="create-outline" size={14} color="#a78bfa" />
@@ -7186,6 +7200,106 @@ function AdminPanelContent() {
                     <Text style={[styles.modalPrimaryText, { fontFamily, fontWeight: '800', letterSpacing: 0.5 }]}>Asignar Herramienta</Text>
                   </TouchableOpacity>
                 </LinearGradient>
+              </View>
+            </View>
+          </View>
+        )
+      }
+      {/* Modal Editar Herramienta */}
+      {
+        showEditarHerramientaModal && herramientaEditando && (
+          <View style={styles.overlayHeavy}>
+            <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
+              <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(139, 92, 246, 0.15)', borderWidth: 2, borderColor: 'rgba(139, 92, 246, 0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <Ionicons name="create" size={28} color="#a78bfa" />
+                </View>
+                <Text style={[{ color: '#f8fafc', fontSize: 18, fontWeight: '800' }, { fontFamily }]}>Editar Herramienta</Text>
+                <Text style={[{ color: '#94a3b8', fontSize: 13, marginTop: 4, textAlign: 'center' }, { fontFamily }]}>
+                  Modifica los datos de la asignación
+                </Text>
+              </View>
+
+              <View style={{ gap: 16, marginTop: 20 }}>
+                <View>
+                  <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>Nombre</Text>
+                  <TextInput
+                    value={editInvNombre}
+                    onChangeText={setEditInvNombre}
+                    style={{ backgroundColor: '#1e293b', color: '#fff', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 15, fontFamily }}
+                    placeholder="Nombre de herramienta"
+                    placeholderTextColor="#475569"
+                  />
+                </View>
+                <View>
+                  <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>Cantidad</Text>
+                  <TextInput
+                    value={editInvCantidad}
+                    onChangeText={setEditInvCantidad}
+                    keyboardType="numeric"
+                    style={{ backgroundColor: '#1e293b', color: '#fff', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 15, fontFamily }}
+                    placeholder="1"
+                    placeholderTextColor="#475569"
+                  />
+                </View>
+                <View>
+                  <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600', marginBottom: 6 }, { fontFamily }]}>Observaciones</Text>
+                  <TextInput
+                    value={editInvObservaciones}
+                    onChangeText={setEditInvObservaciones}
+                    multiline
+                    numberOfLines={3}
+                    style={{ backgroundColor: '#1e293b', color: '#fff', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#334155', fontSize: 15, fontFamily, minHeight: 80, textAlignVertical: 'top' }}
+                    placeholder="Observaciones (opcional)"
+                    placeholderTextColor="#475569"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowEditarHerramientaModal(false);
+                    setHerramientaEditando(null);
+                  }}
+                  style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: 'rgba(30, 41, 59, 0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' }}
+                >
+                  <Text style={[{ color: '#94a3b8', fontSize: 15, fontWeight: '700' }, { fontFamily }]}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  disabled={editandoHerramienta}
+                  onPress={async () => {
+                    if (!editInvNombre.trim()) return;
+                    setEditandoHerramienta(true);
+                    try {
+                      const res = await editarAsignacionBackend(herramientaEditando.id, {
+                        herramienta_nombre: editInvNombre.trim(),
+                        cantidad: parseInt(editInvCantidad) || 1,
+                        observaciones: editInvObservaciones.trim() || undefined,
+                      });
+                      if (res.success) {
+                        // Actualizar lista local
+                        setInventarioEmpleado(prev => prev.map(h =>
+                          h.id === herramientaEditando.id
+                            ? { ...h, herramienta_nombre: editInvNombre.trim(), cantidad: parseInt(editInvCantidad) || 1, observaciones: editInvObservaciones.trim() || null }
+                            : h
+                        ));
+                        setShowEditarHerramientaModal(false);
+                        setHerramientaEditando(null);
+                      } else {
+                        Alert.alert('Error', res.error || 'No se pudo editar');
+                      }
+                    } catch (err) {
+                      Alert.alert('Error', 'Error de conexión');
+                    }
+                    setEditandoHerramienta(false);
+                  }}
+                  style={{ flex: 1, height: 48, borderRadius: 12, backgroundColor: editandoHerramienta ? '#6b21a8' : '#8b5cf6', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={[{ color: '#fff', fontSize: 15, fontWeight: '800' }, { fontFamily }]}>
+                    {editandoHerramienta ? 'Guardando...' : 'Guardar'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>

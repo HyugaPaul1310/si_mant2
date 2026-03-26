@@ -218,4 +218,65 @@ router.put('/asignaciones/:id/perdida', verifyToken, requireRole(['admin']), asy
   }
 });
 
+// Editar asignación de herramienta (nombre, cantidad, observaciones)
+router.put('/asignaciones/:id', verifyToken, requireRole(['admin']), async (req, res) => {
+  try {
+    const { herramienta_nombre, cantidad, observaciones } = req.body;
+    const asignacionId = req.params.id;
+
+    // Obtener la asignación actual
+    const [asignacionActual] = await pool.query(
+      'SELECT * FROM inventario_asignaciones WHERE id = ?',
+      [asignacionId]
+    );
+
+    if (asignacionActual.length === 0) {
+      return res.status(404).json({ success: false, error: 'Asignación no encontrada' });
+    }
+
+    // Si se quiere cambiar el nombre de la herramienta
+    if (herramienta_nombre) {
+      let [herramientas] = await pool.query(
+        'SELECT id FROM inventario_herramientas WHERE nombre = ?',
+        [herramienta_nombre]
+      );
+
+      let herramienta_id;
+      if (herramientas.length === 0) {
+        const [result] = await pool.query(
+          'INSERT INTO inventario_herramientas (nombre, estado, created_at) VALUES (?, ?, NOW())',
+          [herramienta_nombre, 'disponible']
+        );
+        herramienta_id = result.insertId;
+      } else {
+        herramienta_id = herramientas[0].id;
+      }
+
+      await pool.query(
+        'UPDATE inventario_asignaciones SET herramienta_id = ?, cantidad = ?, observaciones = ?, updated_at = NOW() WHERE id = ?',
+        [herramienta_id, cantidad || asignacionActual[0].cantidad, observaciones !== undefined ? observaciones : asignacionActual[0].observaciones, asignacionId]
+      );
+    } else {
+      await pool.query(
+        'UPDATE inventario_asignaciones SET cantidad = ?, observaciones = ?, updated_at = NOW() WHERE id = ?',
+        [cantidad || asignacionActual[0].cantidad, observaciones !== undefined ? observaciones : asignacionActual[0].observaciones, asignacionId]
+      );
+    }
+
+    // Retornar la asignación actualizada con el nombre de la herramienta
+    const [updated] = await pool.query(
+      `SELECT a.*, h.nombre as herramienta_nombre 
+       FROM inventario_asignaciones a
+       JOIN inventario_herramientas h ON a.herramienta_id = h.id
+       WHERE a.id = ?`,
+      [asignacionId]
+    );
+
+    return res.json({ success: true, data: updated[0] });
+  } catch (error) {
+    console.error('Error al editar asignación:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;

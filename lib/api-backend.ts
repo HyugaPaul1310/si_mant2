@@ -241,6 +241,11 @@ export async function marcarHerramientaComoPerdidaBackend(asignacionId: string, 
   return apiCall(`/inventario/asignaciones/${asignacionId}/perdida`, 'PUT', { observaciones });
 }
 
+// Editar asignación de herramienta
+export async function editarAsignacionBackend(asignacionId: string, datos: { herramienta_nombre?: string; cantidad?: number; observaciones?: string }) {
+  return apiCall(`/inventario/asignaciones/${asignacionId}`, 'PUT', datos);
+}
+
 // ==================== USUARIOS ====================
 
 export async function obtenerUsuariosBackend() {
