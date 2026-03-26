@@ -168,7 +168,7 @@ export default function GestionEmpresasScreen() {
       setSubiendoImagen(false);
 
       if (uploadResult?.url) {
-        callback(getProxyUrl(uploadResult.url));
+        callback(uploadResult.url);
       } else {
         Alert.alert('Error', uploadResult?.error || 'No se pudo subir la imagen.');
       }
@@ -361,7 +361,7 @@ export default function GestionEmpresasScreen() {
                   {/* logo */}
                   <View style={s.empLogoBox}>
                     {emp.logo_url ? (
-                      <Image source={{ uri: emp.logo_url }} style={s.empLogo} />
+                      <Image source={{ uri: getProxyUrl(emp.logo_url) }} style={s.empLogo} />
                     ) : (
                       <View style={[s.empLogo, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
                         <Text style={{ color: CC, fontSize: 18, fontWeight: '800' }}>
@@ -439,7 +439,7 @@ export default function GestionEmpresasScreen() {
                     {/* thumbnail */}
                     <View style={s.sucThumbBox}>
                       {suc.imagen_url ? (
-                        <Image source={{ uri: suc.imagen_url }} style={s.sucThumb} />
+                        <Image source={{ uri: getProxyUrl(suc.imagen_url) }} style={s.sucThumb} />
                       ) : (
                         <View style={[s.sucThumb, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
                           <Ionicons name="storefront-outline" size={22} color="#334155" />
@@ -521,7 +521,7 @@ export default function GestionEmpresasScreen() {
                     >
                       <View style={s.eqThumbBox}>
                         {eq.imagen_url ? (
-                          <Image source={{ uri: eq.imagen_url }} style={s.eqThumb} />
+                          <Image source={{ uri: getProxyUrl(eq.imagen_url) }} style={s.eqThumb} />
                         ) : (
                           <View style={[s.eqThumb, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
                             <Ionicons name="hardware-chip-outline" size={18} color="#334155" />

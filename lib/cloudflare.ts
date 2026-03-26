@@ -41,13 +41,24 @@ export function getProxyUrl(cloudflareUrl: string): string {
       return cloudflareUrl;
     }
 
+    // Siempre usar la URL de producción para mostrar imágenes (no depende de .env local)
+    const DISPLAY_BASE = DEFAULT_UPLOAD_BASE;
+
+    // Si ya es una URL de proxy (vieja o nueva), normalizarla a la URL de producción
+    if (cloudflareUrl.includes('/api/get-file?key=')) {
+      const keyMatch = cloudflareUrl.match(/[?&]key=([^&]+)/);
+      if (keyMatch) {
+        return `${DISPLAY_BASE}/api/get-file?key=${keyMatch[1]}`;
+      }
+    }
+
     const url = new URL(cloudflareUrl);
     // decodeURIComponent decodifica espacios (%20) que new URL().pathname suele codificar
     const key = decodeURIComponent(url.pathname).replace(/^\//, '');
 
     // Usar el servidor Cloudflare como proxy
     // URL: https://pub-xxx.r2.dev/reportes/fotos/xxx.jpg → /api/get-file?key=reportes/fotos/xxx.jpg
-    return `${API_URL}/api/get-file?key=${encodeURIComponent(key)}`;
+    return `${DISPLAY_BASE}/api/get-file?key=${encodeURIComponent(key)}`;
   } catch (error) {
     console.warn('Error al convertir URL de Cloudflare:', error);
     // Si hay error, retornar la URL original

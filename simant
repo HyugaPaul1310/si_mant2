@@ -23,6 +23,24 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
+    location /api/textos {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location /api/lineas {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
     location /api/nosotros {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -30,6 +48,55 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+    }
+
+    # Rutas Express backend (tu app si_mant2) → puerto 3001
+    location = /api/auth/login {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/auth/register {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/auth/me {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api/auth/change-password {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # NextAuth (app Next.js) → puerto 3000 (todo lo demás de /api/auth)
+    location ^~ /api/auth {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location /api/servicios {
@@ -50,49 +117,6 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # =========================================================================
-    # 🤯 SOLUCIÓN DE CONFLICTO DE RUTAS: NEXTAUTH VS BACKEND NODE.JS
-    # =========================================================================
-
-    # 1. Rutas específicas de tu Backend de Node.js (Expo Web/Mobile)
-    # Estas excepciones se mandan al puerto 3001
-    location ~* ^/api/auth/(login|register|me|change-password)$ {
-        if ($request_method = 'OPTIONS') {
-           add_header 'Access-Control-Allow-Origin' 'http://localhost:8081' always;
-           add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS, PUT, DELETE' always;
-           add_header 'Access-Control-Allow-Headers' 'Origin, X-Requested-With, Content-Type, Accept, Authorization' always;
-           add_header 'Access-Control-Max-Age' 1728000;
-           add_header 'Content-Type' 'text/plain; charset=utf-8';
-           add_header 'Content-Length' 0;
-           return 204;
-        }
-
-        proxy_pass http://127.0.0.1:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # 2. Todo el resto de /api/auth/... es para NextAuth (Next.js Admin Panel)
-    # Ejemplo: /api/auth/error, /api/auth/session caen aquí y van al puerto 3000
-    location /api/auth/ {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        # Encabezados críticos para que NextAuth vea que es HTTPS
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # =========================================================================
-    # 🚨 RESTO DE RUTAS DEL BACKEND PRINCIPAL (NODE.JS) 🚨
-    # =========================================================================
-    # Todo lo demás que empiece con /api/ y que no haya encajado arriba
     location /api/ {
 
 	if ($request_method = 'OPTIONS') {
@@ -147,6 +171,7 @@ server {
         autoindex off;
     }
 
+
     location /app/ {
     alias /var/www/app/web/;
     try_files $uri $uri/ /index.html;
@@ -155,7 +180,7 @@ server {
     expires 1d;
     }
 
-    # --- APLICACIÓN DESKTOP (/desktop) ---
+        # --- APLICACIÓN DESKTOP (/desktop) ---
     location ^~ /desktop {
         alias /var/www/si-mant-desktop/web;
         try_files $uri $uri/ /desktop/index.html;
@@ -172,23 +197,33 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
+
     listen 443 ssl; # managed by Certbot
     ssl_certificate /etc/letsencrypt/live/si-mant.com/fullchain.pem; # managed by Certbot
     ssl_certificate_key /etc/letsencrypt/live/si-mant.com/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
 }
+
 
 server {
     if ($host = www.si-mant.com) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
+
     if ($host = si-mant.com) {
         return 301 https://$host$request_uri;
     } # managed by Certbot
 
+
     listen 80;
     server_name si-mant.com www.si-mant.com;
     return 404; # managed by Certbot
+
+
+
+
 }
