@@ -594,18 +594,18 @@ function EmpleadoPanelContent() {
 
   const confirmarRechazoAsignacion = async () => {
     if (!reporteARechazar?.id) return;
-    
+
     setRechazandoAsignacion(true);
     try {
       const result = await rechazarAsignacionBackend(reporteARechazar.id, rechazoMotivo);
-      
+
       if (result.success) {
         showToast('Asignación rechazada correctamente', 'success');
-        
+
         // Remove from local list
         setListaReportes(prev => prev.filter(r => r.id !== reporteARechazar.id));
         setReportes(prev => Math.max(0, prev - 1));
-        
+
         // Close modals
         setShowRechazarModal(false);
         setReporteARechazar(null);
@@ -777,9 +777,13 @@ function EmpleadoPanelContent() {
     setFotosRevisionUris(prev => prev.filter((_, i) => i !== index));
   };
 
+  const limpiarFotosRevision = () => setFotosRevisionUris([]);
+
   const eliminarFotoPostproceso = (index: number) => {
     setFotosPostprocesoUris(prev => prev.filter((_, i) => i !== index));
   };
+
+  const limpiarFotosPostproceso = () => setFotosPostprocesoUris([]);
 
   const guardarCotizacion = async () => {
     if (!reporteSeleccionado?.id) return;
@@ -931,7 +935,7 @@ function EmpleadoPanelContent() {
         if (hasUploadError) {
           showToast('Servicio completado. Hubo un error al subir algunos archivos multimedia.', 'warning');
         } else {
-          showToast('¡Servicio Express completado exitosamente!', 'success');
+          showToast('¡Servicio CSC completado exitosamente!', 'success');
         }
 
         // Cleanup and close
@@ -943,12 +947,12 @@ function EmpleadoPanelContent() {
         cargarReportes();
 
       } else {
-        console.error('[EMPLEADO-EXPRESS] Error en respuesta:', respuesta);
-        showToast('Error al enviar servicio express', 'error');
+        console.error('[EMPLEADO-CSC] Error en respuesta:', respuesta);
+        showToast('Error al enviar servicio CSC', 'error');
       }
     } catch (error) {
-      console.error('Error al guardar servicio express:', error);
-      showToast('Error inesperado al ejecutar el servicio express.', 'error');
+      console.error('Error al guardar servicio CSC:', error);
+      showToast('Error inesperado al ejecutar el servicio CSC.', 'error');
     } finally {
       setGuardandoCotizacion(false);
       setGuardandoFase2(false);
@@ -1021,6 +1025,29 @@ function EmpleadoPanelContent() {
       .join('')
       .slice(0, 2);
   }, [usuario?.nombre]);
+
+  const handleDrop = (e: any) => {
+    if (Platform.OS !== 'web') return;
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach((file: any) => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const uri = event.target?.result as string;
+            setFotosRevisionUris(prev => [...prev, uri]);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+  };
+
+  const handleDragOver = (e: any) => {
+    if (Platform.OS !== 'web') return;
+    e.preventDefault();
+  };
 
   const stats = [
     {
@@ -2142,7 +2169,7 @@ function EmpleadoPanelContent() {
                   >
                     <Ionicons name="flash" size={14} color="#fff" />
                     <Text style={[{ color: '#fff', fontSize: isMobile ? 11 : 13, fontWeight: 'bold', fontFamily }]}>
-                      Express
+                      CSC
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -2308,18 +2335,30 @@ function EmpleadoPanelContent() {
                       )}
                     </View>
 
-                    {/* Sección de IMAGENES DE ANALISIS */}
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 16 }]}>
-                      IMAGENES DE ANALISIS
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 0 }]}>
+                        IMÁGENES DE ANÁLISIS
+                      </Text>
+                      {fotosRevisionUris.length > 0 && (
+                        <TouchableOpacity onPress={limpiarFotosRevision} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                          <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600', fontFamily }}>Limpiar todo</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     <View style={{ marginTop: 8 }}>
                       {/* Galería de fotos capturadas */}
                       {fotosRevisionUris.length > 0 && (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={true}
+                          style={{ marginBottom: 12 }}
+                          contentContainerStyle={{ paddingRight: 20 }}
+                        >
                           {fotosRevisionUris.map((uri, index) => (
-                            <View key={index} style={{ marginRight: 10, position: 'relative' }}>
-                              <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                            <View key={index} style={{ marginRight: 12, position: 'relative' }}>
+                              <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
                               <TouchableOpacity
                                 style={{
                                   position: 'absolute',
@@ -2341,13 +2380,20 @@ function EmpleadoPanelContent() {
 
                       {/* Botón para tomar foto */}
                       <TouchableOpacity
-                        style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
                         onPress={seleccionarFotoRevision}
-                        activeOpacity={0.7}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        activeOpacity={0.8}
+                        style={styles.modernDropzone}
                       >
-                        <Ionicons name="images" size={24} color="#fff" />
-                        <Text style={[styles.audioButtonText, { fontFamily }]}>
-                          {fotosRevisionUris.length === 0 ? 'Elegir Imágenes' : `Imágenes Seleccionadas: ${fotosRevisionUris.length} (Añadir más)`}
+                        <View style={{ width: 56, height: 56, backgroundColor: 'rgba(56, 189, 248, 0.1)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                          <Ionicons name="images-outline" size={32} color="#0ea5e9" />
+                        </View>
+                        <Text style={[styles.proActionTitle, { fontFamily, color: '#e0f2fe' }]}>
+                          {fotosRevisionUris.length === 0 ? 'Selecciona imágenes para subir' : `Imágenes seleccionadas: ${fotosRevisionUris.length}`}
+                        </Text>
+                        <Text style={[styles.proActionSubtitle, { fontFamily, color: '#7dd3fc', opacity: 0.8 }]}>
+                          Selecciona imágenes del trabajo realizado
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -2427,7 +2473,7 @@ function EmpleadoPanelContent() {
                       </View>
                     )}
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -2441,7 +2487,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -2455,7 +2501,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -2469,7 +2515,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -2486,22 +2532,35 @@ function EmpleadoPanelContent() {
                     {/* Sección de IMAGENES DE FINALIZACION */}
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
                       <View style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                         marginBottom: 8
                       }}>
-                        <Ionicons name="camera" size={16} color="#10b981" />
-                        <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold', marginBottom: 0 }]}>
-                          IMAGENES DE FINALIZACION
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="camera" size={16} color="#10b981" />
+                          <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold', marginBottom: 0 }]}>
+                            IMÁGENES DE FINALIZACIÓN
+                          </Text>
+                        </View>
+                        {fotosPostprocesoUris.length > 0 && (
+                          <TouchableOpacity onPress={limpiarFotosPostproceso} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                            <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600', fontFamily }}>Limpiar todo</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
 
                       <View style={{ marginTop: 8 }}>
                         {/* Galería de imágenes de finalización (LOCALES POR SUBIR) */}
                         {fotosPostprocesoUris.length > 0 && (
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            style={{ marginBottom: 12 }}
+                            contentContainerStyle={{ paddingRight: 20 }}
+                          >
                             {fotosPostprocesoUris.map((uri, index) => (
                               <View key={index} style={{ marginRight: 10, position: 'relative' }}>
-                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
                                 {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
                                   <TouchableOpacity
                                     style={{
@@ -2664,76 +2723,78 @@ function EmpleadoPanelContent() {
 
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
-                style={styles.detailCloseButton}
+                style={[styles.detailCloseButton, isMobile && { width: '100%' }]}
                 onPress={() => cerrarModalReporteDetalle()}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-              {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
-                <LinearGradient
-                  colors={['#10b981', '#06b6d4']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
-                >
-                  <TouchableOpacity
-                    onPress={async () => {
-                      if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
-                        showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
-                        return;
-                      }
-                      setShowConfirmarFinalizarModal(true);
-                    }}
-                    disabled={guardandoFase2}
-                    activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                  >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
-                    </Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              )}
-
-              {reporteSeleccionado.estado === 'asignado' && (
-                <View style={{ gap: 10, width: '100%' }}>
+              <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 2 }}>
+                {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
                   <LinearGradient
-                    colors={['#d97706', '#f59e0b']}
+                    colors={['#10b981', '#06b6d4']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.detailActionButton}
                   >
                     <TouchableOpacity
-                      onPress={confirmarEnvioAnalisis}
-                      disabled={guardandoCotizacion}
+                      onPress={async () => {
+                        if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
+                          showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
+                          return;
+                        }
+                        setShowConfirmarFinalizarModal(true);
+                      }}
+                      disabled={guardandoFase2}
                       activeOpacity={0.85}
-                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
                     >
                       <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                        {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
+                        {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
                       </Text>
                     </TouchableOpacity>
                   </LinearGradient>
-                  
-                  <TouchableOpacity
-                    style={[styles.modalSecondary, { marginTop: 4 }]}
-                    onPress={() => {
-                      setReporteARechazar(reporteSeleccionado);
-                      setShowRechazarModal(true);
-                      setShowReporteDetalle(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close-circle-outline" size={20} color="#ef4444" style={{ marginRight: 6 }} />
-                    <Text style={[styles.modalSecondaryText, { fontFamily, color: '#ef4444' }]}>Rechazar Asignación</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                )}
 
-              {reporteSeleccionado.estado === 'pendiente' && (
-                <View style={{ gap: 10, width: '100%' }}>
+                {reporteSeleccionado.estado === 'asignado' && (
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: 1 }}>
+                    <LinearGradient
+                      colors={['#d97706', '#f59e0b']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.detailActionButton}
+                    >
+                      <TouchableOpacity
+                        onPress={confirmarEnvioAnalisis}
+                        disabled={guardandoCotizacion}
+                        activeOpacity={0.85}
+                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                      >
+                        <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                          {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
+                        </Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+
+                    <TouchableOpacity
+                      style={[styles.detailCloseButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                      onPress={() => {
+                        setReporteARechazar(reporteSeleccionado);
+                        setShowRechazarModal(true);
+                        setShowReporteDetalle(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+                        <Text style={[styles.detailCloseButtonText, { fontFamily, color: '#ef4444' }]}>Rechazar Asignación</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {(reporteSeleccionado.estado === 'pendiente' || (reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general)) && (
                   <LinearGradient
                     colors={['#d97706', '#f59e0b']}
                     start={{ x: 0, y: 0 }}
@@ -2746,41 +2807,15 @@ function EmpleadoPanelContent() {
                         setShowCotizarModal(true);
                       }}
                       activeOpacity={0.85}
-                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
                     >
                       <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                         Enviar Análisis
                       </Text>
                     </TouchableOpacity>
                   </LinearGradient>
-                </View>
-              )}
-
-              {reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general && (
-                <View style={{ gap: 10, width: '100%' }}>
-                  <LinearGradient
-                    colors={['#d97706', '#f59e0b']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.detailActionButton}
-                  >
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowReporteDetalle(false);
-                        setShowCotizarModal(true);
-                      }}
-                      activeOpacity={0.85}
-                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-                    >
-                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                        Enviar Análisis
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                </View>
-              )}
-
-              {/* Botón de Finalizar Trabajo movido arriba para consistencia con el modal de cierre */}
+                )}
+              </View>
             </View>
           </View>
         </View >
@@ -2949,8 +2984,8 @@ function EmpleadoPanelContent() {
             <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
               <View style={[styles.detailModalHeader, isMobile && styles.detailModalHeaderMobile, { backgroundColor: '#7f1d1d' }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Análisis y Reparación Express</Text>
-                  <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily, color: '#fca5a5' }]} numberOfLines={1}>Completa fase 2.1 y 3.1 al mismo tiempo</Text>
+                  <Text style={[styles.detailModalTitle, isMobile && styles.detailModalTitleMobile, { fontFamily }]} numberOfLines={1}>Análisis y Reparación sin cotizar.</Text>
+                  <Text style={[styles.detailModalSubtitle, isMobile && styles.detailModalSubtitleMobile, { fontFamily, color: '#fca5a5' }]} numberOfLines={1}>Completa ambas fases sin cotizar. </Text>
                 </View>
                 <TouchableOpacity onPress={() => {
                   setShowExpressModal(false);
@@ -2972,11 +3007,11 @@ function EmpleadoPanelContent() {
                 <View style={[styles.detailContent, isMobile && styles.detailContentMobile]}>
                   {/* FASE 2.1: Análisis */}
                   <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontFamily, color: '#f59e0b', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>1. ANÁLISIS GENERAL (Fase 2.1)</Text>
+                    <Text style={{ fontFamily, color: '#f59e0b', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>1. ANÁLISIS GENERAL</Text>
 
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
-                        ANALISIS GENERAL(ESCRIBIR AQUI LA INFORMACION MPORTANTE Y NECESARIA)
+                        ANALISIS GENERAL (Documenta el problema)
                       </Text>
                       <TextInput
                         style={[styles.textInputArea, { fontFamily }]}
@@ -2992,15 +3027,28 @@ function EmpleadoPanelContent() {
 
                     {/* Sección de Foto de Revisión */}
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
-                        IMAGENES DE ANALISIS
-                      </Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 0 }]}>
+                          IMÁGENES DE ANÁLISIS
+                        </Text>
+                        {fotosRevisionUris.length > 0 && (
+                          <TouchableOpacity onPress={limpiarFotosRevision} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                            <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600', fontFamily }}>Limpiar todo</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <View style={{ marginTop: 8 }}>
                         {fotosRevisionUris.length > 0 && (
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            style={{ marginBottom: 12 }}
+                            contentContainerStyle={{ paddingRight: 20 }}
+                          >
                             {fotosRevisionUris.map((uri, index) => (
                               <View key={index} style={{ marginRight: 10, position: 'relative' }}>
-                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
                                 <TouchableOpacity
                                   style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderRadius: 12, padding: 2, zIndex: 1 }}
                                   onPress={() => eliminarFotoRevision(index)}
@@ -3012,13 +3060,20 @@ function EmpleadoPanelContent() {
                           </ScrollView>
                         )}
                         <TouchableOpacity
-                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
                           onPress={seleccionarFotoRevision}
-                          activeOpacity={0.7}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          activeOpacity={0.8}
+                          style={styles.modernDropzone}
                         >
-                          <Ionicons name="images" size={24} color="#fff" />
-                          <Text style={[styles.audioButtonText, { fontFamily }]}>
-                            {fotosRevisionUris.length === 0 ? 'Elegir Imágenes' : `Imágenes Seleccionadas: ${fotosRevisionUris.length} (Añadir más)`}
+                          <View style={{ width: 56, height: 56, backgroundColor: 'rgba(56, 189, 248, 0.1)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="images-outline" size={32} color="#0ea5e9" />
+                          </View>
+                          <Text style={[styles.proActionTitle, { fontFamily, color: '#e0f2fe' }]}>
+                            {fotosRevisionUris.length === 0 ? 'Selecciona imágenes para subir' : `Imágenes seleccionadas: ${fotosRevisionUris.length}`}
+                          </Text>
+                          <Text style={[styles.proActionSubtitle, { fontFamily, color: '#7dd3fc', opacity: 0.8 }]}>
+                            Selecciona imágenes del trabajo realizado
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -3029,9 +3084,9 @@ function EmpleadoPanelContent() {
 
                   {/* FASE 3.1: Reparación */}
                   <View style={{ marginBottom: 16 }}>
-                    <Text style={{ fontFamily, color: '#10b981', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>2. TRABAJO REALIZADO (Fase 3.1)</Text>
+                    <Text style={{ fontFamily, color: '#10b981', fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>2. TRABAJO REALIZADO</Text>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -3044,7 +3099,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -3057,7 +3112,7 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
                       <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
                       <TextInput
                         style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
@@ -3070,17 +3125,43 @@ function EmpleadoPanelContent() {
                       />
                     </View>
 
+                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
+                      <TextInput
+                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                        placeholder="Recomendaciones adicionales (opcional)..."
+                        placeholderTextColor="#cbd5e1"
+                        multiline
+                        numberOfLines={2}
+                        value={recomendacionesAdicionales}
+                        onChangeText={setRecomendacionesAdicionales}
+                      />
+                    </View>
+
                     {/* Imágenes de finalización */}
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold' }]}>
-                        IMAGENES DE FINALIZACION
-                      </Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981', fontWeight: 'bold', marginTop: 0 }]}>
+                          IMÁGENES DE FINALIZACIÓN
+                        </Text>
+                        {fotosPostprocesoUris.length > 0 && (
+                          <TouchableOpacity onPress={limpiarFotosPostproceso} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                            <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600', fontFamily }}>Limpiar todo</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                       <View style={{ marginTop: 8 }}>
                         {fotosPostprocesoUris.length > 0 && (
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={true}
+                            style={{ marginBottom: 12 }}
+                            contentContainerStyle={{ paddingRight: 20 }}
+                          >
                             {fotosPostprocesoUris.map((uri, index) => (
                               <View key={index} style={{ marginRight: 10, position: 'relative' }}>
-                                <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                                <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
                                 <TouchableOpacity
                                   style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderRadius: 12, padding: 2, zIndex: 1 }}
                                   onPress={() => eliminarFotoPostproceso(index)}
@@ -3092,13 +3173,20 @@ function EmpleadoPanelContent() {
                           </ScrollView>
                         )}
                         <TouchableOpacity
-                          style={[styles.audioRecordButton, { backgroundColor: '#10b981' }]}
                           onPress={seleccionarFotoPostproceso}
-                          activeOpacity={0.7}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          activeOpacity={0.8}
+                          style={[styles.modernDropzone, { borderColor: 'rgba(16, 185, 129, 0.4)' }]}
                         >
-                          <Ionicons name="images" size={24} color="#fff" />
-                          <Text style={[styles.audioButtonText, { fontFamily }]}>
-                            {fotosPostprocesoUris.length === 0 ? 'Elegir Imágenes de Finalización' : `Imágenes Seleccionadas: ${fotosPostprocesoUris.length} (Añadir más)`}
+                          <View style={{ width: 56, height: 56, backgroundColor: 'rgba(16, 185, 129, 0.1)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="images-outline" size={32} color="#10b981" />
+                          </View>
+                          <Text style={[styles.proActionTitle, { fontFamily, color: '#ecfdf5' }]}>
+                            {fotosPostprocesoUris.length === 0 ? 'Selecciona imágenes de finalización' : `Imágenes seleccionadas: ${fotosPostprocesoUris.length}`}
+                          </Text>
+                          <Text style={[styles.proActionSubtitle, { fontFamily, color: '#6ee7b7', opacity: 0.8 }]}>
+                            Captura el resultado final del servicio
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -3142,10 +3230,10 @@ function EmpleadoPanelContent() {
                     }}
                     disabled={guardandoCotizacion || guardandoFase2}
                     activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    style={{ flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      {(guardandoCotizacion || guardandoFase2) ? 'Guardando...' : 'Finalizar Servicio Express'}
+                      {(guardandoCotizacion || guardandoFase2) ? 'Guardando...' : 'Finalizar Servicio CSC'}
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
@@ -3276,27 +3364,31 @@ function EmpleadoPanelContent() {
 
                   {/* Sección de Foto de Revisión */}
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 20 }]}>
-                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>
-                      IMAGENES DE ANALISIS
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, marginTop: 0 }]}>
+                        IMÁGENES DE ANÁLISIS
+                      </Text>
+                      {fotosRevisionUris.length > 0 && (
+                        <TouchableOpacity onPress={limpiarFotosRevision} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                          <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '600', fontFamily }}>Limpiar todo</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     <View style={{ marginTop: 8 }}>
-                      {/* Galería de fotos capturadas */}
                       {fotosRevisionUris.length > 0 && (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={true}
+                          style={{ marginBottom: 12 }}
+                          contentContainerStyle={{ paddingRight: 20 }}
+                        >
                           {fotosRevisionUris.map((uri, index) => (
                             <View key={index} style={{ marginRight: 10, position: 'relative' }}>
-                              <Image source={{ uri }} style={{ width: 100, height: 100, borderRadius: 8 }} />
+                              <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
                               <TouchableOpacity
-                                style={{
-                                  position: 'absolute',
-                                  top: -5,
-                                  right: -5,
-                                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
-                                  borderRadius: 12,
-                                  padding: 2,
-                                  zIndex: 1
-                                }}
+                                style={{ position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(239, 68, 68, 0.9)', borderRadius: 12, padding: 2, zIndex: 1 }}
                                 onPress={() => eliminarFotoRevision(index)}
                               >
                                 <Ionicons name="close" size={14} color="#fff" />
@@ -3306,19 +3398,23 @@ function EmpleadoPanelContent() {
                         </ScrollView>
                       )}
 
-                      {/* Botón para tomar foto */}
-                      {fotosRevisionUris.length < 5 && (
-                        <TouchableOpacity
-                          style={[styles.audioRecordButton, { backgroundColor: '#3b82f6' }]}
-                          onPress={seleccionarFotoRevision}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons name="camera" size={24} color="#fff" />
-                          <Text style={[styles.audioButtonText, { fontFamily }]}>
-                            {fotosRevisionUris.length === 0 ? 'Tomar Foto' : `Añadir Foto (${fotosRevisionUris.length}/5)`}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                      <TouchableOpacity
+                        onPress={seleccionarFotoRevision}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        activeOpacity={0.8}
+                        style={styles.modernDropzone}
+                      >
+                        <View style={{ width: 56, height: 56, backgroundColor: 'rgba(56, 189, 248, 0.1)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                          <Ionicons name="images-outline" size={32} color="#0ea5e9" />
+                        </View>
+                        <Text style={[styles.proActionTitle, { fontFamily, color: '#e0f2fe' }]}>
+                          {fotosRevisionUris.length === 0 ? 'Selecciona imágenes para subir' : `Imágenes seleccionadas: ${fotosRevisionUris.length}`}
+                        </Text>
+                        <Text style={[styles.proActionSubtitle, { fontFamily, color: '#7dd3fc', opacity: 0.8 }]}>
+                          Selecciona imágenes del trabajo realizado
+                        </Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 </View>
@@ -3348,7 +3444,7 @@ function EmpleadoPanelContent() {
                     onPress={guardarCotizacion}
                     disabled={guardandoCotizacion}
                     activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    style={{ flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                       {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
@@ -3425,14 +3521,14 @@ function EmpleadoPanelContent() {
               <Text style={[styles.modalBodyText, { fontFamily }]}>
                 ¿Por qué estás rechazando este reporte? (Opcional)
               </Text>
-              
+
               <TextInput
                 style={[
-                  styles.textInputArea, 
-                  { 
-                    fontFamily, 
-                    marginTop: 12, 
-                    marginBottom: 20, 
+                  styles.textInputArea,
+                  {
+                    fontFamily,
+                    marginTop: 12,
+                    marginBottom: 20,
                     minHeight: 80,
                     backgroundColor: '#1e293b',
                     borderColor: '#334155',
@@ -4128,12 +4224,12 @@ const styles = StyleSheet.create({
   },
   largeModal: {
     width: '100%',
-    maxWidth: 700,
-    maxHeight: '85%',
+    maxWidth: 900,
+    maxHeight: '90%',
     backgroundColor: '#0f172a',
     borderWidth: 1,
     borderColor: '#1e293b',
-    borderRadius: 16,
+    borderRadius: 24,
     padding: 0,
     shadowColor: '#000',
     shadowOpacity: 0.35,
@@ -4183,12 +4279,12 @@ const styles = StyleSheet.create({
   },
   modalList: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   modalListMobile: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   professionalCard: {
     flexDirection: 'row',
@@ -4383,17 +4479,44 @@ const styles = StyleSheet.create({
   },
   detailFooter: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderTopWidth: 1,
     borderTopColor: '#1e293b',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
   },
   detailFooterMobile: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    flexDirection: 'column',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     gap: 10,
+  },
+  detailFooterButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detailFooterButtonMobile: {
+    width: '100%',
+  },
+  recordButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  recordDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
   },
   refreshButton: {
     paddingHorizontal: 12,
@@ -4646,17 +4769,24 @@ const styles = StyleSheet.create({
   },
   // ─── Filter panel styles (admin-style) ──────────────────────────
   filtrosContainer: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34, 211, 238, 0.2)',
-    marginHorizontal: 16,
-    marginBottom: 12,
+    borderColor: 'rgba(34, 211, 238, 0.3)',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
     overflow: 'hidden',
+    shadowColor: '#22d3ee',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   filtrosContainerMobile: {
-    marginHorizontal: 8,
-    borderRadius: 12,
+    marginHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   filtrosHeader: {
     flexDirection: 'row',
@@ -4707,16 +4837,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filtroSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 10,
   },
   filtroLabel: {
     color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
     textTransform: 'uppercase',
+    marginBottom: 4,
   },
   filtroChips: {
     flexDirection: 'row',
@@ -4746,13 +4877,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   searchFilterContainerPro: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    gap: 6,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    gap: 8,
   },
   searchFilterContainerMobile: {
-    marginHorizontal: 12,
-    marginBottom: 6,
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   searchFilterLabelPro: {
     paddingHorizontal: 4,
@@ -4767,12 +4898,13 @@ const styles = StyleSheet.create({
   searchFilterInputWrapperPro: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 48,
     borderWidth: 1,
     borderColor: 'rgba(51, 65, 85, 0.8)',
-    gap: 8,
+    gap: 10,
   },
   searchFilterInputWrapperFocused: {
     borderColor: 'rgba(6, 182, 212, 0.5)',
@@ -4786,9 +4918,10 @@ const styles = StyleSheet.create({
   filtrosResultados: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   filtrosResultadosText: {
     color: '#94a3b8',
@@ -4813,16 +4946,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   // ─── Admin-style Report Card styles ─────────────────────────────
-  listScroll: { maxHeight: 450 },
-  listScrollMobile: { maxHeight: 350 },
-  listSpacing: { gap: 12 },
+  listScroll: { maxHeight: 550 },
+  listScrollMobile: { maxHeight: 450 },
+  listSpacing: { gap: 16, paddingBottom: 20 },
   reportCard: {
-    backgroundColor: 'rgba(30,41,59,0.5)',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
     borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
+    borderColor: 'rgba(51, 65, 85, 0.8)',
+    borderRadius: 16,
+    padding: 20,
+    gap: 16,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 2,
   },
   reportHeader: {
     flexDirection: 'row',
@@ -4863,5 +5002,92 @@ const styles = StyleSheet.create({
   },
   estadoBadgeText: { fontSize: 12, fontWeight: '700' },
   reportComment: { color: '#cbd5e1', fontSize: 13 },
+  // ─── Professional Action Cards (Audio/Images) ──────────────────
+  proActionCard: {
+    borderRadius: 16,
+    marginTop: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  proActionCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  proActionIconWrapper: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proActionTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  proActionSubtitle: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    marginTop: 1,
+  },
+  // ─── Modern Audio/Image Section ───────────────────────────────
+  modernDropzone: {
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  modernAudioCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  waveformContainer: {
+    flex: 1,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    marginHorizontal: 16,
+  },
+  waveformBar: {
+    width: 3,
+    backgroundColor: '#f87171',
+    borderRadius: 2,
+  },
+  audioControlsContainer: {
+    marginTop: 12,
+  },
+  audioRecordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ef4444',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 10,
+  },
+  audioButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });
 
