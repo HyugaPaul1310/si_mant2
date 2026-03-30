@@ -16,38 +16,56 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const OPCIONES = ['Excelente', 'Muy Bueno', 'Bueno', 'Regular', 'Malo'];
+const OPCIONES_ESTANDAR = ['Excelente', 'Muy Bueno', 'Bueno', 'Regular', 'Malo'];
 
 const PREGUNTAS = [
   {
     id: 1,
-    texto: 'El trato que recibió por parte del equipo de Simant me pareció:',
-    key: 'trato_equipo'
+    texto: 'EL TRATO RECIBIDO POR EL EQUIPO TECNICO DE SI MANT ME PARECIO: ',
+    key: 'trato_equipo',
+    opciones: OPCIONES_ESTANDAR
   },
   {
     id: 2,
-    texto: 'El equipo técnico de la empresa le resuelve sus problemas de forma:',
-    key: 'equipo_tecnico'
+    texto: '¿EL PERSONAL TECNICO DE SI MANT SE PRESENTO Y EXPLICO EL MOTIVO DE LA VISITA?',
+    key: 'presentacion_motivo',
+    opciones: ['SI LO REALIZO', 'NO LO REALIZO']
   },
   {
     id: 3,
-    texto: 'El personal administrativo que recibe mi solicitud me atiende de forma:',
-    key: 'personal_administrativo'
+    texto: '¿ EL EQUIPO TECNICO DE SI MANT RESOLVIO EL PROBLEMA O REALIZO LA TAREA PARA LA CUAL REALIZO LA VISITA A SU SUCURSAL?',
+    key: 'equipo_tecnico',
+    opciones: ['SI LO HIZO', 'NO LO HIZO', 'NO ESTOY SEGURA/O']
   },
   {
     id: 4,
-    texto: 'La rapidez en la resolución del problema fue:',
-    key: 'rapidez'
+    texto: 'El personal administrativo que recibe mi solicitud me atiende de forma:',
+    key: 'personal_administrativo',
+    opciones: OPCIONES_ESTANDAR
   },
   {
     id: 5,
-    texto: 'El costo del servicio en relación a la calidad fue:',
-    key: 'costo_calidad'
+    texto: 'La rapidez en la resolución del problema fue:',
+    key: 'rapidez',
+    opciones: OPCIONES_ESTANDAR
   },
   {
     id: 6,
+    texto: '¿EL PERSONAL TECNICO DE SI MANT, AL TEMRNIAR CON SUS ACTIVIDADES AVISO QUE SE RETIRABA DEL SITIO Y EXPLICO LO REALIZADO DURANTE LA VISITA Y/O EXPLICO EL PROBLEMA ENCONTRADO?',
+    key: 'aviso_retiro',
+    opciones: ['SI LO HIZO', 'NO LO HIZO', 'SI LO HIZO, PERO NO FUE CLARO', 'NO LE DI EL TIEMPO PARA QUE ME EXPLICARA']
+  },
+  {
+    id: 7,
+    texto: 'El costo del servicio en relación a la calidad fue:',
+    key: 'costo_calidad',
+    opciones: OPCIONES_ESTANDAR
+  },
+  {
+    id: 8,
     texto: '¿Qué tan satisfecho está con la solución proporcionada?',
-    key: 'satisfaccion'
+    key: 'satisfaccion',
+    opciones: ['MUY SATISFECHA/O', 'SATISFECHA/O', 'PARCIALMENTE SATISFECHA/O', 'NADA SATISFECHA/O']
   },
 ];
 
@@ -119,9 +137,11 @@ export default function EncuestaPage() {
         empleado_nombre: empleadoNombre || usuario?.nombre || '',
         empresa: empresa,
         trato_equipo: respuestas['trato_equipo'],
+        presentacion_motivo: respuestas['presentacion_motivo'],
         equipo_tecnico: respuestas['equipo_tecnico'],
         personal_administrativo: respuestas['personal_administrativo'],
         rapidez: respuestas['rapidez'],
+        aviso_retiro: respuestas['aviso_retiro'],
         costo_calidad: respuestas['costo_calidad'],
         satisfaccion: respuestas['satisfaccion'],
       };
@@ -200,7 +220,7 @@ export default function EncuestaPage() {
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={[styles.content, isMobile && styles.contentMobile]}>
-          {/* PASO 5: Mensaje introductorio */}
+          {/* Mensaje introductorio y observaciones */}
           <View style={{
             backgroundColor: '#06b6d415',
             borderRadius: 12,
@@ -209,11 +229,11 @@ export default function EncuestaPage() {
             borderLeftWidth: 4,
             borderLeftColor: '#06b6d4'
           }}>
-            <Text style={[styles.headerSubtitle, { fontFamily, color: '#22d3ee', marginBottom: 8 }]}>
-              ✓ Trabajo completado
+            <Text style={[styles.headerSubtitle, { fontFamily, color: '#22d3ee', marginBottom: 8, fontWeight: '700' }]}>
+              TU RESPUESTA AYUDA A MEJORAR NUESTRO SERVICIO, MUCHAS GRACIAS
             </Text>
-            <Text style={[styles.preguntaTexto, { fontFamily, color: '#cbd5e1' }]}>
-              Tu reporte ha sido finalizado. Por favor responde esta encuesta para cerrar oficialmente el servicio y ayudarnos a mejorar.
+            <Text style={[styles.preguntaTexto, { fontFamily, color: '#cbd5e1', fontSize: 13 }]}>
+              SI TU NO ESTUVISTE PRESENTE DURANTE LA VISITA, FAVOR DE CONSULTAR CON EL PERSONAL DE TU SUCURSAL QUE SI ESTUVO PRESENTE PARA CONTESTAR DE MEJOR MANERA LA ENCUESTA.
             </Text>
           </View>
 
@@ -227,7 +247,7 @@ export default function EncuestaPage() {
               </View>
 
               <View style={styles.opcionesContainer}>
-                {OPCIONES.map((opcion) => {
+                {pregunta.opciones.map((opcion) => {
                   const isSelected = respuestas[pregunta.key] === opcion;
                   return (
                     <TouchableOpacity
