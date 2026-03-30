@@ -165,6 +165,17 @@ export async function eliminarEquipoSucursal(equipoId: string) {
   }
 }
 
+export async function actualizarEquipoSucursal(equipoId: string, datos: Partial<EquipoSucursal>) {
+  try {
+    const data = await apiCall(`/empresas/equipos/${equipoId}`, 'PUT', datos);
+    if (!data.success) throw new Error(data.error);
+    return { success: true, data: data.data as EquipoSucursal };
+  } catch (error: any) {
+    console.error('Error al actualizar equipo:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 /**
  * Desactiva una sucursal (solo admins)
  */

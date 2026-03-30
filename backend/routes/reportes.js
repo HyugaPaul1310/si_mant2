@@ -77,16 +77,16 @@ router.get('/', verifyToken, async (req, res) => {
 // Crear reporte
 router.post('/', verifyToken, async (req, res) => {
   try {
-    const { titulo, descripcion, estado, prioridad, equipo_id } = req.body;
+    const { titulo, descripcion, estado, prioridad, equipo_id, sucursal_id } = req.body;
 
     const [user] = await pool.query('SELECT empresa_id FROM usuarios WHERE id = ?', [req.user.id]);
     const empresa_id = user[0]?.empresa_id;
 
-    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id, prioridad, equipo_id });
+    console.log('[BACKEND] Insertando reporte:', { titulo, descripcion, usuario_id: req.user.id, empresa_id, prioridad, equipo_id, sucursal_id });
 
     const result = await pool.query(
-      'INSERT INTO reportes (titulo, descripcion, estado, prioridad, usuario_id, empresa_id, equipo_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-      [titulo, descripcion, estado || 'pendiente', prioridad || 'media', req.user.id, empresa_id, equipo_id || null]
+      'INSERT INTO reportes (titulo, descripcion, estado, prioridad, usuario_id, empresa_id, equipo_id, sucursal_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+      [titulo, descripcion, estado || 'pendiente', prioridad || 'media', req.user.id, empresa_id, equipo_id || null, sucursal_id || null]
     );
 
     console.log('[BACKEND] result completo:', result);
@@ -371,17 +371,22 @@ router.get('/empleado', verifyToken, async (req, res) => {
         r.materiales_refacciones,
         r.created_at,
         r.updated_at,
+        r.sucursal_id,
         u.nombre as usuario_nombre,
         u.apellido as usuario_apellido,
         u.email as usuario_email,
         e.nombre as empresa,
         SUBSTRING_INDEX(r.titulo, ' - ', 1) as equipo_descripcion,
         TRIM(SUBSTRING(r.titulo, POSITION(' - ' IN r.titulo) + 3)) as sucursal,
+        COALESCE(suc.imagen_url, suc2.imagen_url) as sucursal_imagen_url,
         r.comentario,
         r.motivo_cancelacion
       FROM reportes r
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       LEFT JOIN empresas e ON r.empresa_id = e.id
+      LEFT JOIN sucursales suc ON r.sucursal_id = suc.id
+      LEFT JOIN equipos_sucursal eq ON r.equipo_id = eq.id
+      LEFT JOIN sucursales suc2 ON eq.sucursal_id = suc2.id
       WHERE r.empleado_asignado_id = ? 
       ORDER BY r.created_at DESC`,
       [usuario_id]

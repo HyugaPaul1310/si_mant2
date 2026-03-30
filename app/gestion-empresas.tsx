@@ -1,6 +1,7 @@
 // @ts-nocheck
 import {
   actualizarEmpresa,
+  actualizarEquipoSucursal,
   actualizarSucursal,
   crearEmpresa,
   crearEquipoSucursal,
@@ -93,6 +94,18 @@ export default function GestionEmpresasScreen() {
   const [editSucursalCiudad, setEditSucursalCiudad] = useState('');
 
   const [error, setError] = useState('');
+
+  // --- edit equipo ---
+  const [showEditarEquipoModal, setShowEditarEquipoModal] = useState(false);
+  const [equipoEditando, setEquipoEditando] = useState<EquipoSucursal | null>(null);
+  const [editEqNombre, setEditEqNombre] = useState('');
+  const [editEqModelo, setEditEqModelo] = useState('');
+  const [editEqSerie, setEditEqSerie] = useState('');
+  const [guardandoEquipo, setGuardandoEquipo] = useState(false);
+
+  // --- image viewer ---
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [viewerImageUrl, setViewerImageUrl] = useState('');
 
   // --- confirmation modal ---
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -463,6 +476,14 @@ export default function GestionEmpresasScreen() {
                       }} style={s.iconBtn}>
                         <Ionicons name="pencil" size={14} color={CC} />
                       </TouchableOpacity>
+                      {suc.imagen_url ? (
+                        <TouchableOpacity onPress={() => {
+                          setViewerImageUrl(getProxyUrl(suc.imagen_url!));
+                          setShowImageViewer(true);
+                        }} style={s.iconBtn}>
+                          <Ionicons name="image-outline" size={14} color="#a78bfa" />
+                        </TouchableOpacity>
+                      ) : null}
                       <TouchableOpacity onPress={() => handleEliminarSucursal(suc)} style={s.iconBtn}>
                         <Ionicons name="trash" size={14} color="#f87171" />
                       </TouchableOpacity>
@@ -536,6 +557,19 @@ export default function GestionEmpresasScreen() {
                         {eq.serie ? <Text style={s.eqSub} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
                       </View>
                       <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            setEquipoEditando(eq);
+                            setEditEqNombre(eq.nombre);
+                            setEditEqModelo(eq.modelo || '');
+                            setEditEqSerie(eq.serie || '');
+                            setShowEditarEquipoModal(true);
+                          }}
+                          style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(139,92,246,0.1)', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Ionicons name="pencil" size={13} color="#a78bfa" />
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }}
                           style={s.eqDeleteBtn}
@@ -859,6 +893,80 @@ export default function GestionEmpresasScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Edit Equipment Modal */}
+      <Modal visible={showEditarEquipoModal} transparent animationType="fade" onRequestClose={() => setShowEditarEquipoModal(false)}>
+        <View style={s.overlay}>
+          <View style={[s.modalCard, { paddingVertical: 24 }]}>
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(139, 92, 246, 0.12)', borderWidth: 2, borderColor: 'rgba(139, 92, 246, 0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                <Ionicons name="hardware-chip" size={24} color="#a78bfa" />
+              </View>
+              <Text style={{ color: '#f8fafc', fontSize: 17, fontWeight: '800' }}>Editar Equipo</Text>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>NOMBRE *</Text>
+                <TextInput style={s.input} value={editEqNombre} onChangeText={setEditEqNombre} placeholder="Nombre del equipo" placeholderTextColor="#475569" />
+              </View>
+              <View>
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>MODELO</Text>
+                <TextInput style={s.input} value={editEqModelo} onChangeText={setEditEqModelo} placeholder="Modelo (opcional)" placeholderTextColor="#475569" />
+              </View>
+              <View>
+                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>SERIE</Text>
+                <TextInput style={s.input} value={editEqSerie} onChangeText={setEditEqSerie} placeholder="Serie (opcional)" placeholderTextColor="#475569" />
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
+              <TouchableOpacity onPress={() => { setShowEditarEquipoModal(false); setEquipoEditando(null); }} style={[s.secBtn, { flex: 1 }]}>
+                <Text style={s.secBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={guardandoEquipo}
+                onPress={async () => {
+                  if (!editEqNombre.trim() || !equipoEditando || !sucursalSeleccionada) return;
+                  setGuardandoEquipo(true);
+                  const res = await actualizarEquipoSucursal(equipoEditando.id, {
+                    nombre: editEqNombre.trim(),
+                    modelo: editEqModelo.trim() || undefined,
+                    serie: editEqSerie.trim() || undefined,
+                    imagen_url: equipoEditando.imagen_url,
+                  });
+                  if (res.success) {
+                    setShowEditarEquipoModal(false);
+                    setEquipoEditando(null);
+                    await cargarEquipos(sucursalSeleccionada.id);
+                  } else {
+                    setError(res.error || 'Error al editar');
+                  }
+                  setGuardandoEquipo(false);
+                }}
+                style={[s.primaryBtn, { flex: 1, opacity: guardandoEquipo ? 0.6 : 1 }]}
+              >
+                <Text style={s.primaryBtnText}>{guardandoEquipo ? 'Guardando...' : 'Guardar'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal visible={showImageViewer} transparent animationType="fade" onRequestClose={() => setShowImageViewer(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' }}>
+          <TouchableOpacity
+            onPress={() => setShowImageViewer(false)}
+            style={{ position: 'absolute', top: 40, right: 20, zIndex: 10, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(30, 41, 59, 0.8)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#334155' }}
+          >
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+          {viewerImageUrl ? (
+            <Image source={{ uri: viewerImageUrl }} style={{ width: '90%', height: '70%' }} resizeMode="contain" />
+          ) : null}
         </View>
       </Modal>
     </SafeAreaView>

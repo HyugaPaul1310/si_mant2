@@ -26,6 +26,7 @@ const { verifyToken } = require('../middleware/auth');
     await addColumnIfMissing('empresas',   'logo_url',   'VARCHAR(2048) DEFAULT NULL');
     await addColumnIfMissing('sucursales', 'imagen_url', 'VARCHAR(2048) DEFAULT NULL');
     await addColumnIfMissing('reportes',   'equipo_id',  'INT DEFAULT NULL');
+    await addColumnIfMissing('reportes',   'sucursal_id','INT DEFAULT NULL');
 
     // Create equipos_sucursal table if missing
     await pool.query(`
@@ -272,6 +273,32 @@ router.post('/sucursal/:sucursalId/equipos', verifyToken, async (req, res) => {
     return res.json({ success: true, data: equipo[0] });
   } catch (error) {
     console.error('[BACKEND-EQUIPOS] Error al crear:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// PUT actualizar equipo
+router.put('/equipos/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, modelo, serie, imagen_url } = req.body;
+    if (!nombre) {
+      return res.status(400).json({ success: false, error: 'El nombre del equipo es requerido' });
+    }
+    const [result] = await pool.query(
+      'UPDATE equipos_sucursal SET nombre = ?, modelo = ?, serie = ?, imagen_url = ? WHERE id = ?',
+      [nombre, modelo || null, serie || null, imagen_url || null, id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, error: 'Equipo no encontrado' });
+    }
+    const [equipo] = await pool.query(
+      'SELECT id, sucursal_id, nombre, modelo, serie, imagen_url, created_at FROM equipos_sucursal WHERE id = ?',
+      [id]
+    );
+    return res.json({ success: true, data: equipo[0] });
+  } catch (error) {
+    console.error('[BACKEND-EQUIPOS] Error al actualizar:', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });

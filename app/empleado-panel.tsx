@@ -12,6 +12,7 @@ import {
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { subirArchivosReporte } from '@/lib/reportes';
+import { obtenerSucursalesPorEmpresa } from '@/lib/empresas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -93,6 +94,7 @@ function EmpleadoPanelContent() {
     Linking.openURL(url);
   };
   const [reporteSeleccionado, setReporteSeleccionado] = useState<any>(null);
+  const [sucursalImagenUrl, setSucursalImagenUrl] = useState<string | undefined>(undefined);
   const [actualizandoReporte, setActualizandoReporte] = useState(false);
   const [showHistorialReportesModal, setShowHistorialReportesModal] = useState(false);
   const [listaReportesTerminados, setListaReportesTerminados] = useState<any[]>([]);
@@ -2081,6 +2083,21 @@ function EmpleadoPanelContent() {
                                     setReporteSeleccionado(reporte);
                                     setShowReportesModal(false);
                                     setShowReporteDetalle(true);
+                                    
+                                    setSucursalImagenUrl(reporte.sucursal_imagen_url || undefined);
+                                    if (!reporte.sucursal_imagen_url && reporte.empresa_id) {
+                                      obtenerSucursalesPorEmpresa(String(reporte.empresa_id)).then(res => {
+                                        if (res.success && res.data) {
+                                          const suc = res.data.find((s: any) => 
+                                            s.nombre?.trim().toLowerCase() === reporte.sucursal?.trim().toLowerCase()
+                                          );
+                                          if (suc && suc.imagen_url) {
+                                            setSucursalImagenUrl(suc.imagen_url);
+                                          }
+                                        }
+                                      }).catch(err => console.error(err));
+                                    }
+
                                     setCargandoArchivos(true);
                                     const resultado = await obtenerArchivosReporteBackend(reporte.id);
                                     if (resultado.success) {
@@ -2207,6 +2224,28 @@ function EmpleadoPanelContent() {
                     <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile]}>
                       <Text style={[styles.detailValueText, { fontFamily }]}>{reporteSeleccionado.sucursal}</Text>
                     </View>
+                  </View>
+                )}
+
+                {sucursalImagenUrl && (
+                  <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
+                    <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Imagen de la Sucursal</Text>
+                    <TouchableOpacity 
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setArchivoVisualizando({ tipo_archivo: 'imagen', url: getProxyUrl(sucursalImagenUrl) });
+                        setShowArchivoModal(true);
+                      }}
+                      style={{
+                        borderRadius: 12, overflow: 'hidden', borderWidth: 1,
+                        borderColor: '#1e293b', backgroundColor: '#0f172a',
+                      }}>
+                      <Image
+                        source={{ uri: getProxyUrl(sucursalImagenUrl) }}
+                        style={{ width: '100%', height: isMobile ? 180 : 220, borderRadius: 12 }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -2843,6 +2882,21 @@ function EmpleadoPanelContent() {
                               setReporteSeleccionado(reporte);
                               setShowHistorialReportesModal(false);
                               setShowReporteDetalle(true);
+
+                              setSucursalImagenUrl(reporte.sucursal_imagen_url || undefined);
+                              if (!reporte.sucursal_imagen_url && reporte.empresa_id) {
+                                obtenerSucursalesPorEmpresa(String(reporte.empresa_id)).then(res => {
+                                  if (res.success && res.data) {
+                                    const suc = res.data.find((s: any) => 
+                                      s.nombre?.trim().toLowerCase() === reporte.sucursal?.trim().toLowerCase()
+                                    );
+                                    if (suc && suc.imagen_url) {
+                                      setSucursalImagenUrl(suc.imagen_url);
+                                    }
+                                  }
+                                }).catch(err => console.error(err));
+                              }
+
                               // Cargar archivos del reporte
                               setCargandoArchivos(true);
                               const resultado = await obtenerArchivosReporteBackend(reporte.id);

@@ -59,6 +59,7 @@ Prioridad: ${datos.prioridad || 'media'}
       estado: 'pendiente',
       prioridad: datos.prioridad || 'media',
       equipo_id: datos.equipo_id || null,
+      sucursal_id: datos.sucursal_id || null,
     });
   } catch (error: any) {
     console.error('Exception en crearReporte:', error);
