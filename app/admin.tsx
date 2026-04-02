@@ -1,5 +1,29 @@
 // @ts-nocheck
-import { actualizarEstadoReporteAsignado, actualizarReporteBackend, actualizarUsuarioBackend, apiCall, asignarHerramientaAEmpleadoManualBackend, asignarReporteAEmpleadoBackend, cambiarEstadoUsuarioBackend, cambiarRolUsuarioBackend, crearHerramientaBackend, crearTareaBackend, editarAsignacionBackend, eliminarReporteBackend, eliminarUsuarioBackend, marcarHerramientaComoDevueltaBackend, marcarHerramientaComoPerdidaBackend, obtenerArchivosReporteBackend, obtenerInventarioEmpleadoBackend, obtenerReportesBackend, obtenerTareasBackend, obtenerUsuariosBackend, registerBackend } from '@/lib/api-backend';
+import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
+import {
+  actualizarEstadoReporteAsignado,
+  actualizarReporteBackend,
+  actualizarUsuarioBackend,
+  apiCall,
+  asignarHerramientaAEmpleadoManualBackend,
+  asignarReporteAEmpleadoBackend,
+  cambiarEstadoUsuarioBackend,
+  cambiarRolUsuarioBackend,
+  crearHerramientaBackend,
+  crearTareaBackend,
+  editarAsignacionBackend,
+  eliminarReporteBackend,
+  eliminarUsuarioBackend,
+  getApiBaseUrl,
+  marcarHerramientaComoDevueltaBackend,
+  marcarHerramientaComoPerdidaBackend,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesBackend,
+  obtenerTareasBackend,
+  obtenerUsuariosBackend,
+  registerBackend
+} from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
@@ -98,6 +122,7 @@ function AdminPanelContent() {
   const [showEmpresaPicker, setShowEmpresaPicker] = useState(false);
   const [reportes, setReportes] = useState<any[]>([]);
   const [loadingReportes, setLoadingReportes] = useState(false);
+  const [generandoPDF, setGenerandoPDF] = useState<number | string | null>(null);
   const [errorReportes, setErrorReportes] = useState('');
   const openMediaExternally = (url: string) => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -1037,6 +1062,220 @@ function AdminPanelContent() {
 
     return filtrados;
   }, [reportesPendientes, filtrosEstado, filtrosPrioridad, filtroEmpleado, filtroCliente, filtroID, filtroFecha]);
+
+  const formatDisplayPrice = (precio: any, moneda: string = '') => {
+    const symbol = (moneda === 'USD' || moneda === 'MXN' || !moneda) ? '$' : 'Q';
+    const suffix = moneda ? ` ${moneda}` : '';
+    return `${symbol}${Number(precio).toLocaleString('en-US', { minimumFractionDigits: 2 })}${suffix}`;
+  };
+
+  const generarPDF = async (reporte: any) => {
+    if (generandoPDF !== null) return;
+    setGenerandoPDF(reporte.id);
+    console.log('[PDF-ADMIN] Generando réplica exacta del formato cliente...');
+    
+    try {
+      // 1. Obtener archivos del reporte
+      let archivosReporte: any[] = [];
+      try {
+        const resArchivos = await obtenerArchivosReporteBackend(reporte.id);
+        if (resArchivos.success && resArchivos.data) {
+          archivosReporte = resArchivos.data;
+        }
+      } catch (err) {
+        console.error('[PDF-ADMIN] Error cargando archivos:', err);
+      }
+
+      // 2. Procesar descripción
+      const fullDescripcion = reporte.descripcion || '';
+      const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
+      const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
+      const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
+      const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
+
+      const modeloValue = modeloMatch ? modeloMatch[1].trim() : (reporte.equipo_modelo || 'N/A');
+      const serieValue = serieMatch ? serieMatch[1].trim() : (reporte.equipo_serie || 'N/A');
+      const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
+      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
+
+      const htmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { margin: 0; size: A4; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 210mm;
+      height: 297mm;
+    }
+    body { 
+      font-family: Arial, sans-serif; 
+      color: #222; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      background: transparent;
+    }
+    .background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 210mm;
+      height: 297mm;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .background-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .body-content { 
+      padding: 180px 50px 80px 50px; 
+      position: relative;
+      z-index: 10;
+    }
+    
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; }
+    .field { margin-bottom: 10px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
+    .label { font-size: 8px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
+    .value { font-size: 12px; color: #222; }
+    .value-red { color: #c41e3a; font-weight: 700; font-size: 18px; }
+    
+    .row { display: table; width: 100%; margin-bottom: 10px; table-layout: fixed; }
+    .col { display: table-cell; width: 50%; padding-right: 15px; vertical-align: top; }
+    
+    .signatures { margin-top: 140px; padding-top: 20px; }
+    .sig-row { display: table; width: 100%; table-layout: fixed; }
+    .sig-col { display: table-cell; text-align: center; height: 50px; border-bottom: 2.5px solid #1a1a1a; font-size: 11px; font-weight: 700; color: #333; padding-bottom: 8px; vertical-align: bottom; }
+    .sig-spacer { display: table-cell; width: 60px; }
+    
+    .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; }
+    .page-break { 
+      page-break-before: always; 
+      padding-top: 180px;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="background-container">
+    <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
+  </div>
+
+  <div class="body-content">
+    <div class="section">
+      <div class="section-title">Datos Generales</div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
+        <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
+        <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+      </div>
+      <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
+        ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
+      </div>
+      <div class="row">
+        <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
+        ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
+      </div>
+    </div>
+
+    ${reporte.analisis_general ? `
+    <div class="section">
+      <div class="section-title">Información de Cotización</div>
+      ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+        <div class="field">
+          <span class="label">Costo de cotización</span>
+          <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
+        </div>` : ''}
+      <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
+    </div>` : ''}
+
+    ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+    <div class="section">
+      <div class="section-title">Trabajo Realizado</div>
+      ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
+      ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
+      ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
+      ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
+    </div>` : ''}
+
+    ${(archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+    <div class="page-break"></div>
+    <div class="section">
+      <div class="section-title">Archivos Adjuntos</div>
+      <div class="field">
+        <div class="value" style="font-size: 10px; line-height: 1.6;">
+          ${archivosReporte
+            .filter(a => a.tipo_archivo !== 'audio')
+            .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
+            .join('<br/>')}
+        </div>
+      </div>
+    </div>
+    
+    <div class="signatures">
+      <div class="sig-row">
+        <div class="sig-col">Firma del técnico</div>
+        <div class="sig-spacer"></div>
+        <div class="sig-col">Firma del cliente</div>
+      </div>
+    </div>` : `
+    <div class="signatures">
+      <div class="sig-row">
+        <div class="sig-col">Firma del técnico</div>
+        <div class="sig-spacer"></div>
+        <div class="sig-col">Firma del cliente</div>
+      </div>
+    </div>`}
+
+    <div class="footer">si-mant.com</div>
+  </div>
+</body>
+</html>`;
+
+      // 3. Generación (Web)
+      if (Platform.OS === 'web') {
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/pdf/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ html: htmlTemplate })
+          });
+          if (!response.ok) throw new Error('Error al generar PDF');
+          const arrayBuffer = await response.arrayBuffer();
+          const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `Reporte_${reporte.id}_Admin.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+          Alert.alert('PDF Descargado', 'El archivo se ha guardado en tu carpeta de descargas.', [{ text: 'OK' }]);
+        } catch (error) {
+          console.error('[PDF-ADMIN] Error:', error);
+          Alert.alert('Error', 'No se pudo generar el PDF');
+        }
+      } else {
+        Alert.alert('PDF', 'La descarga de PDF está optimizada para la versión Web.');
+      }
+    } catch (error) {
+      console.error('[PDF-ADMIN] Error general:', error);
+      Alert.alert('Error', 'No se pudo generar el PDF');
+    } finally {
+      setGenerandoPDF(null);
+    }
+  };
 
   const reportesTerminadosFiltrados = useMemo(() => {
     let filtrados = reportesTerminados;
@@ -3695,28 +3934,40 @@ function AdminPanelContent() {
                             </View>
                           )}
                         </View>
-                        <TouchableOpacity
-                          onPress={async () => {
-                            setSelectedReporteDetail(rep);
-                            setDetalleOrigen('terminados');
-                            setShowReporteDetailModal(true);
-                            setCargandoArchivos(true);
-                            console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
-                            const resultado = await obtenerArchivosReporteBackend(rep.id);
-                            console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
-                            if (resultado.success) {
-                              console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
-                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
-                              setArchivosReporte(soloMedia);
-                            } else {
-                              console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
-                            }
-                            setCargandoArchivos(false);
-                          }}
-                          style={styles.eyeCard}
-                        >
-                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                        </TouchableOpacity>
+                         <TouchableOpacity
+                           onPress={async () => {
+                             setSelectedReporteDetail(rep);
+                             setDetalleOrigen('terminados');
+                             setShowReporteDetailModal(true);
+                             setCargandoArchivos(true);
+                             console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
+                             const resultado = await obtenerArchivosReporteBackend(rep.id);
+                             console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
+                             if (resultado.success) {
+                               console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
+                               const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                               setArchivosReporte(soloMedia);
+                             } else {
+                               console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
+                             }
+                             setCargandoArchivos(false);
+                           }}
+                           style={styles.eyeCard}
+                         >
+                           <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                         </TouchableOpacity>
+
+                         <TouchableOpacity
+                           onPress={() => generarPDF(rep)}
+                           style={[styles.eyeCard, { marginLeft: 8, borderColor: '#ef4444' }]}
+                           disabled={generandoPDF !== null}
+                         >
+                           {generandoPDF === rep.id ? (
+                             <ActivityIndicator size="small" color="#ef4444" />
+                          ) : (
+                             <Ionicons name="document-text-outline" size={16} color="#ef4444" />
+                           )}
+                         </TouchableOpacity>
                       </View>
 
                       <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
