@@ -101,6 +101,8 @@ export default function GestionEmpresasScreen() {
   const [editEqNombre, setEditEqNombre] = useState('');
   const [editEqModelo, setEditEqModelo] = useState('');
   const [editEqSerie, setEditEqSerie] = useState('');
+  const [editEqImageUrl, setEditEqImageUrl] = useState('');
+  const [editEqImagePreview, setEditEqImagePreview] = useState('');
   const [guardandoEquipo, setGuardandoEquipo] = useState(false);
 
   // --- image viewer ---
@@ -564,6 +566,8 @@ export default function GestionEmpresasScreen() {
                             setEditEqNombre(eq.nombre);
                             setEditEqModelo(eq.modelo || '');
                             setEditEqSerie(eq.serie || '');
+                            setEditEqImageUrl(eq.imagen_url || '');
+                            setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : '');
                             setShowEditarEquipoModal(true);
                           }}
                           style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(139,92,246,0.1)', alignItems: 'center', justifyContent: 'center' }}
@@ -808,22 +812,29 @@ export default function GestionEmpresasScreen() {
               <Text style={s.modalTitle}>Nuevo Equipo</Text>
 
               {/* Image picker */}
-              <TouchableOpacity
-                style={s.imagePicker}
-                onPress={() => pickAndUploadImage((url) => {
-                  setNuevoEquipoImageUrl(url);
-                  setNuevoEquipoImagePreview(url);
-                })}
-              >
+              <View>
+                <TouchableOpacity
+                  style={s.imagePicker}
+                  onPress={() => pickAndUploadImage((url) => {
+                    setNuevoEquipoImageUrl(url);
+                    setNuevoEquipoImagePreview(url);
+                  })}
+                >
+                  {nuevoEquipoImagePreview ? (
+                    <Image source={{ uri: nuevoEquipoImagePreview }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
+                  ) : (
+                    <View style={{ alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="camera-outline" size={28} color="#475569" />
+                      <Text style={{ color: '#475569', fontSize: 13 }}>Toca para subir foto del equipo</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
                 {nuevoEquipoImagePreview ? (
-                  <Image source={{ uri: nuevoEquipoImagePreview }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
-                ) : (
-                  <View style={{ alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="camera-outline" size={28} color="#475569" />
-                    <Text style={{ color: '#475569', fontSize: 13 }}>Toca para subir foto del equipo</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 6, marginBottom: 12, fontStyle: 'italic' }}>
+                    Toca la imagen para cambiarla
+                  </Text>
+                ) : null}
+              </View>
 
               <TextInput style={s.input} placeholder="Nombre del equipo *" placeholderTextColor="#64748b" value={nuevoEquipoNombre} onChangeText={setNuevoEquipoNombre} />
               <TextInput style={s.input} placeholder="Modelo" placeholderTextColor="#64748b" value={nuevoEquipoModelo} onChangeText={setNuevoEquipoModelo} />
@@ -907,20 +918,47 @@ export default function GestionEmpresasScreen() {
               <Text style={{ color: '#f8fafc', fontSize: 17, fontWeight: '800' }}>Editar Equipo</Text>
             </View>
 
-            <View style={{ gap: 12 }}>
-              <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>NOMBRE *</Text>
-                <TextInput style={s.input} value={editEqNombre} onChangeText={setEditEqNombre} placeholder="Nombre del equipo" placeholderTextColor="#475569" />
+            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12 }}>
+                {/* Image picker */}
+                <View>
+                  <TouchableOpacity
+                    style={s.imagePicker}
+                    onPress={() => pickAndUploadImage((url) => {
+                      setEditEqImageUrl(url);
+                      setEditEqImagePreview(url);
+                    })}
+                  >
+                    {editEqImagePreview ? (
+                      <Image source={{ uri: editEqImagePreview }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
+                    ) : (
+                      <View style={{ alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="camera-outline" size={28} color="#475569" />
+                        <Text style={{ color: '#475569', fontSize: 13 }}>Toca para subir foto del equipo</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {editEqImagePreview ? (
+                    <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 6, fontStyle: 'italic' }}>
+                      Toca la imagen para cambiarla
+                    </Text>
+                  ) : null}
+                </View>
+
+                <View>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>NOMBRE *</Text>
+                  <TextInput style={s.input} value={editEqNombre} onChangeText={setEditEqNombre} placeholder="Nombre del equipo" placeholderTextColor="#475569" />
+                </View>
+                <View>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>MODELO</Text>
+                  <TextInput style={s.input} value={editEqModelo} onChangeText={setEditEqModelo} placeholder="Modelo (opcional)" placeholderTextColor="#475569" />
+                </View>
+                <View>
+                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>SERIE</Text>
+                  <TextInput style={s.input} value={editEqSerie} onChangeText={setEditEqSerie} placeholder="Serie (opcional)" placeholderTextColor="#475569" />
+                </View>
               </View>
-              <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>MODELO</Text>
-                <TextInput style={s.input} value={editEqModelo} onChangeText={setEditEqModelo} placeholder="Modelo (opcional)" placeholderTextColor="#475569" />
-              </View>
-              <View>
-                <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>SERIE</Text>
-                <TextInput style={s.input} value={editEqSerie} onChangeText={setEditEqSerie} placeholder="Serie (opcional)" placeholderTextColor="#475569" />
-              </View>
-            </View>
+            </ScrollView>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
               <TouchableOpacity onPress={() => { setShowEditarEquipoModal(false); setEquipoEditando(null); }} style={[s.secBtn, { flex: 1 }]}>
@@ -935,7 +973,7 @@ export default function GestionEmpresasScreen() {
                     nombre: editEqNombre.trim(),
                     modelo: editEqModelo.trim() || undefined,
                     serie: editEqSerie.trim() || undefined,
-                    imagen_url: equipoEditando.imagen_url,
+                    imagen_url: editEqImageUrl || undefined,
                   });
                   if (res.success) {
                     setShowEditarEquipoModal(false);
