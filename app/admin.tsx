@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
   actualizarEstadoReporteAsignado,
   actualizarReporteBackend,
@@ -55,6 +54,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 
 type Admin = {
   nombre?: string;
@@ -1073,7 +1073,7 @@ function AdminPanelContent() {
     if (generandoPDF !== null) return;
     setGenerandoPDF(reporte.id);
     console.log('[PDF-ADMIN] Generando réplica exacta del formato cliente...');
-    
+
     try {
       // 1. Obtener archivos del reporte
       let archivosReporte: any[] = [];
@@ -3934,40 +3934,40 @@ function AdminPanelContent() {
                             </View>
                           )}
                         </View>
-                         <TouchableOpacity
-                           onPress={async () => {
-                             setSelectedReporteDetail(rep);
-                             setDetalleOrigen('terminados');
-                             setShowReporteDetailModal(true);
-                             setCargandoArchivos(true);
-                             console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
-                             const resultado = await obtenerArchivosReporteBackend(rep.id);
-                             console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
-                             if (resultado.success) {
-                               console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
-                               const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
-                               setArchivosReporte(soloMedia);
-                             } else {
-                               console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
-                             }
-                             setCargandoArchivos(false);
-                           }}
-                           style={styles.eyeCard}
-                         >
-                           <Ionicons name="eye-outline" size={16} color="#06b6d4" />
-                         </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={async () => {
+                            setSelectedReporteDetail(rep);
+                            setDetalleOrigen('terminados');
+                            setShowReporteDetailModal(true);
+                            setCargandoArchivos(true);
+                            console.log(`[ADMIN-HISTORIAL] Cargando archivos para reporte: ${rep.id}`);
+                            const resultado = await obtenerArchivosReporteBackend(rep.id);
+                            console.log(`[ADMIN-HISTORIAL] Resultado obtenerArchivosReporte:`, resultado);
+                            if (resultado.success) {
+                              console.log(`[ADMIN-HISTORIAL] Archivos encontrados: ${resultado.data?.length || 0}`);
+                              const soloMedia = (resultado.data || []).filter((a: any) => a.tipo_archivo !== 'pdf');
+                              setArchivosReporte(soloMedia);
+                            } else {
+                              console.log(`[ADMIN-HISTORIAL] Error al obtener archivos: ${resultado.error}`);
+                            }
+                            setCargandoArchivos(false);
+                          }}
+                          style={styles.eyeCard}
+                        >
+                          <Ionicons name="eye-outline" size={16} color="#06b6d4" />
+                        </TouchableOpacity>
 
-                         <TouchableOpacity
-                           onPress={() => generarPDF(rep)}
-                           style={[styles.eyeCard, { marginLeft: 8, borderColor: '#ef4444' }]}
-                           disabled={generandoPDF !== null}
-                         >
-                           {generandoPDF === rep.id ? (
-                             <ActivityIndicator size="small" color="#ef4444" />
+                        <TouchableOpacity
+                          onPress={() => generarPDF(rep)}
+                          style={[styles.eyeCard, { marginLeft: 8, borderColor: '#ef4444' }]}
+                          disabled={generandoPDF !== null}
+                        >
+                          {generandoPDF === rep.id ? (
+                            <ActivityIndicator size="small" color="#ef4444" />
                           ) : (
-                             <Ionicons name="document-text-outline" size={16} color="#ef4444" />
-                           )}
-                         </TouchableOpacity>
+                            <Ionicons name="document-text-outline" size={16} color="#ef4444" />
+                          )}
+                        </TouchableOpacity>
                       </View>
 
                       <Text style={[styles.reportComment, { fontFamily }]} numberOfLines={2}>
@@ -6058,75 +6058,118 @@ function AdminPanelContent() {
         showTareasModal && (
           <Pressable style={styles.overlay} onPress={() => setShowTareasModal(false)}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.modalCard, isMobile && styles.modalCardMobile]}>
-                <View style={styles.modalHeaderRow}>
-                  <View style={[styles.modalIconWrapper, { backgroundColor: 'rgba(249, 115, 22, 0.2)', borderColor: 'rgba(249, 115, 22, 0.5)' }]}>
-                    <Ionicons name="create-outline" size={22} color="#fb923c" />
+              <View style={[styles.modalCard, isMobile && styles.modalCardMobile, { backgroundColor: '#0f172a', borderColor: '#1e293b', padding: 24, borderRadius: 20 }]}>
+                {/* Header Rediseñado */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24, gap: 14 }}>
+                  <View style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(249, 115, 22, 0.3)' }}>
+                    <Ionicons name="create" size={24} color="#fb923c" />
                   </View>
-                  <Text style={[styles.modalTitle, { fontFamily }]}>Crear Nueva Tarea</Text>
+                  <View>
+                    <Text style={[{ color: '#fff', fontSize: 20, fontWeight: '800' }, { fontFamily }]}>Crear Nueva Tarea</Text>
+                    <Text style={[{ color: '#64748b', fontSize: 13, marginTop: 2 }, { fontFamily }]}>Asignación de trabajo directo</Text>
+                  </View>
                 </View>
 
                 {tareasError ? (
-                  <View style={styles.errorBox}>
-                    <Text style={[styles.errorText, { fontFamily }]}>{tareasError}</Text>
+                  <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeftWidth: 3, borderLeftColor: '#ef4444', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+                    <Text style={[{ fontSize: 12, color: '#fca5a5', fontWeight: '500' }, { fontFamily }]}>{tareasError}</Text>
                   </View>
                 ) : null}
 
                 {tareasExito ? (
-                  <View style={[styles.errorBox, { backgroundColor: 'rgba(16, 185, 129, 0.2)', borderColor: '#10b981' }]}>
-                    <Text style={[styles.errorText, { color: '#86efac' }]}>✓ Tarea creada exitosamente</Text>
+                  <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderLeftWidth: 3, borderLeftColor: '#10b981', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+                    <Text style={[{ fontSize: 12, color: '#86efac', fontWeight: '600' }, { fontFamily }]}>✓ Tarea creada exitosamente</Text>
                   </View>
                 ) : null}
 
-                <View style={styles.modalForm}>
+                <View style={{ gap: 20, marginBottom: 24 }}>
                   {/* Admin Name - Read Only */}
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { fontFamily }]}>Creado por</Text>
-                    <View style={[styles.formInputDisabled, { paddingHorizontal: 12, justifyContent: 'center' }]}>
-                      <Text style={[styles.formInputText, { color: '#9ca3af' }]}>{usuario?.nombre || 'Admin'}</Text>
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="at-circle-outline" size={14} color="#94a3b8" />
+                      <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }, { fontFamily }]}>CREADO POR</Text>
+                    </View>
+                    <View style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)', borderWidth: 1, borderColor: '#1e293b', borderRadius: 12, paddingHorizontal: 14, height: 50, justifyContent: 'center' }}>
+                      <Text style={[{ color: '#64748b', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>{usuario?.nombre || 'Admin'}</Text>
                     </View>
                   </View>
 
                   {/* Empleado Selector */}
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { fontFamily }]}>Asignar a empleado*</Text>
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="people-outline" size={14} color="#fb923c" />
+                      <Text style={[{ fontSize: 11, color: '#fb923c', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }, { fontFamily }]}>ASIGNAR A EMPLEADO *</Text>
+                    </View>
                     <TouchableOpacity
-                      style={[styles.formInput, { paddingRight: 12 }]}
+                      activeOpacity={0.7}
+                      style={{
+                        backgroundColor: '#161f2e',
+                        borderWidth: 1.5,
+                        borderColor: showEmpleadoDropdown ? '#fb923c' : '#1e293b',
+                        borderRadius: 12,
+                        paddingHorizontal: 14,
+                        height: 50,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
                       onPress={() => setShowEmpleadoDropdown(!showEmpleadoDropdown)}
                     >
-                      <Text style={[styles.formInputText, { color: selectedEmpleado ? '#f0f9ff' : '#9ca3af' }]}>
-                        {selectedEmpleado
-                          ? empleados.find(e => e.email === selectedEmpleado)?.nombre + ' (' + selectedEmpleado + ')'
-                          : 'Selecciona un empleado'
-                        }
-                      </Text>
-                      <Ionicons name={showEmpleadoDropdown ? "chevron-up" : "chevron-down"} size={20} color="#6b7280" />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <Ionicons name="person" size={18} color={selectedEmpleado ? "#fb923c" : "#475569"} />
+                        <Text style={[{ color: selectedEmpleado ? '#f8fafc' : '#475569', fontSize: 14, fontWeight: '600', flex: 1 }, { fontFamily }]} numberOfLines={1}>
+                          {selectedEmpleado
+                            ? empleados.find(e => e.email === selectedEmpleado)?.nombre || selectedEmpleado
+                            : 'Selecciona un Tecnico'
+                          }
+                        </Text>
+                      </View>
+                      <Ionicons name={showEmpleadoDropdown ? "chevron-up" : "chevron-down"} size={20} color="#64748b" />
                     </TouchableOpacity>
 
                     {showEmpleadoDropdown && (
-                      <View style={[styles.dropdownList, { maxHeight: 250 }]}>
+                      <View style={{
+                        backgroundColor: '#1e293b',
+                        borderWidth: 1,
+                        borderColor: '#334155',
+                        borderRadius: 12,
+                        marginTop: 4,
+                        maxHeight: 200,
+                        overflow: 'hidden',
+                        zIndex: 1000,
+                        elevation: 5,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.3,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 4 }
+                      }}>
                         <ScrollView showsVerticalScrollIndicator={false}>
                           {empleados.length === 0 ? (
-                            <View style={styles.dropdownItem}>
-                              <Text style={[styles.dropdownItemText, { color: '#9ca3af' }]}>
-                                No hay empleados disponibles
-                              </Text>
+                            <View style={{ padding: 16, alignItems: 'center' }}>
+                              <Text style={[{ color: '#64748b', fontSize: 13 }, { fontFamily }]}>No hay empleados disponibles</Text>
                             </View>
                           ) : (
                             empleados.map((empleado, index) => (
                               <TouchableOpacity
                                 key={index}
-                                style={[
-                                  styles.dropdownItem,
-                                  selectedEmpleado === empleado.email && { backgroundColor: 'rgba(10, 184, 111, 0.2)' }
-                                ]}
+                                style={{
+                                  paddingHorizontal: 16,
+                                  paddingVertical: 14,
+                                  borderBottomWidth: index === empleados.length - 1 ? 0 : 1,
+                                  borderBottomColor: 'rgba(51, 65, 85, 0.5)',
+                                  backgroundColor: selectedEmpleado === empleado.email ? 'rgba(249, 115, 22, 0.1)' : 'transparent',
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  gap: 12
+                                }}
                                 onPress={() => {
                                   setSelectedEmpleado(empleado.email);
                                   setShowEmpleadoDropdown(false);
                                 }}
                               >
-                                <Text style={[styles.dropdownItemText, { color: '#f0f9ff' }]}>
-                                  {empleado.nombre} ({empleado.email})
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: selectedEmpleado === empleado.email ? '#fb923c' : '#475569' }} />
+                                <Text style={[{ color: selectedEmpleado === empleado.email ? '#fff' : '#cbd5e1', fontSize: 14, fontWeight: selectedEmpleado === empleado.email ? '700' : '500' }, { fontFamily }]}>
+                                  {empleado.nombre}
                                 </Text>
                               </TouchableOpacity>
                             ))
@@ -6137,45 +6180,74 @@ function AdminPanelContent() {
                   </View>
 
                   {/* Descripción */}
-                  <View style={styles.formGroup}>
-                    <Text style={[styles.formLabel, { fontFamily }]}>Descripción de la tarea*</Text>
-                    <TextInput
-                      style={[styles.formTextArea, { fontFamily, color: '#f0f9ff' }]}
-                      placeholder="Describe la tarea a realizar..."
-                      placeholderTextColor="#6b7280"
-                      multiline
-                      numberOfLines={4}
-                      value={tareasDescripcion}
-                      onChangeText={setTareasDescripcion}
-                      editable={!creandoTarea}
-                    />
+                  <View style={{ gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="document-text-outline" size={14} color="#94a3b8" />
+                      <Text style={[{ fontSize: 11, color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }, { fontFamily }]}>DESCRIPCIÓN DE LA TAREA *</Text>
+                    </View>
+                    <View style={{
+                      backgroundColor: '#161f2e',
+                      borderWidth: 1.5,
+                      borderColor: '#1e293b',
+                      borderRadius: 12,
+                      padding: 4,
+                      minHeight: 120
+                    }}>
+                      <TextInput
+                        style={[{
+                          flex: 1,
+                          color: '#f8fafc',
+                          fontSize: 14,
+                          padding: 12,
+                          textAlignVertical: 'top'
+                        }, { fontFamily }]}
+                        placeholder="Describe detalladamente el trabajo a realizar..."
+                        placeholderTextColor="#475569"
+                        multiline
+                        numberOfLines={5}
+                        value={tareasDescripcion}
+                        onChangeText={setTareasDescripcion}
+                        editable={!creandoTarea}
+                      />
+                    </View>
                   </View>
                 </View>
 
-                <View style={styles.modalActions}>
+                {/* Acciones */}
+                <View style={{ flexDirection: 'row', gap: 12 }}>
                   <TouchableOpacity
-                    style={styles.modalSecondary}
                     onPress={() => setShowTareasModal(false)}
                     disabled={creandoTarea}
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'transparent',
+                      borderWidth: 1,
+                      borderColor: '#334155',
+                      borderRadius: 12,
+                      paddingVertical: 14,
+                      alignItems: 'center'
+                    }}
                   >
-                    <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cancelar</Text>
+                    <Text style={[{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }, { fontFamily }]}>Cancelar</Text>
                   </TouchableOpacity>
-                  <LinearGradient
-                    colors={['#ea580c', '#f97316']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.modalPrimary}
+
+                  <TouchableOpacity
+                    onPress={handleCrearTarea}
+                    disabled={creandoTarea || !selectedEmpleado || !tareasDescripcion.trim()}
+                    activeOpacity={0.8}
+                    style={{ flex: 1.5, overflow: 'hidden', borderRadius: 12 }}
                   >
-                    <TouchableOpacity
-                      onPress={handleCrearTarea}
-                      disabled={creandoTarea}
-                      activeOpacity={0.85}
+                    <LinearGradient
+                      colors={creandoTarea || !selectedEmpleado || !tareasDescripcion.trim() ? ['#4b5563', '#374151'] : ['#fb923c', '#ea580c']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{ flex: 1, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' }}
                     >
-                      <Text style={[styles.modalPrimaryText, { fontFamily }]}>
+                      <Text style={[{ color: (creandoTarea || !selectedEmpleado || !tareasDescripcion.trim()) ? '#94a3b8' : '#fff', fontSize: 14, fontWeight: '800' }, { fontFamily }]}>
                         {creandoTarea ? 'Creando...' : 'Crear Tarea'}
                       </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -6341,42 +6413,23 @@ function AdminPanelContent() {
         )
       }
 
-      {/* Modal de Historial de Tareas - Diseño Moderno */}
+      {/* Modal de Historial de Tareas - Diseño Premium */}
       {
         showTareasHistorialModal && (
           <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 700 }]}>
-              {/* Header con gradiente */}
-              <LinearGradient
-                colors={['#1e293b', '#0f172a']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[
-                  styles.largeModalHeader,
-                  isMobile && styles.largeModalHeaderMobile,
-                  {
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#334155',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    alignItems: isMobile ? 'flex-start' : 'center',
-                    gap: isMobile ? 12 : 12
-                  }
-                ]}
-              >
-                <View style={{ flex: 1, width: '100%' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-                    <View style={{ backgroundColor: 'rgba(148, 163, 184, 0.2)', borderRadius: 8, padding: 8 }}>
-                      <Ionicons name="list-outline" size={24} color="#94a3b8" />
-                    </View>
-                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily, fontSize: 22, fontWeight: '800', flexShrink: 1 }]}>
-                      Historial de Tareas
-                    </Text>
+            <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 800, backgroundColor: '#0b1220', borderColor: '#1e293b', padding: 0 }]}>
+              {/* Header Rediseñado */}
+              <View style={{ padding: 24, borderBottomWidth: 1, borderBottomColor: '#1e293b', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0f172a' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.15)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.3)' }}>
+                    <Ionicons name="list" size={24} color="#67e8f9" />
                   </View>
-                  <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily, color: '#64748b' }]}>
-                    Todas las tareas creadas
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[{ color: '#fff', fontSize: 22, fontWeight: '800' }, { fontFamily }]}>Historial de Tareas</Text>
+                    <Text style={[{ color: '#64748b', fontSize: 13, marginTop: 2 }, { fontFamily }]}>Registro completo de asignaciones directas</Text>
+                  </View>
                 </View>
-                <View style={[styles.largeModalActions, isMobile && { width: '100%', justifyContent: 'space-between', marginTop: 4 }]}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
                   <TouchableOpacity
                     onPress={async () => {
                       setLoadingTareas(true);
@@ -6385,152 +6438,159 @@ function AdminPanelContent() {
                       else setTareas(data || []);
                       setLoadingTareas(false);
                     }}
-                    style={[styles.refreshButton, { flexDirection: 'row', alignItems: 'center', gap: 6, flex: isMobile ? 1 : 0, justifyContent: 'center' }]}
+                    style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: 12, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}
                   >
-                    <Ionicons name="refresh" size={16} color="#67e8f9" />
-                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
+                    <Ionicons name="refresh" size={18} color="#67e8f9" />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={[styles.closeButton, isMobile && { alignSelf: 'flex-end' }]}>
-                    <Ionicons name="close" size={20} color="#cbd5e1" />
+                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: 12, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}>
+                    <Ionicons name="close" size={20} color="#94a3b8" />
                   </TouchableOpacity>
                 </View>
-              </LinearGradient>
+              </View>
 
-              {loadingTareas && (
-                <View style={styles.infoBox}>
-                  <Text style={[styles.infoText, { fontFamily }]}>Cargando tareas...</Text>
-                </View>
-              )}
+              <View style={{ flex: 1, padding: 20 }}>
+                {loadingTareas && (
+                  <View style={{ paddingVertical: 100, alignItems: 'center' }}>
+                    <Text style={[{ color: '#67e8f9', fontSize: 15, fontWeight: '600' }, { fontFamily }]}>Cargando historial...</Text>
+                  </View>
+                )}
 
-              {!loadingTareas && errorTareas ? (
-                <View style={styles.errorPanel}>
-                  <Text style={[styles.errorPanelText, { fontFamily }]}>{errorTareas}</Text>
-                </View>
-              ) : null}
+                {!loadingTareas && errorTareas ? (
+                  <View style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderLeftWidth: 3, borderLeftColor: '#ef4444', padding: 16, borderRadius: 8 }}>
+                    <Text style={[{ color: '#fca5a5', fontSize: 14 }, { fontFamily }]}>{errorTareas}</Text>
+                  </View>
+                ) : null}
 
-              {!loadingTareas && !errorTareas && tareas.length === 0 ? (
-                <View style={[styles.infoBox, { paddingVertical: 60 }]}>
-                  <Ionicons name="document-text-outline" size={64} color="#334155" style={{ marginBottom: 16 }} />
-                  <Text style={[styles.infoText, { fontFamily, fontSize: 16, fontWeight: '600', marginBottom: 8 }]}>No hay tareas registradas</Text>
-                  <Text style={[{ color: '#64748b', fontSize: 14, textAlign: 'center' }, { fontFamily }]}>
-                    Aún no se han creado tareas en el sistema
-                  </Text>
-                </View>
-              ) : null}
+                {!loadingTareas && !errorTareas && tareas.length === 0 ? (
+                  <View style={{ paddingVertical: 100, alignItems: 'center', gap: 16 }}>
+                    <View style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)', borderRadius: 40, padding: 24 }}>
+                      <Ionicons name="document-text-outline" size={48} color="#334155" />
+                    </View>
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={[{ color: '#fff', fontSize: 18, fontWeight: '700' }, { fontFamily }]}>No hay tareas registradas</Text>
+                      <Text style={[{ color: '#64748b', fontSize: 14, textAlign: 'center', marginTop: 8 }, { fontFamily }]}>
+                        Aún no se han creado tareas en el sistema para administración
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
 
-              {!loadingTareas && !errorTareas && tareas.length > 0 ? (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={styles.listSpacing}>
-                    {/* Contador de tareas */}
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: '#06b6d4' }}>
-                      <Text style={[{ color: '#67e8f9', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
-                        📋 {tareas.length} {tareas.length === 1 ? 'tarea registrada' : 'tareas registradas'}
+                {!loadingTareas && !errorTareas && tareas.length > 0 ? (
+                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                    {/* Contador Estilizado */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(6, 182, 212, 0.05)', borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)' }}>
+                      <View style={{ backgroundColor: '#06b6d4', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>{tareas.length}</Text>
+                      </View>
+                      <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '700' }, { fontFamily }]}>
+                        {tareas.length === 1 ? 'Tarea registrada' : 'Tareas registradas en total'}
                       </Text>
                     </View>
 
-                    {tareas.map((tarea: any) => (
-                      <View
-                        key={tarea.id}
-                        style={{
-                          backgroundColor: '#1e293b',
-                          borderRadius: 12,
-                          padding: 16,
-                          marginBottom: 12,
-                          borderWidth: 1,
-                          borderColor: '#334155',
-                          shadowColor: '#000',
-                          shadowOpacity: 0.1,
-                          shadowRadius: 4,
-                          shadowOffset: { width: 0, height: 2 },
-                        }}
-                      >
-                        {/* Header de la tarea */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                          <View style={{ flex: 1, marginRight: 12 }}>
-                            <Text style={[{ color: '#f1f5f9', fontSize: 15, fontWeight: '700', marginBottom: 4 }, { fontFamily }]}>
-                              {tarea.descripcion || 'Sin descripción'}
-                            </Text>
-                          </View>
-                          {/* Badge de estado */}
-                          <View
-                            style={{
-                              backgroundColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                              borderRadius: 6,
-                              paddingHorizontal: 10,
-                              paddingVertical: 4,
+                    <View style={{ gap: 16 }}>
+                      {tareas.map((tarea: any) => (
+                        <View
+                          key={tarea.id}
+                          style={{
+                            backgroundColor: '#161f2e',
+                            borderRadius: 16,
+                            padding: 20,
+                            borderWidth: 1,
+                            borderColor: '#1e293b',
+                            shadowColor: '#000',
+                            shadowOpacity: 0.2,
+                            shadowRadius: 10,
+                            shadowOffset: { width: 0, height: 4 },
+                          }}
+                        >
+                          {/* Top Row: Description & Status */}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+                            <View style={{ flex: 1, marginRight: 16 }}>
+                              <Text style={[{ color: '#f8fafc', fontSize: 16, fontWeight: '800', lineHeight: 22 }, { fontFamily }]}>
+                                {tarea.descripcion || tarea.titulo || 'Sin descripción'}
+                              </Text>
+                            </View>
+                            <View style={{
+                              backgroundColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 8,
                               borderWidth: 1,
-                              borderColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(251, 191, 36, 0.4)',
-                            }}
-                          >
-                            <Text
-                              style={[
-                                {
-                                  color: tarea.estado === 'completada' ? '#86efac' : '#fde047',
-                                  fontSize: 11,
-                                  fontWeight: '700',
-                                  textTransform: 'uppercase',
-                                },
-                                { fontFamily },
-                              ]}
-                            >
-                              {tarea.estado === 'completada' ? '✓ Completada' : '⏳ Pendiente'}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Información de la tarea */}
-                        <View style={{ gap: 8 }}>
-                          {/* Creada por */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ backgroundColor: 'rgba(139, 92, 246, 0.2)', borderRadius: 6, padding: 6 }}>
-                              <Ionicons name="person-outline" size={14} color="#a78bfa" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Creada por:</Text>
-                              <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>Admin</Text>
-                            </View>
-                          </View>
-
-                          {/* Fecha de creación */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.2)', borderRadius: 6, padding: 6 }}>
-                              <Ionicons name="calendar-outline" size={14} color="#67e8f9" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#94a3b8', fontSize: 11, marginBottom: 2 }, { fontFamily }]}>Fecha:</Text>
-                              <Text style={[{ color: '#e2e8f0', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
-                                {tarea.fecha_creacion ? new Date(tarea.fecha_creacion).toLocaleDateString('es-MX', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                }) : 'Fecha no disponible'}
+                              borderColor: tarea.estado === 'completada' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)'
+                            }}>
+                              <Text style={[{ color: tarea.estado === 'completada' ? '#4ade80' : '#fbbf24', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }, { fontFamily }]}>
+                                {tarea.estado === 'completada' ? '✓ Completada' : '⏳ Pendiente'}
                               </Text>
                             </View>
                           </View>
+
+                          <View style={{ height: 1, backgroundColor: 'rgba(255, 255, 255, 0.05)', marginBottom: 18 }} />
+
+                          {/* Info Rows */}
+                          <View style={{ gap: 12 }}>
+                            {/* Row: Creado Por & Asignado A */}
+                            <View style={{ flexDirection: 'row', gap: 20 }}>
+                              <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(139, 92, 246, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+                                  <Ionicons name="person-circle" size={18} color="#a78bfa" />
+                                </View>
+                                <View>
+                                  <Text style={[{ color: '#64748b', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>CREADO POR</Text>
+                                  <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]} numberOfLines={1}>{tarea.admin_nombre || 'Admin'}</Text>
+                                </View>
+                              </View>
+
+                              <View style={{ flex: 1.2, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(14, 165, 233, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(14, 165, 233, 0.2)' }}>
+                                  <Ionicons name="people" size={18} color="#0ea5e9" />
+                                </View>
+                                <View>
+                                  <Text style={[{ color: '#0ea5e9', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>ASIGNADO A</Text>
+                                  <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]} numberOfLines={1}>{tarea.empleado_email || 'No asignado'}</Text>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Row: Fecha */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(100, 116, 139, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(100, 116, 139, 0.2)' }}>
+                                <Ionicons name="calendar-clear" size={16} color="#94a3b8" />
+                              </View>
+                              <View>
+                                <Text style={[{ color: '#64748b', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>FECHA DE CREACIÓN</Text>
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                                  {tarea.created_at ? new Date(tarea.created_at).toLocaleDateString('es-MX', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }) : 'Fecha no disponible'}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
                         </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
+                      ))}
+                    </View>
+                  </ScrollView>
+                ) : null}
+              </View>
 
               {/* Footer */}
-              <View style={{ borderTopWidth: 1, borderTopColor: '#334155', padding: 16, backgroundColor: '#0f172a' }}>
+              <View style={{ borderTopWidth: 1, borderTopColor: '#1e293b', padding: 20, backgroundColor: '#0f172a' }}>
                 <TouchableOpacity
+                  onPress={() => setShowTareasHistorialModal(false)}
                   style={{
                     backgroundColor: '#1e293b',
-                    borderRadius: 8,
-                    padding: 14,
+                    borderRadius: 12,
+                    paddingVertical: 14,
                     alignItems: 'center',
                     borderWidth: 1,
-                    borderColor: '#334155',
+                    borderColor: '#334155'
                   }}
-                  onPress={() => setShowTareasHistorialModal(false)}
-                  activeOpacity={0.8}
                 >
-                  <Text style={[{ color: '#cbd5e1', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>Cerrar</Text>
+                  <Text style={[{ color: '#fff', fontSize: 15, fontWeight: '700' }, { fontFamily }]}>Cerrar Panel</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -7156,128 +7216,6 @@ function AdminPanelContent() {
         )
       }
 
-      {/* Modal Historial de Tareas */}
-      {
-        showTareasHistorialModal && (
-          <View style={styles.overlayHeavy}>
-            <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
-              <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                  <View style={{ backgroundColor: '#0891b2', borderRadius: 12, padding: 10 }}>
-                    <Ionicons name="list-outline" size={24} color="#06b6d4" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.largeModalTitle, isMobile && styles.largeModalTitleMobile, { fontFamily }]}>Historial de Tareas</Text>
-                    <Text style={[styles.largeModalSubtitle, isMobile && styles.largeModalSubtitleMobile, { fontFamily }]}>Todas las tareas creadas</Text>
-                  </View>
-                </View>
-                <View style={styles.largeModalActions}>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      setLoadingTareas(true);
-                      setErrorTareas('');
-                      const { success, data, error } = await obtenerTareasBackend();
-                      if (!success) setErrorTareas(error || 'No se pudieron cargar las tareas');
-                      else setTareas(data || []);
-                      setLoadingTareas(false);
-                    }}
-                    style={styles.refreshButton}
-                  >
-                    <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={styles.closeButton} activeOpacity={0.7}>
-                    <Ionicons name="close" size={20} color="#cbd5e1" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {loadingTareas ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={[{ color: '#94a3b8', fontSize: 16 }, { fontFamily }]}>Cargando tareas...</Text>
-                </View>
-              ) : errorTareas ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="alert-circle" size={40} color="#ef4444" />
-                  <Text style={[{ color: '#fca5a5', fontSize: 16, marginTop: 12 }, { fontFamily }]}>{errorTareas}</Text>
-                </View>
-              ) : tareas.length === 0 ? (
-                <View style={{ paddingVertical: 40, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="document-outline" size={40} color="#64748b" />
-                  <Text style={[{ color: '#94a3b8', fontSize: 16, marginTop: 12 }, { fontFamily }]}>No hay tareas creadas</Text>
-                </View>
-              ) : (
-                <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
-                  <View style={{ gap: 12, paddingHorizontal: 20, paddingVertical: 16 }}>
-                    {tareas.map((tarea, index) => {
-                      const estadoColor = tarea.estado === 'completada' ? '#10b981' :
-                        tarea.estado === 'en_proceso' ? '#f59e0b' :
-                          tarea.estado === 'rechazada' ? '#ef4444' : '#06b6d4';
-                      const estadoLabel = tarea.estado === 'completada' ? 'Completada' :
-                        tarea.estado === 'en_proceso' ? 'En Proceso' :
-                          tarea.estado === 'rechazada' ? 'Rechazada' : 'Pendiente';
-
-                      return (
-                        <View key={index} style={[styles.detailSection, isMobile && { paddingHorizontal: 12, paddingVertical: 12 }]}>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[{ color: '#f0f9ff', fontSize: isMobile ? 14 : 16, fontWeight: '700', marginBottom: 8 }, { fontFamily }]}>
-                                {tarea.descripcion}
-                              </Text>
-                            </View>
-                            <View style={{ backgroundColor: estadoColor + '20', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: estadoColor + '40' }}>
-                              <Text style={[{ color: estadoColor, fontSize: 11, fontWeight: '700' }, { fontFamily }]}>
-                                {estadoLabel}
-                              </Text>
-                            </View>
-                          </View>
-
-                          <View style={{ gap: 10, marginTop: 12 }}>
-                            {tarea.admin_nombre && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="person-circle-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  <Text style={{ fontWeight: '600' }}>Creada por:</Text> {tarea.admin_nombre}
-                                </Text>
-                              </View>
-                            )}
-
-                            {tarea.empleado_nombre && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="person-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  <Text style={{ fontWeight: '600' }}>Asignada a:</Text> {tarea.empleado_nombre}
-                                </Text>
-                              </View>
-                            )}
-
-                            {tarea.created_at && (
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Ionicons name="calendar-outline" size={16} color="#94a3b8" />
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13 }, { fontFamily }]}>
-                                  {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                </ScrollView>
-              )}
-
-              <View style={[styles.modalActions, { marginTop: 16, gap: 10 }]}>
-                <TouchableOpacity
-                  style={[styles.modalSecondary, { flex: 1 }]}
-                  onPress={() => setShowTareasHistorialModal(false)}
-                >
-                  <Text style={[styles.modalSecondaryText, { fontFamily }]}>Cerrar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )
-      }
 
       {/* Modal Inventario del Empleado */}
       {
