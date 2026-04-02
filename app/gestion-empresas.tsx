@@ -311,16 +311,15 @@ export default function GestionEmpresasScreen() {
     await cargarEquipos(sucursalSeleccionada.id);
   };
 
-  const handleEliminarEquipo = (eq: EquipoSucursal) => {
-    Alert.alert('Eliminar equipo', `¿Eliminar "${eq.nombre}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive', onPress: async () => {
-          await eliminarEquipoSucursal(eq.id);
-          await cargarEquipos(sucursalSeleccionada!.id);
-        }
-      }
-    ]);
+  const handleEliminarEquipo = async (eq: EquipoSucursal) => {
+    setConfirmTitle('Eliminar equipo');
+    setConfirmMsg(`¿Eliminar "${eq.nombre}"? Esta acción no se puede deshacer.`);
+    setConfirmAction(() => async () => {
+      const res = await eliminarEquipoSucursal(eq.id);
+      if (!res.success) { setError(res.error || 'Error al eliminar'); return; }
+      await cargarEquipos(sucursalSeleccionada!.id);
+    });
+    setShowConfirmModal(true);
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
