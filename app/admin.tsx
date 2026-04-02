@@ -2303,7 +2303,7 @@ function AdminPanelContent() {
                                   color: obtenerColorCalificacion(encuesta.satisfaccion).text,
                                   fontFamily
                                 }]}>
-                                  {encuesta.satisfaccion || '0'}/5
+                                  {encuesta.satisfaccion || '-'}
                                 </Text>
                               </View>
                             </View>
@@ -6064,7 +6064,7 @@ function AdminPanelContent() {
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.satisfaccion).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 10 : 11, fontWeight: '700' }, { fontFamily }]}>
-                            ★ {selectedEncuesta.satisfaccion} / 5
+                            ★ {selectedEncuesta.satisfaccion}
                           </Text>
                         </View>
                       </View>
