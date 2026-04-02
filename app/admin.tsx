@@ -76,13 +76,13 @@ function AdminPanelContent() {
   // Helper para obtener colores según calificación
   const obtenerColorCalificacion = (valor: string | number) => {
     const v = String(valor).toLowerCase();
-    if (v.includes('excelente') || v.includes('muy bueno') || v === '5' || v === '4') {
+    if (v.includes('excelente') || v.includes('muy bueno') || v.includes('si lo hizo') || v.includes('si lo realizo') || v.includes('muy satisfecha/o') || v === 'satisfecha/o' || v === '5' || v === '4') {
       return { text: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', icon: '#10b981' };
     }
-    if (v.includes('bueno') || v.includes('regular') || v === '3' || v === '2') {
+    if (v.includes('bueno') || v.includes('regular') || v.includes('pero no fue claro') || v.includes('no le di el tiempo') || v.includes('parcialmente satisfecha/o') || v === '3' || v === '2') {
       return { text: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.3)', icon: '#f59e0b' };
     }
-    if (v.includes('malo') || v === '1' || v === '0') {
+    if (v.includes('malo') || v.includes('no lo hizo') || v.includes('no lo realizo') || v.includes('nada satisfecha/o') || v === '1' || v === '0') {
       return { text: '#f87171', bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.3)', icon: '#ef4444' };
     }
     return { text: '#94a3b8', bg: 'rgba(148, 163, 184, 0.1)', border: 'rgba(148, 163, 184, 0.2)', icon: '#94a3b8' };
@@ -5930,6 +5930,24 @@ function AdminPanelContent() {
                     </View>
                   ) : null}
 
+                  {selectedEncuesta.presentacion_motivo ? (
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.presentacion_motivo).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.presentacion_motivo).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                        Presentación y motivo de visita
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.presentacion_motivo).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                          {selectedEncuesta.presentacion_motivo}
+                        </Text>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.presentacion_motivo).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                            ★ {selectedEncuesta.presentacion_motivo}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
                   {selectedEncuesta.equipo_tecnico ? (
                     <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.equipo_tecnico).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
@@ -5978,6 +5996,24 @@ function AdminPanelContent() {
                         <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.rapidez).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.rapidez}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedEncuesta.aviso_retiro ? (
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.aviso_retiro).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.aviso_retiro).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                      <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
+                        Aviso de retiro y explicación
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.aviso_retiro).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                          {selectedEncuesta.aviso_retiro}
+                        </Text>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.aviso_retiro).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                          <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
+                            ★ {selectedEncuesta.aviso_retiro}
                           </Text>
                         </View>
                       </View>

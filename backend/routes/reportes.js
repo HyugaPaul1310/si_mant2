@@ -689,7 +689,9 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
       rapidez,
       costo_calidad,
       recomendacion,
-      satisfaccion
+      satisfaccion,
+      presentacion_motivo,
+      aviso_retiro
     } = req.body;
 
     console.log('[BACKEND-ENCUESTA] Guardando encuesta para reporte:', reporte_id);
@@ -702,9 +704,9 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO encuestas_satisfaccion 
        (reporte_id, cliente_email, cliente_nombre, empleado_email, empleado_nombre, empresa, 
-        trato_equipo, equipo_tecnico, personal_administrativo, rapidez, costo_calidad, 
+        trato_equipo, presentacion_motivo, equipo_tecnico, personal_administrativo, rapidez, aviso_retiro, costo_calidad, 
         satisfaccion)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         reporte_id,
         cliente_email,
@@ -713,9 +715,11 @@ router.post('/encuestas/guardar', verifyToken, async (req, res) => {
         empleado_nombre || null,
         empresa || null,
         trato_equipo || null,
+        presentacion_motivo || null,
         equipo_tecnico || null,
         personal_administrativo || null,
         rapidez || null,
+        aviso_retiro || null,
         costo_calidad || null,
         satisfaccion || null
       ]
