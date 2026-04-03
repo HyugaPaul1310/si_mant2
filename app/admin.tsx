@@ -75,7 +75,7 @@ function AdminPanelContent() {
 
   // Helper para obtener colores según calificación
   const obtenerColorCalificacion = (valor: string | number) => {
-    const v = String(valor).toLowerCase();
+    const v = String(valor).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (v.includes('excelente') || v.includes('muy bueno') || v.includes('si lo hizo') || v.includes('si lo realizo') || v.includes('muy satisfecha/o') || v === 'satisfecha/o' || v === '5' || v === '4') {
       return { text: '#34d399', bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', icon: '#10b981' };
     }
@@ -5913,15 +5913,15 @@ function AdminPanelContent() {
                   </Text>
 
                   {selectedEncuesta.trato_equipo ? (
-                    <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.1)', borderLeftWidth: 3, borderLeftColor: '#06b6d4', padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
+                    <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.trato_equipo).bg, borderLeftWidth: 3, borderLeftColor: obtenerColorCalificacion(selectedEncuesta.trato_equipo).icon, padding: isMobile ? 10 : 12, borderRadius: 6, gap: 8 }}>
                       <Text style={[{ color: '#cbd5e1', fontSize: isMobile ? 12 : 13, fontWeight: '600' }, { fontFamily }]}>
                         Trato del equipo técnico
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <Text style={[{ color: '#06b6d4', fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
+                        <Text style={[{ color: obtenerColorCalificacion(selectedEncuesta.trato_equipo).text, fontSize: isMobile ? 11 : 12 }, { fontFamily }]}>
                           {selectedEncuesta.trato_equipo}
                         </Text>
-                        <View style={{ backgroundColor: '#06b6d4', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <View style={{ backgroundColor: obtenerColorCalificacion(selectedEncuesta.trato_equipo).icon, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 }}>
                           <Text style={[{ color: '#0b1220', fontSize: isMobile ? 9 : 10, fontWeight: '700' }, { fontFamily }]}>
                             ★ {selectedEncuesta.trato_equipo}
                           </Text>

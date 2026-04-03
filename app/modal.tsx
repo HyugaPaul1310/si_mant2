@@ -468,8 +468,8 @@ export default function GenerarReporteScreen() {
               </Text>
               <TextInput
                 style={[
-                  styles.textInput, 
-                  { fontFamily }, 
+                  styles.textInput,
+                  { fontFamily },
                   equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
                 ]}
                 value={equipoDescripcion}
@@ -486,8 +486,8 @@ export default function GenerarReporteScreen() {
                 <Text style={[styles.fieldLabel, { fontFamily }]}>Modelo</Text>
                 <TextInput
                   style={[
-                    styles.textInput, 
-                    { fontFamily }, 
+                    styles.textInput,
+                    { fontFamily },
                     equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
                   ]}
                   value={equipoModelo}
@@ -502,8 +502,8 @@ export default function GenerarReporteScreen() {
                 <Text style={[styles.fieldLabel, { fontFamily }]}>Serie</Text>
                 <TextInput
                   style={[
-                    styles.textInput, 
-                    { fontFamily }, 
+                    styles.textInput,
+                    { fontFamily },
                     equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
                   ]}
                   value={equipoSerie}

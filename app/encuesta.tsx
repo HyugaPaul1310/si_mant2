@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const OPCIONES_ESTANDAR = ['Excelente', 'Muy Bueno', 'Bueno', 'Regular', 'Malo'];
+const OPCIONES_ESTANDAR = ['EXCELENTE', 'MUY BUENO', 'BUENO', 'REGULAR', 'MALO'];
 
 const PREGUNTAS = [
   {
@@ -27,43 +27,43 @@ const PREGUNTAS = [
   },
   {
     id: 2,
-    texto: '¿EL PERSONAL TECNICO DE SI MANT SE PRESENTO Y EXPLICO EL MOTIVO DE LA VISITA?',
+    texto: '¿EL PERSONAL TÉCNICO DE SI MANT SE PRESENTÓ Y EXPLICÓ EL MOTIVO DE LA VISITA?',
     key: 'presentacion_motivo',
-    opciones: ['SI LO REALIZO', 'NO LO REALIZO']
+    opciones: ['SI LO REALIZÓ', 'NO LO REALIZÓ']
   },
   {
     id: 3,
-    texto: '¿ EL EQUIPO TECNICO DE SI MANT RESOLVIO EL PROBLEMA O REALIZO LA TAREA PARA LA CUAL REALIZO LA VISITA A SU SUCURSAL?',
+    texto: '¿EL EQUIPO TÉCNICO DE SI MANT RESOLVIÓ EL PROBLEMA O REALIZÓ LA TAREA PARA LA CUAL REALIZÓ LA VISITA A SU SUCURSAL?',
     key: 'equipo_tecnico',
-    opciones: ['SI LO HIZO', 'NO LO HIZO', 'NO ESTOY SEGURA/O']
+    opciones: ['SÍ LO HIZO', 'NO LO HIZO', 'NO ESTOY SEGURA/O']
   },
   {
     id: 4,
-    texto: 'El personal administrativo que recibe mi solicitud me atiende de forma:',
+    texto: 'EL PERSONAL ADMINISTRATIVO QUE RECIBE MI SOLICITUD ME ATIENDE DE FORMA:',
     key: 'personal_administrativo',
     opciones: OPCIONES_ESTANDAR
   },
   {
     id: 5,
-    texto: 'La rapidez en la resolución del problema fue:',
+    texto: 'LA RAPIDEZ EN LA RESOLUCIÓN DEL PROBLEMA FUE:',
     key: 'rapidez',
     opciones: OPCIONES_ESTANDAR
   },
   {
     id: 6,
-    texto: '¿EL PERSONAL TECNICO DE SI MANT, AL TEMRNIAR CON SUS ACTIVIDADES AVISO QUE SE RETIRABA DEL SITIO Y EXPLICO LO REALIZADO DURANTE LA VISITA Y/O EXPLICO EL PROBLEMA ENCONTRADO?',
+    texto: '¿EL PERSONAL TÉCNICO DE SI MANT, AL TERMINAR CON SUS ACTIVIDADES AVISÓ QUE SE RETIRABA DEL SITIO Y EXPLICÓ LO REALIZADO DURANTE LA VISITA Y/O EXPLICÓ EL PROBLEMA ENCONTRADO?',
     key: 'aviso_retiro',
-    opciones: ['SI LO HIZO', 'NO LO HIZO', 'SI LO HIZO, PERO NO FUE CLARO', 'NO LE DI EL TIEMPO PARA QUE ME EXPLICARA']
+    opciones: ['SÍ LO HIZO', 'NO LO HIZO', 'SÍ LO HIZO, PERO NO FUE CLARO', 'NO LE DI EL TIEMPO PARA QUE ME EXPLICARA']
   },
   {
     id: 7,
-    texto: 'El costo del servicio en relación a la calidad fue:',
+    texto: 'EL COSTO DEL SERVICIO EN RELACIÓN A LA CALIDAD FUE:',
     key: 'costo_calidad',
     opciones: OPCIONES_ESTANDAR
   },
   {
     id: 8,
-    texto: '¿Qué tan satisfecho está con la solución proporcionada?',
+    texto: '¿QUÉ TAN SATISFECHO ESTÁ CON LA SOLUCIÓN PROPORCIONADA?',
     key: 'satisfaccion',
     opciones: ['MUY SATISFECHA/O', 'SATISFECHA/O', 'PARCIALMENTE SATISFECHA/O', 'NADA SATISFECHA/O']
   },
