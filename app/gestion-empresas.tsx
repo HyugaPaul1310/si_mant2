@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import {
   actualizarEmpresa,
   actualizarEquipoSucursal,
@@ -17,23 +18,23 @@ import {
   type Sucursal,
 } from '@/lib/empresas';
 import { obtenerHistorialEquipo } from '@/lib/reportes';
-import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -45,6 +46,8 @@ const BORDER = '#1f2937';
 
 export default function GestionEmpresasScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWide = width > 800;
 
   // --- data ---
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -399,9 +402,9 @@ export default function GestionEmpresasScreen() {
           {/* Acciones sobre la empresa seleccionada */}
           {empresaSeleccionada && (
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-              <TouchableOpacity style={s.actionChip} onPress={handleActualizarLogoEmpresa}>
-                <Ionicons name="image-outline" size={14} color={CC} />
-                <Text style={s.actionChipText}>Cambiar logo</Text>
+              <TouchableOpacity style={[s.actionChip, subiendoImagen && { opacity: 0.5 }]} onPress={handleActualizarLogoEmpresa} disabled={subiendoImagen}>
+                {subiendoImagen ? <ActivityIndicator size="small" color={CC} /> : <Ionicons name="image-outline" size={14} color={CC} />}
+                <Text style={s.actionChipText}>{subiendoImagen ? 'Subiendo...' : 'Cambiar logo'}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.actionChip} onPress={() => {
                 setEditEmpresaNombre(empresaSeleccionada.nombre);
@@ -468,26 +471,28 @@ export default function GestionEmpresasScreen() {
                       <Text style={s.sucDir} numberOfLines={2}>{suc.direccion}</Text>
                       {suc.ciudad ? <Text style={s.sucCity}>{suc.ciudad}</Text> : null}
                     </View>
-                    <View style={{ gap: 6 }}>
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 8 }}>
                       <TouchableOpacity onPress={() => {
                         setSucursalSeleccionada(suc);
                         setEditSucursalNombre(suc.nombre);
                         setEditSucursalDireccion(suc.direccion);
                         setEditSucursalCiudad(suc.ciudad || '');
                         setShowEditarSucursalModal(true);
-                      }} style={s.iconBtn}>
-                        <Ionicons name="pencil" size={14} color={CC} />
+                      }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="pencil" size={16} color="#a78bfa" />
                       </TouchableOpacity>
+
                       {suc.imagen_url ? (
                         <TouchableOpacity onPress={() => {
                           setViewerImageUrl(getProxyUrl(suc.imagen_url!));
                           setShowImageViewer(true);
-                        }} style={s.iconBtn}>
-                          <Ionicons name="image-outline" size={14} color="#a78bfa" />
+                        }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(56, 189, 248, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="image-outline" size={16} color="#38bdf8" />
                         </TouchableOpacity>
                       ) : null}
-                      <TouchableOpacity onPress={() => handleEliminarSucursal(suc)} style={s.iconBtn}>
-                        <Ionicons name="trash" size={14} color="#f87171" />
+
+                      <TouchableOpacity onPress={() => handleEliminarSucursal(suc)} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="trash" size={16} color="#f87171" />
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
@@ -506,15 +511,11 @@ export default function GestionEmpresasScreen() {
                     setShowNuevoEquipoModal(true);
                   }}>
                     <Ionicons name="add" size={14} color="#0b1220" />
-                    <Text style={s.addBtnText}>+ Añadir</Text>
+                    <Text style={s.addBtnText}>Añadir</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Change branch image button */}
-                <TouchableOpacity style={s.changeBranchImageBtn} onPress={handleActualizarImagenSucursal}>
-                  <Ionicons name="camera-outline" size={14} color={CC} />
-                  <Text style={{ color: CC, fontSize: 12 }}>Cambiar imagen de sucursal</Text>
-                </TouchableOpacity>
+
 
                 <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
                   <View style={s.eqHeader}>
@@ -558,7 +559,7 @@ export default function GestionEmpresasScreen() {
                         {eq.modelo ? <Text style={s.eqSub} numberOfLines={1}>Modelo: {eq.modelo}</Text> : null}
                         {eq.serie ? <Text style={s.eqSub} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
                       </View>
-                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation?.();
@@ -570,18 +571,18 @@ export default function GestionEmpresasScreen() {
                             setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : '');
                             setShowEditarEquipoModal(true);
                           }}
-                          style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(139,92,246,0.1)', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Ionicons name="pencil" size={13} color="#a78bfa" />
+                          <Ionicons name="pencil" size={16} color="#a78bfa" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }}
-                          style={s.eqDeleteBtn}
+                          style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Ionicons name="trash-outline" size={13} color="#f87171" />
+                          <Ionicons name="trash" size={16} color="#f87171" />
                         </TouchableOpacity>
-                        <View style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: 'rgba(6,182,212,0.1)', alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons name="time-outline" size={13} color={CC} />
+                        <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(6, 182, 212, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="time" size={16} color="#06b6d4" />
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -594,121 +595,162 @@ export default function GestionEmpresasScreen() {
       </ScrollView>
 
       {/* ─── HISTORIAL DE EQUIPO ──────────────────────────────────────────── */}
-      <Modal visible={showHistorialModal} transparent animationType="slide">
-        <View style={{ flex: 1, backgroundColor: 'rgba(2,6,23,0.92)' }}>
+      {/* ─── HISTORIAL DE EQUIPO ──────────────────────────────────────────── */}
+      <Modal visible={showHistorialModal} transparent animationType="slide" onRequestClose={() => setShowHistorialModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.98)', paddingTop: 60, paddingHorizontal: '5%', paddingBottom: 20 }}>
+
+
           {/* Header */}
-          <View style={[s.header, { paddingTop: 50, borderBottomColor: BORDER }]}>
-            <TouchableOpacity onPress={() => setShowHistorialModal(false)} style={s.backBtn}>
-              <Ionicons name="close" size={20} color={CC} />
-            </TouchableOpacity>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.headerTitle, { fontSize: 15 }]}>Historial de Servicios</Text>
+              <Text style={s.modalTitlePremium}>Historial de Servicios</Text>
               {equipoHistorial && (
-                <Text style={{ color: '#64748b', fontSize: 11, marginTop: 2 }}>
+                <Text style={{ color: '#94a3b8', fontSize: 14, marginTop: 8, fontWeight: '600' }}>
                   {equipoHistorial.nombre}
-                  {equipoHistorial.modelo ? ` · Modelo: ${equipoHistorial.modelo}` : ''}
-                  {equipoHistorial.serie ? ` · Serie: ${equipoHistorial.serie}` : ''}
+                  {equipoHistorial.modelo ? ` · Mod: ${equipoHistorial.modelo}` : ''}
+                  {equipoHistorial.serie ? ` · SN: ${equipoHistorial.serie}` : ''}
                 </Text>
               )}
             </View>
+            <TouchableOpacity
+              onPress={() => setShowHistorialModal(false)}
+              style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' }}
+            >
+              <Ionicons name="close" size={24} color="#cbd5e1" />
+            </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
-            {cargandoHistorial && <ActivityIndicator color={CC} style={{ marginTop: 24 }} />}
+          <View style={{ flex: 1 }}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: 20, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+              {cargandoHistorial && <ActivityIndicator color="#8b5cf6" style={{ marginTop: 40 }} size="large" />}
 
-            {!cargandoHistorial && historialEquipo.length === 0 && (
-              <View style={{ alignItems: 'center', paddingTop: 60 }}>
-                <Ionicons name="clipboard-outline" size={48} color="#1e293b" />
-                <Text style={{ color: '#475569', marginTop: 12, fontSize: 14 }}>Sin servicios registrados</Text>
-                <Text style={{ color: '#334155', marginTop: 4, fontSize: 12 }}>Los reportes cerrados de este equipo aparecerán aquí.</Text>
-              </View>
-            )}
-
-            {historialEquipo.map((rep, idx) => {
-              const estadoColor = {
-                terminado: '#22c55e', cerrado: '#06b6d4', finalizado_por_tecnico: '#06b6d4',
-                en_proceso: '#f59e0b', pendiente: '#94a3b8', cotizado: '#a78bfa',
-              }[rep.estado] || '#64748b';
-
-              return (
-                <View key={rep.id} style={[s.card, { padding: 14, gap: 8 }]}>
-                  {/* Row 1: ID + fecha + estado */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={{ color: '#94a3b8', fontSize: 11 }}>Reporte #{rep.id} · {new Date(rep.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
-                    <View style={{ backgroundColor: estadoColor + '22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: estadoColor + '55' }}>
-                      <Text style={{ color: estadoColor, fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{rep.estado?.replace(/_/g, ' ')}</Text>
-                    </View>
+              {!cargandoHistorial && historialEquipo.length === 0 && (
+                <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingBottom: 60, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                  <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(139, 92, 246, 0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                    <Ionicons name="documents-outline" size={36} color="#8b5cf6" />
                   </View>
-
-                  {/* Técnico */}
-                  {rep.tecnico && (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="person-outline" size={12} color="#475569" />
-                      <Text style={{ color: '#64748b', fontSize: 12 }}>Técnico: {rep.tecnico}</Text>
-                    </View>
-                  )}
-
-                  {/* Separador */}
-                  <View style={{ height: 1, backgroundColor: BORDER }} />
-
-                  {/* Análisis */}
-                  {rep.analisis_general ? (
-                    <View style={{ gap: 3 }}>
-                      <Text style={{ color: CC, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>ANÁLISIS GENERAL</Text>
-                      <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18 }}>{rep.analisis_general}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Revisión */}
-                  {rep.revision ? (
-                    <View style={{ gap: 3 }}>
-                      <Text style={{ color: '#a78bfa', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>REVISIÓN</Text>
-                      <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18 }}>{rep.revision}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Reparación */}
-                  {rep.reparacion ? (
-                    <View style={{ gap: 3 }}>
-                      <Text style={{ color: '#22c55e', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>REPARACIÓN / TRABAJO REALIZADO</Text>
-                      <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18 }}>{rep.reparacion}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Recomendaciones */}
-                  {rep.recomendaciones ? (
-                    <View style={{ gap: 3 }}>
-                      <Text style={{ color: '#f59e0b', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>RECOMENDACIONES</Text>
-                      <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18 }}>{rep.recomendaciones}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Materiales */}
-                  {rep.materiales_refacciones ? (
-                    <View style={{ gap: 3 }}>
-                      <Text style={{ color: '#fb923c', fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>MATERIALES / REFACCIONES</Text>
-                      <Text style={{ color: '#cbd5e1', fontSize: 12, lineHeight: 18 }}>{rep.materiales_refacciones}</Text>
-                    </View>
-                  ) : null}
-
-                  {/* Precio */}
-                  {rep.precio_cotizacion ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                      <Ionicons name="pricetag-outline" size={12} color="#64748b" />
-                      <Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                        {rep.moneda || 'MXN'} ${Number(rep.precio_cotizacion).toLocaleString('es-MX')}
-                      </Text>
-                    </View>
-                  ) : null}
-
-                  {/* Si no hay datos técnicos */}
-                  {!rep.analisis_general && !rep.revision && !rep.reparacion && !rep.recomendaciones && !rep.materiales_refacciones && (
-                    <Text style={{ color: '#475569', fontSize: 12, fontStyle: 'italic' }}>Reporte en proceso — sin análisis técnico aún.</Text>
-                  )}
+                  <Text style={{ color: '#cbd5e1', fontSize: 18, fontWeight: '700' }}>Sin servicios registrados</Text>
+                  <Text style={{ color: '#64748b', fontSize: 14, marginTop: 8, textAlign: 'center', maxWidth: 300 }}>
+                    Los reportes de este equipo aparecerán aquí una vez que sean procesados.
+                  </Text>
                 </View>
-              );
-            })}
-          </ScrollView>
+              )}
+
+              {historialEquipo.map((rep, idx) => {
+                const estadoColor = {
+                  terminado: '#22c55e', cerrado: '#0ea5e9', finalizado_por_tecnico: '#06b6d4',
+                  en_proceso: '#f59e0b', pendiente: '#94a3b8', cotizado: '#8b5cf6',
+                }[rep.estado] || '#64748b';
+
+                return (
+                  <View key={rep.id} style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)',
+                    borderRadius: 24, padding: 28,
+                  }}>
+                    {/* Cabecera del Reporte */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                      <View>
+                        <Text style={{ color: '#e2e8f0', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>
+                          Reporte #{rep.id}
+                        </Text>
+                        <Text style={{ color: '#64748b', fontSize: 13, marginTop: 4, fontWeight: '600' }}>
+                          {new Date(rep.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: estadoColor + '1A', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: estadoColor + '40' }}>
+                        <Text style={{ color: estadoColor, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                          {rep.estado?.replace(/_/g, ' ')}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Técnico */}
+                    {rep.tecnico && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 12, marginBottom: 20 }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(139, 92, 246, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="person" size={14} color="#a78bfa" />
+                        </View>
+                        <Text style={{ color: '#cbd5e1', fontSize: 14, fontWeight: '600' }}>{rep.tecnico}</Text>
+                      </View>
+                    )}
+
+                    {/* Grid de contenido */}
+                    <View style={{ gap: 20 }}>
+                      {rep.analisis_general ? (
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>ANÁLISIS GENERAL</Text>
+                          <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.05)', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.1)' }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 14, lineHeight: 22 }}>{rep.analisis_general}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {rep.revision ? (
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: '#a78bfa', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>REVISIÓN TÉCNICA</Text>
+                          <View style={{ backgroundColor: 'rgba(167, 139, 250, 0.05)', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.1)' }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 14, lineHeight: 22 }}>{rep.revision}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {rep.reparacion ? (
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: '#34d399', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>TRABAJO REALIZADO</Text>
+                          <View style={{ backgroundColor: 'rgba(52, 211, 153, 0.05)', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.1)' }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 14, lineHeight: 22 }}>{rep.reparacion}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {rep.recomendaciones ? (
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: '#fbbf24', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>RECOMENDACIONES</Text>
+                          <View style={{ backgroundColor: 'rgba(251, 191, 36, 0.05)', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.1)' }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 14, lineHeight: 22 }}>{rep.recomendaciones}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {rep.materiales_refacciones ? (
+                        <View style={{ gap: 6 }}>
+                          <Text style={{ color: '#fb923c', fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>MATERIALES / REFACCIONES</Text>
+                          <View style={{ backgroundColor: 'rgba(251, 146, 60, 0.05)', padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(251, 146, 60, 0.1)' }}>
+                            <Text style={{ color: '#f1f5f9', fontSize: 14, lineHeight: 22 }}>{rep.materiales_refacciones}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {/* Costo final */}
+                    {rep.precio_cotizacion ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 10, marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(34, 197, 94, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="card" size={18} color="#34d399" />
+                        </View>
+                        <View>
+                          <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 }}>Costo Estimado</Text>
+                          <Text style={{ color: '#f8fafc', fontSize: 16, fontWeight: '800' }}>
+                            {rep.moneda || 'MXN'} ${Number(rep.precio_cotizacion).toLocaleString('es-MX')}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : null}
+
+                    {/* Vacío */}
+                    {!rep.analisis_general && !rep.revision && !rep.reparacion && !rep.recomendaciones && !rep.materiales_refacciones && (
+                      <View style={{ marginTop: 12, padding: 16, backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                        <Ionicons name="time-outline" size={24} color="#64748b" style={{ marginBottom: 8 }} />
+                        <Text style={{ color: '#94a3b8', fontSize: 13, fontWeight: '600' }}>Reporte en proceso</Text>
+                        <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>El técnico aún no ha agregado detalles.</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -789,6 +831,16 @@ export default function GestionEmpresasScreen() {
         <View style={s.overlay}>
           <View style={s.modalCard}>
             <Text style={s.modalTitle}>Editar Sucursal</Text>
+
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <TouchableOpacity disabled={subiendoImagen} onPress={handleActualizarImagenSucursal} style={{ width: '100%', paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(139, 92, 246, 0.1)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.3)', opacity: subiendoImagen ? 0.7 : 1 }}>
+                {subiendoImagen ? <ActivityIndicator size="small" color="#a78bfa" /> : <Ionicons name="camera-outline" size={18} color="#a78bfa" />}
+                <Text style={{ color: '#a78bfa', fontSize: 13, fontWeight: '600' }}>
+                  {subiendoImagen ? 'Subiendo fotografía...' : 'Actualizar Fotografía de Sucursal'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <TextInput style={s.input} placeholder="Nombre" placeholderTextColor="#64748b" value={editSucursalNombre} onChangeText={setEditSucursalNombre} />
             <TextInput style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]} placeholder="Dirección" placeholderTextColor="#64748b" value={editSucursalDireccion} onChangeText={setEditSucursalDireccion} multiline />
             <TextInput style={s.input} placeholder="Ciudad" placeholderTextColor="#64748b" value={editSucursalCiudad} onChangeText={setEditSucursalCiudad} />
@@ -807,46 +859,133 @@ export default function GestionEmpresasScreen() {
       {/* Nuevo Equipo */}
       <Modal visible={showNuevoEquipoModal} transparent animationType="fade">
         <View style={s.overlay}>
-          <ScrollView contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%' }}>
-            <View style={[s.modalCard, { width: '95%', maxWidth: 440 }]}>
-              <Text style={s.modalTitle}>Nuevo Equipo</Text>
-
-              {/* Image picker */}
-              <View>
-                <TouchableOpacity
-                  style={s.imagePicker}
-                  onPress={() => pickAndUploadImage((url) => {
-                    setNuevoEquipoImageUrl(url);
-                    setNuevoEquipoImagePreview(url);
-                  })}
-                >
-                  {nuevoEquipoImagePreview ? (
-                    <Image source={{ uri: nuevoEquipoImagePreview }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
-                  ) : (
-                    <View style={{ alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="camera-outline" size={28} color="#475569" />
-                      <Text style={{ color: '#475569', fontSize: 13 }}>Toca para subir foto del equipo</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                {nuevoEquipoImagePreview ? (
-                  <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 6, marginBottom: 12, fontStyle: 'italic' }}>
-                    Toca la imagen para cambiarla
-                  </Text>
-                ) : null}
+          <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
+            <View style={s.modalCardPremium}>
+              <View style={{ marginBottom: 32 }}>
+                <Text style={s.modalTitlePremium}>Nuevo Equipo</Text>
               </View>
 
-              <TextInput style={s.input} placeholder="Nombre del equipo *" placeholderTextColor="#64748b" value={nuevoEquipoNombre} onChangeText={setNuevoEquipoNombre} />
-              <TextInput style={s.input} placeholder="Modelo" placeholderTextColor="#64748b" value={nuevoEquipoModelo} onChangeText={setNuevoEquipoModelo} />
-              <TextInput style={s.input} placeholder="Serie" placeholderTextColor="#64748b" value={nuevoEquipoSerie} onChangeText={setNuevoEquipoSerie} />
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column' }]}>
+                {/* Columna Izquierda: Imagen */}
+                <View style={s.modalLeftPremium}>
+                  <View style={s.imageBoxPremium}>
+                    <TouchableOpacity
+                      style={s.imagePickerPremium}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        if (nuevoEquipoImagePreview) {
+                          setViewerImageUrl(nuevoEquipoImagePreview);
+                          setShowImageViewer(true);
+                        }
+                      }}
+                    >
+                      {nuevoEquipoImagePreview ? (
+                        <>
+                          <Image source={{ uri: nuevoEquipoImagePreview }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <View style={s.imageViewOverlay}>
+                            <Ionicons name="expand-outline" size={20} color="#fff" />
+                          </View>
+                        </>
+                      ) : (
+                        <View style={{ alignItems: 'center', gap: 16 }}>
+                          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(6,182,212,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(6,182,212,0.1)' }}>
+                            <Ionicons name="camera" size={32} color={CC} />
+                          </View>
+                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>No hay imagen seleccionada</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
 
-              <View style={s.modalActions}>
-                <TouchableOpacity onPress={() => setShowNuevoEquipoModal(false)} style={s.secBtn}>
-                  <Text style={s.secBtnText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleCrearEquipo} style={s.primaryBtn}>
-                  <Text style={s.primaryBtnText}>Guardar</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.btnImagePremium, subiendoImagen && { opacity: 0.7 }]}
+                    disabled={subiendoImagen}
+                    onPress={() => pickAndUploadImage((url) => {
+                      setNuevoEquipoImageUrl(url);
+                      setNuevoEquipoImagePreview(url);
+                    })}
+                  >
+                    {subiendoImagen ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator color={CC} size="small" />
+                        <Text style={s.btnImageTextPremium}>Subiendo imagen...</Text>
+                      </View>
+                    ) : (
+                      <Text style={s.btnImageTextPremium}>Cambiar Imagen</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                {/* Columna Derecha: Formulario */}
+                <View style={s.modalRightPremium}>
+                  <View style={{ flex: 1 }}>
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. Refrigerador Industrial"
+                          placeholderTextColor="#475569"
+                          value={nuevoEquipoNombre}
+                          onChangeText={setNuevoEquipoNombre}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Modelo</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. Samsung RT38"
+                          placeholderTextColor="#475569"
+                          value={nuevoEquipoModelo}
+                          onChangeText={setNuevoEquipoModelo}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Número de Serie</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. SN-27742"
+                          placeholderTextColor="#475569"
+                          value={nuevoEquipoSerie}
+                          onChangeText={setNuevoEquipoSerie}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={s.modalActionsPremium}>
+                    <TouchableOpacity
+                      onPress={() => setShowNuevoEquipoModal(false)}
+                      style={s.btnSecondaryPremium}
+                    >
+                      <Text style={s.btnSecondaryTextPremium}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={handleCrearEquipo}
+                      disabled={guardandoEquipo}
+                      activeOpacity={0.8}
+                      style={{ width: '48%' }}
+                    >
+                      <LinearGradient
+                        colors={['#8b5cf6', '#7c3aed']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[s.btnPrimaryPremium, { width: '100%' }]}
+                      >
+                        <Text style={s.btnPrimaryTextPremium}>
+                          {guardandoEquipo ? 'Guardando...' : 'Guardar Cambios'}
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -910,86 +1049,153 @@ export default function GestionEmpresasScreen() {
       {/* Edit Equipment Modal */}
       <Modal visible={showEditarEquipoModal} transparent animationType="fade" onRequestClose={() => setShowEditarEquipoModal(false)}>
         <View style={s.overlay}>
-          <View style={[s.modalCard, { paddingVertical: 24 }]}>
-            <View style={{ alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(139, 92, 246, 0.12)', borderWidth: 2, borderColor: 'rgba(139, 92, 246, 0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                <Ionicons name="hardware-chip" size={24} color="#a78bfa" />
+          <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
+            <View style={s.modalCardPremium}>
+              <View style={{ marginBottom: 32 }}>
+                <Text style={s.modalTitlePremium}>Editar Equipo</Text>
               </View>
-              <Text style={{ color: '#f8fafc', fontSize: 17, fontWeight: '800' }}>Editar Equipo</Text>
-            </View>
 
-            <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
-              <View style={{ gap: 12 }}>
-                {/* Image picker */}
-                <View>
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column' }]}>
+                {/* Columna Izquierda: Imagen */}
+                <View style={s.modalLeftPremium}>
+                  <View style={s.imageBoxPremium}>
+                    <TouchableOpacity
+                      style={s.imagePickerPremium}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        if (editEqImagePreview) {
+                          setViewerImageUrl(editEqImagePreview);
+                          setShowImageViewer(true);
+                        }
+                      }}
+                    >
+                      {editEqImagePreview ? (
+                        <>
+                          <Image source={{ uri: editEqImagePreview }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <View style={s.imageViewOverlay}>
+                            <Ionicons name="expand-outline" size={20} color="#fff" />
+                          </View>
+                        </>
+                      ) : (
+                        <View style={{ alignItems: 'center', gap: 16 }}>
+                          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(167,139,250,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(167,139,250,0.1)' }}>
+                            <Ionicons name="camera" size={32} color="#a78bfa" />
+                          </View>
+                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>No hay imagen seleccionada</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
                   <TouchableOpacity
-                    style={s.imagePicker}
+                    style={[s.btnImagePremium, subiendoImagen && { opacity: 0.7 }]}
+                    disabled={subiendoImagen}
                     onPress={() => pickAndUploadImage((url) => {
                       setEditEqImageUrl(url);
                       setEditEqImagePreview(url);
                     })}
                   >
-                    {editEqImagePreview ? (
-                      <Image source={{ uri: editEqImagePreview }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
-                    ) : (
-                      <View style={{ alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="camera-outline" size={28} color="#475569" />
-                        <Text style={{ color: '#475569', fontSize: 13 }}>Toca para subir foto del equipo</Text>
+                    {subiendoImagen ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator color={CC} size="small" />
+                        <Text style={s.btnImageTextPremium}>Subiendo imagen...</Text>
                       </View>
+                    ) : (
+                      <Text style={s.btnImageTextPremium}>Cambiar Imagen</Text>
                     )}
                   </TouchableOpacity>
-                  {editEqImagePreview ? (
-                    <Text style={{ color: '#94a3b8', fontSize: 11, textAlign: 'center', marginTop: 6, fontStyle: 'italic' }}>
-                      Toca la imagen para cambiarla
-                    </Text>
-                  ) : null}
                 </View>
 
-                <View>
-                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>NOMBRE *</Text>
-                  <TextInput style={s.input} value={editEqNombre} onChangeText={setEditEqNombre} placeholder="Nombre del equipo" placeholderTextColor="#475569" />
-                </View>
-                <View>
-                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>MODELO</Text>
-                  <TextInput style={s.input} value={editEqModelo} onChangeText={setEditEqModelo} placeholder="Modelo (opcional)" placeholderTextColor="#475569" />
-                </View>
-                <View>
-                  <Text style={{ color: '#94a3b8', fontSize: 11, fontWeight: '700', marginBottom: 4, letterSpacing: 0.5 }}>SERIE</Text>
-                  <TextInput style={s.input} value={editEqSerie} onChangeText={setEditEqSerie} placeholder="Serie (opcional)" placeholderTextColor="#475569" />
+                {/* Columna Derecha: Formulario */}
+                <View style={s.modalRightPremium}>
+                  <View style={{ flex: 1 }}>
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. Refrigerador Industrial"
+                          placeholderTextColor="#475569"
+                          value={editEqNombre}
+                          onChangeText={setEditEqNombre}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Modelo</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. RT38K5930SL"
+                          placeholderTextColor="#475569"
+                          value={editEqModelo}
+                          onChangeText={setEditEqModelo}
+                        />
+                      </View>
+                    </View>
+
+                    <View style={s.inputContainerPremium}>
+                      <Text style={s.inputLabelPremium}>Número de Serie</Text>
+                      <View style={s.inputWrapperPremium}>
+                        <TextInput
+                          style={s.inputPremium}
+                          placeholder="Ej. SN-27742"
+                          placeholderTextColor="#475569"
+                          value={editEqSerie}
+                          onChangeText={setEditEqSerie}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={s.modalActionsPremium}>
+                    <TouchableOpacity
+                      onPress={() => { setShowEditarEquipoModal(false); setEquipoEditando(null); }}
+                      style={s.btnSecondaryPremium}
+                    >
+                      <Text style={s.btnSecondaryTextPremium}>Cancelar</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={async () => {
+                        if (!editEqNombre.trim() || !equipoEditando || !sucursalSeleccionada) return;
+                        setGuardandoEquipo(true);
+                        const res = await actualizarEquipoSucursal(equipoEditando.id, {
+                          nombre: editEqNombre.trim(),
+                          modelo: editEqModelo.trim() || undefined,
+                          serie: editEqSerie.trim() || undefined,
+                          imagen_url: editEqImageUrl || undefined,
+                        });
+                        if (res.success) {
+                          setShowEditarEquipoModal(false);
+                          setEquipoEditando(null);
+                          await cargarEquipos(sucursalSeleccionada.id);
+                        } else {
+                          setError(res.error || 'Error al editar');
+                        }
+                        setGuardandoEquipo(false);
+                      }}
+                      disabled={guardandoEquipo}
+                      activeOpacity={0.8}
+                      style={{ width: '48%' }}
+                    >
+                      <LinearGradient
+                        colors={['#8b5cf6', '#7c3aed']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[s.btnPrimaryPremium, { width: '100%' }]}
+                      >
+                        <Text style={s.btnPrimaryTextPremium}>
+                          {guardandoEquipo ? 'Guardando...' : 'Guardar Cambios'}
+                        </Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </ScrollView>
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 18 }}>
-              <TouchableOpacity onPress={() => { setShowEditarEquipoModal(false); setEquipoEditando(null); }} style={[s.secBtn, { flex: 1 }]}>
-                <Text style={s.secBtnText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                disabled={guardandoEquipo}
-                onPress={async () => {
-                  if (!editEqNombre.trim() || !equipoEditando || !sucursalSeleccionada) return;
-                  setGuardandoEquipo(true);
-                  const res = await actualizarEquipoSucursal(equipoEditando.id, {
-                    nombre: editEqNombre.trim(),
-                    modelo: editEqModelo.trim() || undefined,
-                    serie: editEqSerie.trim() || undefined,
-                    imagen_url: editEqImageUrl || undefined,
-                  });
-                  if (res.success) {
-                    setShowEditarEquipoModal(false);
-                    setEquipoEditando(null);
-                    await cargarEquipos(sucursalSeleccionada.id);
-                  } else {
-                    setError(res.error || 'Error al editar');
-                  }
-                  setGuardandoEquipo(false);
-                }}
-                style={[s.primaryBtn, { flex: 1, opacity: guardandoEquipo ? 0.6 : 1 }]}
-              >
-                <Text style={s.primaryBtnText}>{guardandoEquipo ? 'Guardando...' : 'Guardar'}</Text>
-              </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -1105,6 +1311,158 @@ const s = StyleSheet.create({
     backgroundColor: BG, borderWidth: 1, borderColor: BORDER, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10, color: '#e2e8f0', fontSize: 14,
   },
+
+  // Premium Modal Styles
+  modalCardPremium: {
+    width: '90%',
+    maxWidth: 1100, // Forces an elegant absolute size on large screens (about 50%)
+    height: '85%',
+    maxHeight: 850,
+    minHeight: 600,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)', // bg-slate-900/80
+    paddingVertical: 56,
+    paddingHorizontal: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#312e81', // shadow-indigo-900
+    shadowOffset: { width: 0, height: 25 },
+    shadowOpacity: 0.5,
+    shadowRadius: 40,
+    elevation: 24,
+  },
+  modalBodyPremium: {
+    flexDirection: 'row',
+    gap: 60,
+    flex: 1,
+  },
+  modalLeftPremium: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  modalRightPremium: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  modalTitlePremium: {
+    color: '#f8fafc',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  inputContainerPremium: {
+    marginBottom: 24,
+  },
+  inputLabelPremium: {
+    color: '#cbd5e1', // text-slate-300
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  inputWrapperPremium: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', // bg-white/5
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)', // border-white/10
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  inputPremium: {
+    flex: 1,
+    color: '#f1f5f9', // text-slate-100
+    fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 10,
+  },
+  imageBoxPremium: {
+    flex: 1,
+    width: '100%',
+    marginBottom: 16,
+  },
+  imagePickerPremium: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // bg-black/40
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  btnImagePremium: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 52,
+  },
+  btnImageTextPremium: {
+    color: '#818cf8', // text-indigo-400
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  imageViewOverlay: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)', // bg-slate-900/50
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 10,
+  },
+  modalActionsPremium: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  btnPrimaryPremium: {
+    width: '48%',
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    overflow: 'hidden',
+    shadowColor: '#6366f1', // shadow-indigo-500
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 6,
+  },
+  btnPrimaryTextPremium: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  btnSecondaryPremium: {
+    width: '48%',
+    height: 52,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'transparent',
+  },
+  btnSecondaryTextPremium: {
+    color: '#cbd5e1', // text-slate-300
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 6 },
   primaryBtn: { backgroundColor: CC, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
   primaryBtnText: { color: '#0b1220', fontWeight: '700', fontSize: 14 },

@@ -467,11 +467,16 @@ export default function GenerarReporteScreen() {
                 Equipo - Descripción <Text style={styles.requiredMark}>*</Text>
               </Text>
               <TextInput
-                style={[styles.textInput, { fontFamily }]}
+                style={[
+                  styles.textInput, 
+                  { fontFamily }, 
+                  equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
+                ]}
                 value={equipoDescripcion}
                 onChangeText={setEquipoDescripcion}
                 placeholder="Ej: Aire acondicionado, Refrigerador..."
                 placeholderTextColor="#475569"
+                editable={!equipoSeleccionado}
               />
             </View>
 
@@ -480,22 +485,32 @@ export default function GenerarReporteScreen() {
               <View style={styles.halfField}>
                 <Text style={[styles.fieldLabel, { fontFamily }]}>Modelo</Text>
                 <TextInput
-                  style={[styles.textInput, { fontFamily }]}
+                  style={[
+                    styles.textInput, 
+                    { fontFamily }, 
+                    equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
+                  ]}
                   value={equipoModelo}
                   onChangeText={setEquipoModelo}
                   placeholder="Modelo"
                   placeholderTextColor="#475569"
+                  editable={!equipoSeleccionado}
                 />
               </View>
 
               <View style={styles.halfField}>
                 <Text style={[styles.fieldLabel, { fontFamily }]}>Serie</Text>
                 <TextInput
-                  style={[styles.textInput, { fontFamily }]}
+                  style={[
+                    styles.textInput, 
+                    { fontFamily }, 
+                    equipoSeleccionado && { backgroundColor: '#1e293b', borderColor: '#334155', color: '#94a3b8' }
+                  ]}
                   value={equipoSerie}
                   onChangeText={setEquipoSerie}
                   placeholder="Nº serie"
                   placeholderTextColor="#475569"
+                  editable={!equipoSeleccionado}
                 />
               </View>
             </View>
