@@ -1133,30 +1133,29 @@ function AdminPanelContent() {
       display: block;
     }
     .body-content { 
-      padding: 180px 50px 80px 50px; 
+      padding: 0; 
       position: relative;
       z-index: 10;
     }
     
-    .section { margin-bottom: 24px; }
-    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; }
-    .field { margin-bottom: 10px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; page-break-after: avoid; break-after: avoid; }
+    .field { margin-bottom: 14px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; page-break-inside: avoid; break-inside: avoid; }
     .label { font-size: 8px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
-    .value { font-size: 12px; color: #222; }
+    .value { font-size: 12px; color: #222; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap; }
     .value-red { color: #c41e3a; font-weight: 700; font-size: 18px; }
     
     .row { display: table; width: 100%; margin-bottom: 10px; table-layout: fixed; }
     .col { display: table-cell; width: 50%; padding-right: 15px; vertical-align: top; }
     
-    .signatures { margin-top: 140px; padding-top: 20px; }
+    .signatures { margin-top: 180px; padding-top: 20px; page-break-inside: avoid; break-inside: avoid; }
     .sig-row { display: table; width: 100%; table-layout: fixed; }
     .sig-col { display: table-cell; text-align: center; height: 50px; border-bottom: 2.5px solid #1a1a1a; font-size: 11px; font-weight: 700; color: #333; padding-bottom: 8px; vertical-align: bottom; }
     .sig-spacer { display: table-cell; width: 60px; }
     
-    .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; }
+    .footer { margin-top: 20px; text-align: center; font-size: 10px; color: #666; }
     .page-break { 
       page-break-before: always; 
-      padding-top: 180px;
       display: block;
     }
   </style>
@@ -1167,77 +1166,91 @@ function AdminPanelContent() {
   </div>
 
   <div class="body-content">
-    <div class="section">
-      <div class="section-title">Datos Generales</div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
-        <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
-      </div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
-        <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
-      </div>
-      <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
-        ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
-      </div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
-        ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
-      </div>
-    </div>
+    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+      <thead>
+        <tr><td style="height: 180px;"></td></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 0 50px 80px 50px; vertical-align: top;">
+            <div class="section">
+              <div class="section-title">Datos Generales</div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
+                <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+              </div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
+                <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+              </div>
+              <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
+                ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
+              </div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
+                ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
+              </div>
+            </div>
 
-    ${reporte.analisis_general ? `
-    <div class="section">
-      <div class="section-title">Información de Cotización</div>
-      ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
-        <div class="field">
-          <span class="label">Costo de cotización</span>
-          <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
-        </div>` : ''}
-      <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
-    </div>` : ''}
+            ${reporte.analisis_general ? `
+            <div class="section">
+              <div class="section-title">Información de Cotización</div>
+              ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+                <div class="field">
+                  <span class="label">Costo de cotización</span>
+                  <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
+                </div>` : ''}
+              <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
+            </div>` : ''}
 
-    ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
-    <div class="section">
-      <div class="section-title">Trabajo Realizado</div>
-      ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
-      ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
-      ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
-      ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
-    </div>` : ''}
+            ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+            <div class="section">
+              <div class="section-title">Trabajo Realizado</div>
+              ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
+              ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
+              ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
+              ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
+            </div>` : ''}
 
-    ${(archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
-    <div class="page-break"></div>
-    <div class="section">
-      <div class="section-title">Archivos Adjuntos</div>
-      <div class="field">
-        <div class="value" style="font-size: 10px; line-height: 1.6;">
-          ${archivosReporte
-            .filter(a => a.tipo_archivo !== 'audio')
-            .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
-            .join('<br/>')}
-        </div>
-      </div>
-    </div>
-    
-    <div class="signatures">
-      <div class="sig-row">
-        <div class="sig-col">Firma del técnico</div>
-        <div class="sig-spacer"></div>
-        <div class="sig-col">Firma del cliente</div>
-      </div>
-    </div>` : `
-    <div class="signatures">
-      <div class="sig-row">
-        <div class="sig-col">Firma del técnico</div>
-        <div class="sig-spacer"></div>
-        <div class="sig-col">Firma del cliente</div>
-      </div>
-    </div>`}
+            ${(archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+            <div class="page-break"></div>
+            <div class="section">
+              <div class="section-title">Archivos Adjuntos</div>
+              <div class="field">
+                <div class="value" style="font-size: 10px; line-height: 1.6;">
+                  ${archivosReporte
+                    .filter(a => a.tipo_archivo !== 'audio')
+                    .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
+                    .join('<br/>')}
+                </div>
+              </div>
+            </div>
+            
+            <div class="signatures">
+              <div class="sig-row">
+                <div class="sig-col">Firma del técnico</div>
+                <div class="sig-spacer"></div>
+                <div class="sig-col">Firma del cliente</div>
+              </div>
+            </div>` : `
+            <div class="signatures">
+              <div class="sig-row">
+                <div class="sig-col">Firma del técnico</div>
+                <div class="sig-spacer"></div>
+                <div class="sig-col">Firma del cliente</div>
+              </div>
+            </div>`}
 
-    <div class="footer">si-mant.com</div>
+            <div class="footer">si-mant.com</div>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr><td style="height: 100px;"></td></tr>
+      </tfoot>
+    </table>
   </div>
 </body>
 </html>`;
@@ -4676,54 +4689,119 @@ function AdminPanelContent() {
         </View>
       )}
 
-      {/* Modal de Confirmación Secundaria */}
+      {/* Modal de Confirmación Secundaria (Premium Redesign) */}
       {showConfirmarCotizacionModal && reporteACotizar && (
-        <View style={[styles.overlayHeavy, { zIndex: 10001 }]}>
-          <View style={[styles.detailModal, isMobile && styles.detailModalMobile, { maxWidth: 400, backgroundColor: '#0f172a', borderColor: '#1e293b' }]}>
-            <View style={{ alignItems: 'center', gap: 16, paddingVertical: 10 }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245, 158, 11, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.3)' }}>
-                <Ionicons name="alert-circle-outline" size={36} color="#f59e0b" />
+        <View style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(2, 6, 23, 0.92)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10001,
+          paddingHorizontal: 24
+        }}>
+          <View style={{
+            backgroundColor: '#0f172a',
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: '#1e293b',
+            padding: 28,
+            width: '100%',
+            maxWidth: 400,
+            shadowColor: '#f59e0b',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.15,
+            shadowRadius: 40,
+            elevation: 20
+          }}>
+            <View style={{ alignItems: 'center', gap: 20 }}>
+              {/* Icon Section */}
+              <View style={{
+                width: 72,
+                height: 72,
+                borderRadius: 24,
+                backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(245, 158, 11, 0.25)'
+              }}>
+                <Ionicons name="alert-circle-outline" size={38} color="#f59e0b" />
               </View>
 
-              <View style={{ alignItems: 'center', gap: 6 }}>
-                <Text style={[{ color: '#fff', fontSize: 20, fontWeight: '800', textAlign: 'center' }, { fontFamily }]}>
-                  ¿Confirmar Envío?
+              {/* Title & Description */}
+              <View style={{ alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '800', textAlign: 'center', fontFamily }}>
+                  Confirmar Envío
                 </Text>
-                <Text style={[{ color: '#94a3b8', fontSize: 14, textAlign: 'center', lineHeight: 20 }, { fontFamily }]}>
-                  Estás por enviar una cotización de:
+                <Text style={{ color: '#94a3b8', fontSize: 15, textAlign: 'center', lineHeight: 22, fontFamily }}>
+                  Estás por enviar una cotización oficial para este reporte.
                 </Text>
               </View>
 
-              <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', borderWidth: 1, borderColor: '#f59e0b', borderRadius: 16, paddingVertical: 20, paddingHorizontal: 30, width: '100%', alignItems: 'center' }}>
-                <Text style={[{ color: '#fbbf24', fontSize: 32, fontWeight: '800' }, { fontFamily }]}>
-                  ${parseFloat(getCleanNumericValue(precioCotizacion)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {moneda}
+              {/* Pricing Callout (High-End Inset) */}
+              <View style={{
+                backgroundColor: '#0c1322',
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: 'rgba(51, 65, 85, 0.5)',
+                paddingVertical: 24,
+                paddingHorizontal: 20,
+                width: '100%',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOpacity: 0.2,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 }
+              }}>
+                <Text style={{ color: '#cbd5e1', fontSize: 11, fontWeight: '700', marginBottom: 6, letterSpacing: 1.5, textTransform: 'uppercase', fontFamily }}>
+                  Monto Total en {moneda}
                 </Text>
-                <Text style={[{ color: '#f59e0b', fontSize: 11, fontWeight: '700', marginTop: 4, letterSpacing: 1 }, { fontFamily }]}>TOTAL EN {moneda}</Text>
+                <Text style={{ color: '#fbbf24', fontSize: 34, fontWeight: '900', letterSpacing: -1, fontFamily }}>
+                  ${parseFloat(getCleanNumericValue(precioCotizacion)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f59e0b' }} />
+                  <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '600', fontFamily }}>{moneda} - Pesos Mexicanos</Text>
+                </View>
               </View>
 
-              <View style={{ width: '100%', gap: 12, marginTop: 10 }}>
+              {/* Action Buttons */}
+              <View style={{ width: '100%', gap: 14, marginTop: 8 }}>
                 <TouchableOpacity
                   onPress={handleCotizarReporte}
-                  activeOpacity={0.8}
-                  style={{ width: '100%', overflow: 'hidden', borderRadius: 12 }}
+                  activeOpacity={0.88}
+                  style={{ width: '100%', overflow: 'hidden', borderRadius: 14 }}
                 >
                   <LinearGradient
-                    colors={['#fbbf24', '#f59e0b']}
+                    colors={['#fbbf24', '#f59e0b', '#d97706']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{ paddingVertical: 16, alignItems: 'center' }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ paddingVertical: 18, alignItems: 'center' }}
                   >
-                    <Text style={[{ color: '#000', fontSize: 15, fontWeight: '800' }, { fontFamily }]}>
-                      SÍ, ENVIAR COTIZACIÓN
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ color: '#000', fontSize: 16, fontWeight: '800', fontFamily }}>
+                        SÍ, ENVIAR COTIZACIÓN
+                      </Text>
+                      <Ionicons name="arrow-forward" size={18} color="#000" />
+                    </View>
                   </LinearGradient>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => setShowConfirmarCotizacionModal(false)}
-                  style={{ width: '100%', backgroundColor: 'transparent', paddingVertical: 14, alignItems: 'center' }}
+                  activeOpacity={0.7}
+                  style={{
+                    width: '100%',
+                    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+                    paddingVertical: 15,
+                    borderRadius: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(51, 65, 85, 0.5)'
+                  }}
                 >
-                  <Text style={[{ color: '#64748b', fontSize: 14, fontWeight: '600' }, { fontFamily }]}>Revisar precio de nuevo</Text>
+                  <Text style={{ color: '#94a3b8', fontSize: 14, fontWeight: '700', fontFamily }}>Revisar precio de nuevo</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -9147,7 +9225,7 @@ const styles = StyleSheet.create({
   detailScroll: { maxHeight: 520 },
   detailScrollMobile: { maxHeight: 350 },
   detailContent: { gap: 22, paddingTop: 6 },
-  detailField: { gap: 10, flex: 1 },
+  detailField: { gap: 10 },
   detailFieldHalf: { minWidth: 160, flexBasis: '48%' },
   detailRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   detailFieldLabel: { color: '#9ca3af', fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
@@ -9159,7 +9237,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
-  detailValueText: { color: '#e5e7eb', fontSize: 15, lineHeight: 20, flexWrap: 'wrap', flexShrink: 1 },
+  detailValueText: { color: '#e5e7eb', fontSize: 15, lineHeight: 20, flexWrap: 'wrap', flexShrink: 1, width: '100%', wordBreak: 'break-all', overflowWrap: 'anywhere' },
   detailSubValue: { color: '#9ca3af', fontSize: 13, marginTop: 4 },
   detailPillBox: { paddingVertical: 10, paddingHorizontal: 12 },
   detailPillText: { fontSize: 13, fontWeight: '800' },

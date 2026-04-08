@@ -513,6 +513,197 @@ export async function subirArchivosReporte(
   }
 }
 
+/**
+ * Subir archivos con callback de progreso por cada imagen/video subido.
+ * onProgress: (uploaded, total, phase) => void
+ *   - uploaded: number of files uploaded so far in the current phase
+ *   - total: total number of files in the current phase
+ *   - phase: 'imagen' | 'video'
+ *   - elapsedMs: time elapsed since start of this phase
+ */
+export async function subirArchivosReporteConProgreso(
+  reporteId: string,
+  imagenesUris?: string[],
+  videoUri?: string,
+  onProgress?: (uploaded: number, total: number, phase: 'imagen' | 'video', elapsedMs: number) => void
+) {
+  try {
+    console.log(`[SUBIR-ARCHIVOS-PROGRESO] Iniciando subida para reporte: ${reporteId}`);
+    const archivosGuardados: any[] = [];
+
+    // Subir imágenes una por una con progreso
+    if (imagenesUris && imagenesUris.length > 0) {
+      const startTime = Date.now();
+      for (let i = 0; i < imagenesUris.length; i++) {
+        const uri = imagenesUris[i];
+        const nombreArchivo = `foto-${Date.now()}-${i}.jpg`;
+        const resultado = await uploadToCloudflare(uri, nombreArchivo, 'foto');
+
+        if (resultado.success && resultado.url && resultado.key) {
+          const guardado = await guardarArchivoReporte({
+            reporte_id: reporteId,
+            tipo_archivo: 'foto',
+            cloudflare_url: resultado.url,
+            cloudflare_key: resultado.key,
+            nombre_original: nombreArchivo,
+          });
+
+          if (guardado.success) {
+            archivosGuardados.push({
+              tipo: 'foto',
+              url: resultado.url,
+              id: guardado.data?.id,
+            });
+          }
+        }
+
+        // Callback after each image
+        if (onProgress) {
+          onProgress(i + 1, imagenesUris.length, 'imagen', Date.now() - startTime);
+        }
+      }
+    }
+
+    // Subir video con progreso
+    if (videoUri) {
+      const startTime = Date.now();
+      if (onProgress) {
+        onProgress(0, 1, 'video', 0);
+      }
+
+      const nombreArchivo = `video-${Date.now()}.mp4`;
+      const resultado = await uploadToCloudflare(videoUri, nombreArchivo, 'video');
+
+      if (resultado.success && resultado.url && resultado.key) {
+        const guardado = await guardarArchivoReporte({
+          reporte_id: reporteId,
+          tipo_archivo: 'video',
+          cloudflare_url: resultado.url,
+          cloudflare_key: resultado.key,
+          nombre_original: nombreArchivo,
+        });
+
+        if (guardado.success) {
+          archivosGuardados.push({
+            tipo: 'video',
+            url: resultado.url,
+            id: guardado.data?.id,
+          });
+        }
+      }
+
+      if (onProgress) {
+        onProgress(1, 1, 'video', Date.now() - startTime);
+      }
+    }
+
+    return { success: true, archivos: archivosGuardados };
+  } catch (error: any) {
+    console.error('Error al subir archivos del reporte (con progreso):', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Subir archivos de empleado con progreso (audio, fotosRevision, fotosPostproceso)
+ * onProgress: (uploaded, total, phase, elapsedMs) => void
+ */
+export async function subirArchivosEmpleadoConProgreso(
+  reporteId: string,
+  audioUri?: string,
+  fotosRevisionUris?: string[],
+  fotosPostprocesoUris?: string[],
+  onProgress?: (uploaded: number, total: number, phase: 'audio' | 'foto_revision' | 'foto_postproceso', elapsedMs: number) => void
+) {
+  try {
+    console.log(`[SUBIR-ARCHIVOS-EMPLEADO] Iniciando subida para reporte: ${reporteId}`);
+    const archivosGuardados: any[] = [];
+
+    // Subir audio
+    if (audioUri) {
+      const startTime = Date.now();
+      if (onProgress) onProgress(0, 1, 'audio', 0);
+
+      const nombreArchivo = `audio-${Date.now()}.m4a`;
+      const resultado = await uploadToCloudflare(audioUri, nombreArchivo, 'audio');
+
+      if (resultado.success && resultado.url && resultado.key) {
+        const guardado = await guardarArchivoReporte({
+          reporte_id: reporteId,
+          tipo_archivo: 'audio',
+          cloudflare_url: resultado.url,
+          cloudflare_key: resultado.key,
+          nombre_original: nombreArchivo,
+        });
+        if (guardado.success) {
+          archivosGuardados.push({ tipo: 'audio', url: resultado.url, id: guardado.data?.id });
+        }
+      }
+
+      if (onProgress) onProgress(1, 1, 'audio', Date.now() - startTime);
+    }
+
+    // Subir fotos de revisión
+    if (fotosRevisionUris && fotosRevisionUris.length > 0) {
+      const startTime = Date.now();
+      for (let i = 0; i < fotosRevisionUris.length; i++) {
+        const uri = fotosRevisionUris[i];
+        const nombreArchivo = `revision-${Date.now()}-${i}.jpg`;
+        const resultado = await uploadToCloudflare(uri, nombreArchivo, 'foto_revision');
+
+        if (resultado.success && resultado.url && resultado.key) {
+          const guardado = await guardarArchivoReporte({
+            reporte_id: reporteId,
+            tipo_archivo: 'foto_revision',
+            cloudflare_url: resultado.url,
+            cloudflare_key: resultado.key,
+            nombre_original: nombreArchivo,
+          });
+          if (guardado.success) {
+            archivosGuardados.push({ tipo: 'foto_revision', url: resultado.url, id: guardado.data?.id });
+          }
+        }
+
+        if (onProgress) {
+          onProgress(i + 1, fotosRevisionUris.length, 'foto_revision', Date.now() - startTime);
+        }
+      }
+    }
+
+    // Subir fotos de postproceso
+    if (fotosPostprocesoUris && fotosPostprocesoUris.length > 0) {
+      const startTime = Date.now();
+      for (let i = 0; i < fotosPostprocesoUris.length; i++) {
+        const uri = fotosPostprocesoUris[i];
+        const nombreArchivo = `postproceso-${Date.now()}-${i}.jpg`;
+        const resultado = await uploadToCloudflare(uri, nombreArchivo, 'foto');
+
+        if (resultado.success && resultado.url && resultado.key) {
+          const guardado = await guardarArchivoReporte({
+            reporte_id: reporteId,
+            tipo_archivo: 'foto',
+            cloudflare_url: resultado.url,
+            cloudflare_key: resultado.key,
+            nombre_original: nombreArchivo,
+          });
+          if (guardado.success) {
+            archivosGuardados.push({ tipo: 'foto_postproceso', url: resultado.url, id: guardado.data?.id });
+          }
+        }
+
+        if (onProgress) {
+          onProgress(i + 1, fotosPostprocesoUris.length, 'foto_postproceso', Date.now() - startTime);
+        }
+      }
+    }
+
+    return { success: true, archivos: archivosGuardados };
+  } catch (error: any) {
+    console.error('Error al subir archivos del empleado (con progreso):', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function guardarCotizacion(cotizacion: Cotizacion) {
   try {
     const data = await apiCall(`/reportes/${cotizacion.reporte_id}/cotizacion`, 'POST', {

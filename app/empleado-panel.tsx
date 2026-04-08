@@ -11,7 +11,8 @@ import {
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
-import { subirArchivosReporte } from '@/lib/reportes';
+import { subirArchivosReporte, subirArchivosReporteConProgreso, subirArchivosEmpleadoConProgreso } from '@/lib/reportes';
+import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import { obtenerSucursalesPorEmpresa } from '@/lib/empresas';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -62,6 +63,20 @@ function EmpleadoPanelContent() {
     newPassword: '',
     confirmPassword: ''
   });
+
+  // --- Estados para el nuevo Loading Overlay Premium ---
+  const [showUploadProgress, setShowUploadProgress] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ uploaded: 0, total: 0, phase: '', percent: 0 });
+  const [uploadSteps, setUploadSteps] = useState([
+    { label: 'Preparando...', icon: 'construct-outline', done: false },
+    { label: 'Subiendo Audio...', icon: 'mic-outline', done: false },
+    { label: 'Subiendo Fotos Revisión...', icon: 'images-outline', done: false },
+    { label: 'Subiendo Fotos Postproceso...', icon: 'camera-outline', done: false },
+    { label: 'Finalizando Reporte...', icon: 'cloud-upload-outline', done: false },
+  ]);
+  const [currentUploadStep, setCurrentUploadStep] = useState(0);
+  const [estimatedTimeLeft, setEstimatedTimeLeft] = useState('');
+
   const [passwordErrors, setPasswordErrors] = useState({
     currentPassword: '',
     newPassword: '',
@@ -790,51 +805,100 @@ function EmpleadoPanelContent() {
   const guardarCotizacion = async () => {
     if (!reporteSeleccionado?.id) return;
 
+    // --- Iniciar Progreso Premium ---
+    const hasAudio = !!audioUri;
+    const hasPhotos = fotosRevisionUris.length > 0;
+    
+    // Configurar pasos dinámicamente
+    const steps = [{ label: 'Preparando...', icon: 'construct-outline', done: true }];
+    if (hasAudio) steps.push({ label: 'Subiendo Audio...', icon: 'mic-outline', done: false });
+    if (hasPhotos) steps.push({ label: 'Fotos de Revisión...', icon: 'images-outline', done: false });
+    steps.push({ label: 'Finalizando Análisis...', icon: 'cloud-upload-outline', done: false });
+
+    setUploadSteps(steps);
+    setCurrentUploadStep(hasAudio ? 1 : (hasPhotos ? 1 : 0));
+    setUploadProgress({ uploaded: 0, total: 0, phase: 'Preparando...', percent: 5 });
+    setEstimatedTimeLeft('');
+    setShowUploadProgress(true);
+
     setGuardandoCotizacion(true);
     setShowConfirmarAnalisis(false); // Cerrar modal de confirmación
     try {
-      // 1. Subir audio si existe
-      if (audioUri) {
-        showToast('Subiendo nota de voz...', 'info');
-        const uploadRes = await subirArchivosReporte(reporteSeleccionado.id, [], undefined, audioUri);
-        if (!uploadRes.success) {
-          throw new Error('Error al subir el audio: ' + uploadRes.error);
+      // 1. Subir multimedia con progreso
+      const uploadRes = await subirArchivosEmpleadoConProgreso(
+        reporteSeleccionado.id,
+        audioUri || undefined,
+        fotosRevisionUris,
+        [], // No hay postproceso en cotización normal
+        (uploaded, total, phase, elapsedMs) => {
+          // Determinar en qué paso estamos
+          let stepIdx = 0;
+          let phaseLabel = '';
+          
+          if (phase === 'audio') {
+            stepIdx = steps.findIndex(s => s.label.includes('Audio'));
+            phaseLabel = 'Subiendo Nota de Voz...';
+          } else if (phase === 'foto_revision') {
+            stepIdx = steps.findIndex(s => s.label.includes('Revisión'));
+            phaseLabel = 'Subiendo Fotos de Revisión...';
+            // Marcar audio como completado si existía y estamos en fotos
+            if (hasAudio && stepIdx > 1) {
+              setUploadSteps(prev => prev.map((s, i) => i === 1 ? { ...s, done: true } : s));
+            }
+          }
+
+          if (stepIdx !== -1) {
+            setCurrentUploadStep(stepIdx);
+            
+            // Cálculo de porcentaje global aproximado
+            const totalStepsCount = steps.length;
+            const stepWeight = 100 / totalStepsCount;
+            const basePercent = stepIdx * stepWeight;
+            const stepProgress = total > 0 ? (uploaded / total) * stepWeight : 0;
+            const totalPercent = Math.min(Math.round(basePercent + stepProgress), 95);
+
+            setUploadProgress({ uploaded, total, phase: phaseLabel, percent: totalPercent });
+
+            // Estimación de tiempo
+            if (uploaded > 0 && elapsedMs > 0) {
+              const msPerFile = elapsedMs / uploaded;
+              const remaining = total - uploaded;
+              const totalRemainingMs = remaining * msPerFile;
+              if (totalRemainingMs > 0) {
+                const seconds = Math.ceil(totalRemainingMs / 1000);
+                setEstimatedTimeLeft(`${seconds}s`);
+              }
+            }
+          }
         }
-      }
+      );
 
-      // 2. Subir fotos de revisión si existen
-      if (fotosRevisionUris.length > 0) {
-        showToast('Subiendo fotos de revisión...', 'info');
-        const uploadPhotoRes = await subirArchivosReporte(reporteSeleccionado.id, [], undefined, undefined, fotosRevisionUris);
-        if (!uploadPhotoRes.success) {
-          throw new Error('Error al subir las fotos de revisión: ' + uploadPhotoRes.error);
-        }
-      }
+      if (!uploadRes.success) throw new Error(uploadRes.error);
 
-      console.log('[EMPLEADO-ANALISIS] Enviando análisis:', {
-        reporteId: reporteSeleccionado.id,
-        estado: 'en_cotizacion',
-        analisis: descripcionTrabajo.trim()
-      });
+      // Paso Final: Actualizar base de datos
+      const finishStepIdx = steps.length - 1;
+      setCurrentUploadStep(finishStepIdx);
+      setUploadProgress({ uploaded: 1, total: 1, phase: 'Finalizando Análisis...', percent: 96 });
+      // Marcar pasos anteriores como hechos
+      setUploadSteps(prev => prev.map((s, i) => i < finishStepIdx ? { ...s, done: true } : s));
 
-      // Actualizar el estado del reporte a 'en_cotizacion' solo con el análisis (SIN PRECIO)
-      // El precio lo agregará el admin después en "Cotizaciones Pendientes"
       const respuesta = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
         'en_cotizacion',
         descripcionTrabajo.trim()
       );
 
-      console.log('[EMPLEADO-ANALISIS] Respuesta del servidor:', respuesta);
-
       if (respuesta.success) {
+        // Todo exitoso
+        setUploadSteps(prev => prev.map(s => ({ ...s, done: true })));
+        setUploadProgress(prev => ({ ...prev, percent: 100 }));
+
         // Actualizar lista de reportes localmente
         const reportesActualizados = listaReportes.map((r: any) =>
           r.id === reporteSeleccionado.id ? { ...r, estado: 'en_cotizacion', analisis_general: descripcionTrabajo.trim() } : r
         );
         setListaReportes(reportesActualizados);
 
-        // Actualizar también el reporte seleccionado
         if (reporteSeleccionado) {
           setReporteSeleccionado({
             ...reporteSeleccionado,
@@ -851,29 +915,49 @@ function EmpleadoPanelContent() {
         ).length;
         setReportes(pendientes);
 
-        // Limpiar estados y cerrar modal
-        setShowCotizarModal(false);
-        setDescripcionTrabajo('');
-        cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
+        // Esperar un momento para que el usuario vea el 100%
+        setTimeout(() => {
+          setShowUploadProgress(false);
+          setShowCotizarModal(false);
+          setDescripcionTrabajo('');
+          showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
+          deleteRecording();
+          setFotosRevisionUris([]);
+          cerrarModalReporteDetalle();
+        }, 1200);
 
-        showToast('Análisis enviado exitosamente. El reporte ahora está En Cotización.', 'success');
-        deleteRecording(); // Limpiar audio
-        setFotosRevisionUris([]); // Limpiar fotos
-        cerrarModalReporteDetalle(); // Cerrar el modal de detalle del reporte
       } else {
-        console.error('[EMPLEADO-ANALISIS] Error en respuesta:', respuesta);
-        showToast('Error al enviar análisis', 'error');
+        throw new Error(respuesta.error || 'Error al actualizar el estado');
       }
-    } catch (error) {
-      console.error('Error al guardar análisis:', error);
-      showToast('Error al guardar la cotización', 'error');
+    } catch (error: any) {
+      console.error('[EMPLEADO-ANALISIS] Error:', error);
+      setShowUploadProgress(false);
+      showToast('Error: ' + (error.message || 'Error al guardar'), 'error');
     } finally {
       setGuardandoCotizacion(false);
     }
   };
 
+
   const enviarAnalisisYReparacionExpress = async () => {
     if (!reporteSeleccionado?.id) return;
+
+    // --- Iniciar Progreso Premium ---
+    const hasAudio = !!audioUri;
+    const hasPhotosRev = fotosRevisionUris.length > 0;
+    const hasPhotosPost = fotosPostprocesoUris.length > 0;
+
+    const steps = [{ label: 'Preparando...', icon: 'construct-outline', done: true }];
+    if (hasAudio) steps.push({ label: 'Subiendo Audio...', icon: 'mic-outline', done: false });
+    if (hasPhotosRev) steps.push({ label: 'Fotos de Revisión...', icon: 'images-outline', done: false });
+    if (hasPhotosPost) steps.push({ label: 'Fotos de Finalización...', icon: 'camera-outline', done: false });
+    steps.push({ label: 'Finalizando Servicio CSC...', icon: 'cloud-upload-outline', done: false });
+
+    setUploadSteps(steps);
+    setCurrentUploadStep(1);
+    setUploadProgress({ uploaded: 0, total: 0, phase: 'Preparando...', percent: 5 });
+    setEstimatedTimeLeft('');
+    setShowUploadProgress(true);
 
     setGuardandoCotizacion(true); // Using this to show loading state
     setGuardandoFase2(true);      // Also this one
@@ -884,7 +968,7 @@ function EmpleadoPanelContent() {
 
       // Data needed for Phase 3.1 (Reparacion)
       const fase2Data = {
-        revision: revision, // Opcional o no usado en nueva versión pero se envía
+        revision: revision,
         recomendaciones,
         reparacion,
         recomendaciones_adicionales: recomendacionesAdicionales,
@@ -893,68 +977,97 @@ function EmpleadoPanelContent() {
 
       console.log('[EMPLEADO-EXPRESS] Enviando análisis y reparación express', { analisisTexto, fase2Data });
 
-      // Change state to 'revision completada' and send both payloads
+      // 1. Actualizar base de datos primero para asegurar el cambio de estado
       const respuesta = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
-        'revision completada',      // El nuevo estado express
-        analisisTexto,              // El texto del análisis (descripcion_trabajo)
+        'revision completada',      
+        analisisTexto,              
         precioCotizacion || null,
-        fase2Data                   // Detalles de reparación
+        fase2Data                   
       );
 
-      if (respuesta.success) {
-        // Now upload images and audio if any
-        let hasUploadError = false;
+      if (!respuesta.success) throw new Error(respuesta.error || 'Error al actualizar el reporte');
 
-        // 1. Photos for Analysis
-        if (fotosRevisionUris.length > 0 || audioUri) {
-          showToast('Subiendo análisis...', 'info');
-          const uploadRes = await subirArchivosReporte(
-            reporteSeleccionado.id,
-            [], // without photos array (we use fotosRevisionUris here manually or next)
-            undefined, // video
-            audioUri || undefined, // audio
-            fotosRevisionUris, // fotosRevision
-            undefined // fotosPostproceso
-          );
-          if (!uploadRes.success) hasUploadError = true;
-        }
+      // 2. Subir multimedia con progreso
+      const uploadRes = await subirArchivosEmpleadoConProgreso(
+        reporteSeleccionado.id,
+        audioUri || undefined,
+        fotosRevisionUris,
+        fotosPostprocesoUris,
+        (uploaded, total, phase, elapsedMs) => {
+          let stepIdx = 0;
+          let phaseLabel = '';
+          
+          if (phase === 'audio') {
+            stepIdx = steps.findIndex(s => s.label.includes('Audio'));
+            phaseLabel = 'Subiendo Nota de Voz...';
+          } else if (phase === 'foto_revision') {
+            stepIdx = steps.findIndex(s => s.label.includes('Revisión'));
+            phaseLabel = 'Subiendo Fotos de Revisión...';
+            // Marcar audio como hecho
+            const audioIdx = steps.findIndex(s => s.label.includes('Audio'));
+            if (audioIdx !== -1) {
+              setUploadSteps(prev => prev.map((s, i) => i === audioIdx ? { ...s, done: true } : s));
+            }
+          } else if (phase === 'foto_postproceso') {
+            stepIdx = steps.findIndex(s => s.label.includes('Finalización'));
+            phaseLabel = 'Subiendo Fotos de Finalización...';
+            // Marcar fotos revision como hecho
+            const revIdx = steps.findIndex(s => s.label.includes('Revisión'));
+            if (revIdx !== -1) {
+              setUploadSteps(prev => prev.map((s, i) => i <= revIdx && i > 0 ? { ...s, done: true } : s));
+            }
+          }
 
-        // 2. Photos for Repair (Postproceso)
-        if (fotosPostprocesoUris.length > 0) {
-          showToast('Subiendo imágenes de finalización...', 'info');
-          const uploadRes2 = await subirArchivosReporte(
-            reporteSeleccionado.id,
-            [],
-            undefined,
-            undefined,
-            undefined,
-            fotosPostprocesoUris
-          );
-          if (!uploadRes2.success) hasUploadError = true;
-        }
+          if (stepIdx !== -1) {
+            setCurrentUploadStep(stepIdx);
+            
+            const totalStepsCount = steps.length;
+            const stepWeight = 100 / totalStepsCount;
+            const basePercent = stepIdx * stepWeight;
+            const stepProgress = total > 0 ? (uploaded / total) * stepWeight : 0;
+            const totalPercent = Math.min(Math.round(basePercent + stepProgress), 98);
 
-        if (hasUploadError) {
-          showToast('Servicio completado. Hubo un error al subir algunos archivos multimedia.', 'warning');
-        } else {
-          showToast('¡Servicio CSC completado exitosamente!', 'success');
+            setUploadProgress({ uploaded, total, phase: phaseLabel, percent: totalPercent });
+
+            if (uploaded > 0 && elapsedMs > 0) {
+              const msPerFile = elapsedMs / uploaded;
+              const remaining = total - uploaded;
+              const seconds = Math.ceil((remaining * msPerFile) / 1000);
+              if (seconds > 0) setEstimatedTimeLeft(`${seconds}s`);
+            }
+          }
         }
+      );
+
+      // Finalización exitosa
+      setUploadSteps(prev => prev.map(s => ({ ...s, done: true })));
+      setUploadProgress({ uploaded: 1, total: 1, phase: 'Servicio CSC Completado', percent: 100 });
+
+      setTimeout(() => {
+        setShowUploadProgress(false);
+        showToast('¡Servicio CSC completado exitosamente!', 'success');
 
         // Cleanup and close
         setFotosRevisionUris([]);
         setFotosPostprocesoUris([]);
-        deleteRecording();
         setShowExpressModal(false);
+        setDescripcionTrabajo('');
+        setPrecioCotizacion('');
+        setRevision('');
+        setRecomendaciones('');
+        setReparacion('');
+        setRecomendacionesAdicionales('');
+        setMaterialesRefacciones('');
+        deleteRecording();
         cerrarModalReporteDetalle();
         cargarReportes();
+      }, 1500);
 
-      } else {
-        console.error('[EMPLEADO-CSC] Error en respuesta:', respuesta);
-        showToast('Error al enviar servicio CSC', 'error');
-      }
-    } catch (error) {
-      console.error('Error al guardar servicio CSC:', error);
-      showToast('Error inesperado al ejecutar el servicio CSC.', 'error');
+    } catch (error: any) {
+      console.error('[EMPLEADO-EXPRESS] Error:', error);
+      setShowUploadProgress(false);
+      showToast('Error: ' + (error.message || 'Error inesperado'), 'error');
     } finally {
       setGuardandoCotizacion(false);
       setGuardandoFase2(false);
@@ -963,6 +1076,19 @@ function EmpleadoPanelContent() {
 
   const handleFinalizarTrabajo = async () => {
     if (!reporteSeleccionado?.id) return;
+
+    // --- Iniciar Progreso Premium ---
+    const hasPhotos = fotosPostprocesoUris.length > 0;
+    
+    const steps = [{ label: 'Preparando...', icon: 'construct-outline', done: true }];
+    if (hasPhotos) steps.push({ label: 'Fotos de Finalización...', icon: 'camera-outline', done: false });
+    steps.push({ label: 'Finalizando Reporte...', icon: 'cloud-upload-outline', done: false });
+
+    setUploadSteps(steps);
+    setCurrentUploadStep(hasPhotos ? 1 : 0);
+    setUploadProgress({ uploaded: 0, total: 0, phase: 'Preparando...', percent: 5 });
+    setEstimatedTimeLeft('');
+    setShowUploadProgress(true);
 
     setGuardandoFase2(true);
     setShowConfirmarFinalizarModal(false);
@@ -978,6 +1104,7 @@ function EmpleadoPanelContent() {
 
       console.log('[EMPLEADO-FASE2] Enviando datos de Fase 2:', fase2Data);
 
+      // 1. Actualizar estado primero
       const updateResult = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
         'finalizado_por_tecnico',
@@ -986,33 +1113,47 @@ function EmpleadoPanelContent() {
         fase2Data
       );
 
-      if (updateResult.success) {
-        // Subir imágenes de finalización si existen
-        if (fotosPostprocesoUris.length > 0) {
-          showToast('Subiendo imágenes de finalización...', 'info');
-          const uploadRes = await subirArchivosReporte(
-            reporteSeleccionado.id,
-            [],
-            undefined,
-            undefined,
-            undefined,
-            fotosPostprocesoUris
-          );
-          if (!uploadRes.success) {
-            showToast('Trabajo guardado, pero error al subir la foto', 'warning');
-          }
-        }
+      if (!updateResult.success) throw new Error(updateResult.error || 'Error al actualizar el reporte');
 
+      // 2. Subir imágenes si existen con progreso
+      if (hasPhotos) {
+        const uploadRes = await subirArchivosEmpleadoConProgreso(
+          reporteSeleccionado.id,
+          undefined, // no audio
+          [], // no revision photos
+          fotosPostprocesoUris,
+          (uploaded, total, phase, elapsedMs) => {
+            const stepIdx = steps.findIndex(s => s.label.includes('Finalización'));
+            if (stepIdx !== -1) {
+              setCurrentUploadStep(stepIdx);
+              const totalStepsCount = steps.length;
+              const stepWeight = 100 / totalStepsCount;
+              const basePercent = stepIdx * stepWeight;
+              const stepProgress = total > 0 ? (uploaded / total) * stepWeight : 0;
+              const totalPercent = Math.min(Math.round(basePercent + stepProgress), 95);
+              setUploadProgress({ uploaded, total, phase: 'Subiendo Imágenes...', percent: totalPercent });
+            }
+          }
+        );
+        if (!uploadRes.success) throw new Error(uploadRes.error);
+      }
+
+      // Finalización
+      setUploadSteps(prev => prev.map(s => ({ ...s, done: true })));
+      setUploadProgress({ uploaded: 1, total: 1, phase: 'Reporte Finalizado', percent: 100 });
+
+      setTimeout(() => {
+        setShowUploadProgress(false);
         showToast('Trabajo guardado. El admin debe confirmar para finalizar oficialmente.', 'success');
         setFotosPostprocesoUris([]); // Limpiar estado
         cerrarModalReporteDetalle();
         cargarReportes();
-      } else {
-        showToast('Error al guardar el trabajo: ' + updateResult.error, 'error');
-      }
-    } catch (error) {
+      }, 1500);
+
+    } catch (error: any) {
       console.error('[EMPLEADO-FASE2] Error:', error);
-      showToast('Error inesperado al guardar el trabajo', 'error');
+      setShowUploadProgress(false);
+      showToast('Error: ' + (error.message || 'Error al guardar'), 'error');
     } finally {
       setGuardandoFase2(false);
     }
@@ -3742,6 +3883,17 @@ function EmpleadoPanelContent() {
           </View>
         )
       }
+      {/* Overlay de Progreso de Carga Premium */}
+      <UploadProgressOverlay
+        visible={showUploadProgress}
+        progress={uploadProgress.percent}
+        steps={uploadSteps}
+        currentStep={currentUploadStep}
+        estimatedTime={estimatedTimeLeft}
+        phase={uploadProgress.phase}
+        currentCount={uploadProgress.uploaded}
+        totalCount={uploadProgress.total}
+      />
     </SafeAreaView >
   );
 }

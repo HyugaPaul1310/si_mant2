@@ -1,13 +1,13 @@
 // @ts-nocheck
 import { obtenerSucursalesCliente } from '@/lib/api-backend';
 import { obtenerEquiposSucursal } from '@/lib/empresas';
-import { crearReporte, subirArchivosReporte } from '@/lib/reportes';
+import { crearReporte, subirArchivosReporteConProgreso } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Easing, Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Usuario = {
@@ -50,6 +50,44 @@ export default function GenerarReporteScreen() {
   const [imagenes, setImagenes] = useState<string[]>([]);
   const [video, setVideo] = useState<string | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+
+  // Loading overlay states
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [loadingSteps, setLoadingSteps] = useState<{ label: string; icon: string; done: boolean }[]>([]);
+  // Progress tracking for uploads
+  const [uploadProgress, setUploadProgress] = useState({ uploaded: 0, total: 0, phase: '' as string, percent: 0 });
+  const [estimatedTimeLeft, setEstimatedTimeLeft] = useState('');
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Start spinner animation when overlay is shown
+  useEffect(() => {
+    if (showLoadingOverlay) {
+      // Fade in
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      // Spin animation
+      const spin = Animated.loop(
+        Animated.timing(spinAnim, { toValue: 1, duration: 1200, easing: Easing.linear, useNativeDriver: true })
+      );
+      spin.start();
+      // Pulse animation
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      );
+      pulse.start();
+      return () => { spin.stop(); pulse.stop(); };
+    } else {
+      fadeAnim.setValue(0);
+      spinAnim.setValue(0);
+      pulseAnim.setValue(1);
+    }
+  }, [showLoadingOverlay]);
 
   // Equipos de la sucursal seleccionada
   const [equiposSucursal, setEquiposSucursal] = useState([]);
@@ -190,10 +228,41 @@ export default function GenerarReporteScreen() {
       return;
     }
 
+    // Build loading steps dynamically based on what media is attached
+    const steps: { label: string; icon: string; done: boolean }[] = [
+      { label: 'Creando reporte...', icon: 'document-text-outline', done: false },
+    ];
+    if (imagenes.length > 0) {
+      steps.push({ label: `Subiendo ${imagenes.length} imagen${imagenes.length > 1 ? 'es' : ''}...`, icon: 'images-outline', done: false });
+    }
+    if (video) {
+      steps.push({ label: 'Subiendo video...', icon: 'videocam-outline', done: false });
+    }
+    steps.push({ label: 'Finalizando...', icon: 'checkmark-circle-outline', done: false });
+
+    setLoadingSteps(steps);
+    setLoadingStep(0);
+    setUploadProgress({ uploaded: 0, total: 0, phase: '', percent: 0 });
+    setEstimatedTimeLeft('');
+    progressAnim.setValue(0);
+    setShowLoadingOverlay(true);
     setLoading(true);
+
+    // Compute total file count for global percentage
+    const totalFiles = imagenes.length + (video ? 1 : 0);
+    let filesUploaded = 0;
+
+    const updateGlobalPercent = (count: number) => {
+      filesUploaded = count;
+      const pct = totalFiles > 0 ? Math.round((filesUploaded / totalFiles) * 100) : 0;
+      setUploadProgress(prev => ({ ...prev, percent: pct }));
+      Animated.timing(progressAnim, { toValue: pct / 100, duration: 400, useNativeDriver: false }).start();
+    };
 
     try {
       // Paso 1: Crear el reporte
+      setLoadingStep(0);
+      setUploadProgress({ uploaded: 0, total: 0, phase: 'Creando reporte...', percent: 0 });
       const resultado = await crearReporte({
         usuario_email: usuario!.email,
         usuario_nombre: usuario!.nombre,
@@ -210,45 +279,115 @@ export default function GenerarReporteScreen() {
         direccion_sucursal: sucursalSeleccionada.direccion,
       });
 
+      // Mark step 0 done
+      setLoadingSteps(prev => prev.map((s, i) => i === 0 ? { ...s, done: true } : s));
+
       if (!resultado.success) {
+        setShowLoadingOverlay(false);
         setErrorMessage(resultado.error || 'Error al crear el reporte');
         setLoading(false);
         return;
       }
 
       console.log('[MODAL] Respuesta de crearReporte:', resultado);
-      console.log('[MODAL] resultado.data:', resultado.data);
-      console.log('[MODAL] resultado.data tipo:', typeof resultado.data);
-      console.log('[MODAL] resultado.data keys:', Object.keys(resultado.data || {}));
-      console.log('[MODAL] resultado.data.id:', resultado.data?.id);
-      console.log('[MODAL] resultado.data.reporteId:', resultado.data?.reporteId);
-
-      // El backend puede retornar data.id o data.reporteId
-      // Usar directamente resultado.data.id si existe, incluso si es 0 (válido en SQL)
       const reporteId = resultado.data?.id !== undefined ? resultado.data.id : (resultado.data?.reporteId || null);
-
       console.log('[MODAL] reporteId extraído:', reporteId);
-      console.log('[MODAL] Imágenes:', imagenes.length, 'Video:', !!video);
-      console.log('[MODAL] reporteId es válido?:', reporteId !== null && reporteId !== undefined);
 
-      // Paso 2: Subir archivos a Cloudflare (si existen y tenemos un ID válido)
+      // Paso 2: Subir archivos a Cloudflare con progreso
       if ((imagenes.length > 0 || video) && reporteId !== null && reporteId !== undefined) {
-        console.log('[MODAL] ✓ Iniciando subida de archivos para reporteId:', reporteId);
-        const uploadResult = await subirArchivosReporte(
+        let currentStep = 1;
+        let imageBaseCount = 0; // images uploaded so far for global count
+
+        // Set image upload step
+        if (imagenes.length > 0) {
+          setLoadingStep(currentStep);
+          setUploadProgress({ uploaded: 0, total: imagenes.length, phase: `Subiendo ${imagenes.length} imagen${imagenes.length > 1 ? 'es' : ''}...`, percent: 0 });
+        }
+
+        const uploadResult = await subirArchivosReporteConProgreso(
           String(reporteId),
           imagenes.length > 0 ? imagenes : undefined,
-          video || undefined
+          video || undefined,
+          (uploaded, total, phase, elapsedMs) => {
+            if (phase === 'imagen') {
+              // Update image-specific progress
+              setUploadProgress({
+                uploaded,
+                total,
+                phase: `Subiendo ${total} imagen${total > 1 ? 'es' : ''}...`,
+                percent: totalFiles > 0 ? Math.round(((imageBaseCount + uploaded) / totalFiles) * 100) : 0,
+              });
+              updateGlobalPercent(imageBaseCount + uploaded);
+
+              // Estimate time remaining for images
+              if (uploaded > 0 && uploaded < total) {
+                const avgPerFile = elapsedMs / uploaded;
+                const remaining = (total - uploaded) * avgPerFile;
+                const secs = Math.ceil(remaining / 1000);
+                setEstimatedTimeLeft(secs > 60 ? `${Math.ceil(secs / 60)} minuto${Math.ceil(secs / 60) > 1 ? 's' : ''}` : `${secs} segundo${secs > 1 ? 's' : ''}`);
+              } else if (uploaded >= total) {
+                setEstimatedTimeLeft('');
+              }
+
+              // Mark images step done when all uploaded
+              if (uploaded >= total) {
+                imageBaseCount = total;
+                setLoadingSteps(prev => prev.map((s, i) => i === currentStep ? { ...s, done: true } : s));
+                currentStep++;
+              }
+            } else if (phase === 'video') {
+              // Switch to video step
+              setLoadingStep(currentStep);
+              if (uploaded === 0) {
+                setUploadProgress(prev => ({
+                  ...prev,
+                  uploaded: 0,
+                  total: 1,
+                  phase: 'Subiendo video...',
+                }));
+                setEstimatedTimeLeft('Esto puede tardar un poco...');
+              } else {
+                // Video done
+                updateGlobalPercent(imagenes.length > 0 ? (imageBaseCount + imagenes.length + 1) : 1);
+                setUploadProgress(prev => ({
+                  ...prev,
+                  uploaded: 1,
+                  total: 1,
+                  phase: 'Subiendo video...',
+                  percent: 100,
+                }));
+                setEstimatedTimeLeft('');
+                setLoadingSteps(prev => prev.map((s, i) => i === currentStep ? { ...s, done: true } : s));
+                currentStep++;
+              }
+            }
+          }
         );
 
         if (!uploadResult.success) {
           console.warn('Advertencia al subir archivos:', uploadResult.error);
-          // No cancelamos el flujo, el reporte se creó exitosamente
         }
-      } else if (imagenes.length > 0 || video) {
-        console.warn('[MODAL] ⚠️ No se pudo extraer reporteId válido, saltando subida de archivos');
+
+        // Final step
+        setLoadingStep(currentStep);
+        updateGlobalPercent(totalFiles);
+        setLoadingSteps(prev => prev.map((s, i) => i === currentStep ? { ...s, done: true } : s));
+      } else {
+        if (imagenes.length > 0 || video) {
+          console.warn('[MODAL] ⚠️ No se pudo extraer reporteId válido, saltando subida de archivos');
+        }
+        // Mark final step done
+        const lastIdx = steps.length - 1;
+        setLoadingStep(lastIdx);
+        updateGlobalPercent(totalFiles);
+        setLoadingSteps(prev => prev.map((s, i) => i === lastIdx ? { ...s, done: true } : s));
       }
 
+      // Short pause so user sees final step completed
+      await new Promise(resolve => setTimeout(resolve, 600));
+
       // Reporte creado exitosamente: marca bandera, muestra banner y redirige
+      setShowLoadingOverlay(false);
       setLoading(false);
       setShowSuccessBanner(true);
 
@@ -258,6 +397,7 @@ export default function GenerarReporteScreen() {
         router.back();
       }, 900);
     } catch (error: any) {
+      setShowLoadingOverlay(false);
       setErrorMessage('Ocurrió un error: ' + error.message);
       setLoading(false);
     }
@@ -699,6 +839,113 @@ export default function GenerarReporteScreen() {
           </View>
         </View>
       )}
+
+      {/* ========== LOADING OVERLAY ========== */}
+      <Modal
+        visible={showLoadingOverlay}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+      >
+        <Animated.View style={[styles.loadingOverlay, { opacity: fadeAnim }]}>
+          <View style={styles.loadingCard}>
+            {/* ===== CIRCULAR PROGRESS RING ===== */}
+            <View style={styles.circularProgressContainer}>
+              {/* Background ring */}
+              <Animated.View
+                style={[
+                  styles.progressRingBg,
+                  {
+                    transform: [
+                      { rotate: spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
+                    ],
+                  },
+                ]}
+              />
+              {/* Percentage text */}
+              <View style={styles.progressTextContainer}>
+                <Text style={[styles.progressPercent, { fontFamily }]}>
+                  {uploadProgress.percent}%
+                </Text>
+              </View>
+            </View>
+
+            {/* Title: dynamic based on current phase */}
+            <Text style={[styles.loadingTitle, { fontFamily }]}>
+              {uploadProgress.phase || 'Procesando reporte...'}
+            </Text>
+
+            {/* ===== PROGRESS DETAIL BOX ===== */}
+            {(uploadProgress.total > 0) && (
+              <View style={styles.progressDetailBox}>
+                <Text style={[styles.progressDetailText, { fontFamily }]}>
+                  {uploadProgress.phase.includes('imagen')
+                    ? `${uploadProgress.uploaded} de ${uploadProgress.total} imágenes subidas`
+                    : uploadProgress.phase.includes('video')
+                      ? (uploadProgress.uploaded >= 1 ? 'Video subido' : 'Subiendo video...')
+                      : `${uploadProgress.uploaded} de ${uploadProgress.total} archivos`
+                  }
+                </Text>
+                {/* Progress bar */}
+                <View style={styles.progressBarTrack}>
+                  <Animated.View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: progressAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0%', '100%'],
+                        }),
+                      },
+                    ]}
+                  />
+                </View>
+                {estimatedTimeLeft ? (
+                  <Text style={[styles.estimatedTimeText, { fontFamily }]}>
+                    Tiempo estimado restante: {estimatedTimeLeft}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+            {/* ===== STEPS LIST ===== */}
+            <View style={styles.stepsContainer}>
+              {loadingSteps.map((step, idx) => {
+                const isActive = idx === loadingStep && !step.done;
+                const isDone = step.done;
+                return (
+                  <View key={idx} style={[styles.stepRow, isActive && styles.stepRowActive]}>
+                    <View style={[
+                      styles.stepIconCircle,
+                      isDone && styles.stepIconDone,
+                      isActive && styles.stepIconActive,
+                    ]}>
+                      {isDone ? (
+                        <Ionicons name="checkmark" size={14} color="#fff" />
+                      ) : isActive ? (
+                        <ActivityIndicator size="small" color="#06b6d4" />
+                      ) : (
+                        <Ionicons name={step.icon as any} size={14} color="#475569" />
+                      )}
+                    </View>
+                    <Text style={[
+                      styles.stepLabel,
+                      { fontFamily },
+                      isDone && styles.stepLabelDone,
+                      isActive && styles.stepLabelActive,
+                    ]}>
+                      {isDone ? step.label.replace('...', '') + ' ✓' : step.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.loadingHint, { fontFamily }]}>No cierres la aplicación</Text>
+          </View>
+        </Animated.View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -1058,5 +1305,157 @@ const styles = StyleSheet.create({
   successMessage: {
     color: '#f1f5f9',
     fontSize: 12,
+  },
+  // ========== LOADING OVERLAY STYLES ==========
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 32,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 380,
+    shadowColor: '#06b6d4',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 40,
+    elevation: 25,
+  },
+  // Circular progress ring
+  circularProgressContainer: {
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  progressRingBg: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 5,
+    borderColor: '#1e293b',
+    borderTopColor: '#06b6d4',
+    borderRightColor: '#06b6d4',
+  },
+  progressTextContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressPercent: {
+    color: '#22d3ee',
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -1,
+  },
+  loadingTitle: {
+    color: '#f1f5f9',
+    fontSize: 17,
+    fontWeight: '700',
+    marginBottom: 16,
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+  // Progress detail box
+  progressDetailBox: {
+    width: '100%',
+    backgroundColor: '#0c1322',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 16,
+    marginBottom: 20,
+  },
+  progressDetailText: {
+    color: '#e2e8f0',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  progressBarTrack: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#1e293b',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#06b6d4',
+    borderRadius: 4,
+  },
+  estimatedTimeText: {
+    color: '#06b6d4',
+    fontSize: 12,
+    fontWeight: '400',
+    fontStyle: 'italic',
+  },
+  // Steps list
+  stepsContainer: {
+    width: '100%',
+    gap: 4,
+    marginBottom: 16,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'transparent',
+  },
+  stepRowActive: {
+    backgroundColor: '#06b6d40d',
+    borderWidth: 1,
+    borderColor: '#06b6d41a',
+  },
+  stepIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#1e293b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  stepIconDone: {
+    backgroundColor: '#06b6d4',
+    borderColor: '#22d3ee',
+  },
+  stepIconActive: {
+    backgroundColor: '#0f172a',
+    borderColor: '#06b6d4',
+  },
+  stepLabel: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '400',
+    flex: 1,
+  },
+  stepLabelDone: {
+    color: '#4ade80',
+    fontWeight: '500',
+  },
+  stepLabelActive: {
+    color: '#f1f5f9',
+    fontWeight: '500',
+  },
+  loadingHint: {
+    color: '#475569',
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });

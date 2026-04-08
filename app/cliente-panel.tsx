@@ -610,22 +610,22 @@ function ClientePanelContent() {
       display: block;
     }
     .body-content { 
-      padding: 180px 50px 80px 50px; 
+      padding: 0; 
       position: relative;
       z-index: 10;
     }
     
-    .section { margin-bottom: 24px; }
-    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; }
-    .field { margin-bottom: 10px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; }
+    .section { margin-bottom: 32px; }
+    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; page-break-after: avoid; break-after: avoid; }
+    .field { margin-bottom: 14px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; page-break-inside: avoid; break-inside: avoid; }
     .label { font-size: 8px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
-    .value { font-size: 12px; color: #222; }
+    .value { font-size: 12px; color: #222; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap; }
     .value-red { color: #c41e3a; font-weight: 700; font-size: 18px; }
     
     .row { display: table; width: 100%; margin-bottom: 10px; table-layout: fixed; }
     .col { display: table-cell; width: 50%; padding-right: 15px; vertical-align: top; }
     
-    .signatures { margin-top: 140px; padding-top: 20px; }
+    .signatures { margin-top: 180px; padding-top: 20px; page-break-inside: avoid; break-inside: avoid; }
     .sig-row { display: table; width: 100%; table-layout: fixed; }
     .sig-col { display: table-cell; text-align: center; height: 50px; border-bottom: 2.5px solid #1a1a1a; font-size: 11px; font-weight: 700; color: #333; padding-bottom: 8px; vertical-align: bottom; }
     .sig-spacer { display: table-cell; width: 60px; }
@@ -633,7 +633,6 @@ function ClientePanelContent() {
     .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; }
     .page-break { 
       page-break-before: always; 
-      padding-top: 180px;
       display: block;
     }
   </style>
@@ -644,77 +643,91 @@ function ClientePanelContent() {
   </div>
 
   <div class="body-content">
-    <div class="section">
-      <div class="section-title">Datos Generales</div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
-        <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
-      </div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
-        <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
-      </div>
-      <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
-        ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
-      </div>
-      <div class="row">
-        <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
-        ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
-      </div>
-    </div>
+    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+      <thead>
+        <tr><td style="height: 180px;"></td></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 0 50px 80px 50px; vertical-align: top;">
+            <div class="section">
+              <div class="section-title">Datos Generales</div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
+                <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
+              </div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
+                <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
+              </div>
+              <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
+                ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
+              </div>
+              <div class="row">
+                <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
+                ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
+              </div>
+            </div>
 
-    ${reporte.analisis_general ? `
-    <div class="section">
-      <div class="section-title">Información de Cotización</div>
-      ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
-        <div class="field">
-          <span class="label">Costo de cotización</span>
-          <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
-        </div>` : ''}
-      <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
-    </div>` : ''}
+            ${reporte.analisis_general ? `
+            <div class="section">
+              <div class="section-title">Información de Cotización</div>
+              ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+                <div class="field">
+                  <span class="label">Costo de cotización</span>
+                  <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
+                </div>` : ''}
+              <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
+            </div>` : ''}
 
-    ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
-    <div class="section">
-      <div class="section-title">Trabajo Realizado</div>
-      ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
-      ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
-      ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
-      ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
-    </div>` : ''}
+            ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
+            <div class="section">
+              <div class="section-title">Trabajo Realizado</div>
+              ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
+              ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
+              ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
+              ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
+            </div>` : ''}
 
-    ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
-    <div class="page-break"></div>
-    <div class="section">
-      <div class="section-title">Archivos Adjuntos</div>
-      <div class="field">
-        <div class="value" style="font-size: 10px; line-height: 1.6;">
-          ${archivosReporte
+            ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+            <div class="page-break"></div>
+            <div class="section">
+              <div class="section-title">Archivos Adjuntos</div>
+              <div class="field">
+                <div class="value" style="font-size: 10px; line-height: 1.6;">
+                  ${archivosReporte
             .filter(a => a.tipo_archivo !== 'audio')
             .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
             .join('<br/>')}
-        </div>
-      </div>
-    </div>
-    
-    <div class="signatures">
-      <div class="sig-row">
-        <div class="sig-col">Firma del técnico</div>
-        <div class="sig-spacer"></div>
-        <div class="sig-col">Firma del cliente</div>
-      </div>
-    </div>` : `
-    <div class="signatures">
-      <div class="sig-row">
-        <div class="sig-col">Firma del técnico</div>
-        <div class="sig-spacer"></div>
-        <div class="sig-col">Firma del cliente</div>
-      </div>
-    </div>`}
+                </div>
+              </div>
+            </div>
+            
+            <div class="signatures">
+              <div class="sig-row">
+                <div class="sig-col">Firma del técnico</div>
+                <div class="sig-spacer"></div>
+                <div class="sig-col">Firma del cliente</div>
+              </div>
+            </div>` : `
+            <div class="signatures">
+              <div class="sig-row">
+                <div class="sig-col">Firma del técnico</div>
+                <div class="sig-spacer"></div>
+                <div class="sig-col">Firma del cliente</div>
+              </div>
+            </div>`}
 
-    <div class="footer">si-mant.com</div>
+            <div class="footer">si-mant.com</div>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr><td style="height: 100px;"></td></tr>
+      </tfoot>
+    </table>
   </div>
 </body>
 </html>`;
