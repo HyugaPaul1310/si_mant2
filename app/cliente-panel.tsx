@@ -574,25 +574,27 @@ function ClientePanelContent() {
       const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
       const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
 
-      // --- TEMPLATE UNIFICADO ---
+      // --- TEMPLATE COMPACTO (1 HOJA) ---
       const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
     @page { margin: 0; size: A4; }
+    * { box-sizing: border-box; }
     html, body {
       margin: 0;
       padding: 0;
       width: 210mm;
-      height: 297mm;
+      min-height: 297mm;
     }
     body { 
-      font-family: Arial, sans-serif; 
-      color: #222; 
+      font-family: Arial, Helvetica, sans-serif; 
+      font-size: 9px;
+      color: #1a1a1a; 
       -webkit-print-color-adjust: exact; 
       print-color-adjust: exact; 
-      background: transparent;
+      background: #fff;
     }
     .background-container {
       position: fixed;
@@ -609,31 +611,156 @@ function ClientePanelContent() {
       object-fit: cover;
       display: block;
     }
-    .body-content { 
-      padding: 0; 
+    .page-wrapper {
       position: relative;
       z-index: 10;
+      width: 100%;
+      min-height: 297mm;
+      display: flex;
+      flex-direction: column;
     }
-    
-    .section { margin-bottom: 32px; }
-    .section-title { font-size: 14px; font-weight: 700; color: #c41e3a; border-left: 4px solid #c41e3a; padding-left: 10px; margin-bottom: 12px; page-break-after: avoid; break-after: avoid; }
-    .field { margin-bottom: 14px; background: rgba(245, 245, 245, 0.8) !important; padding: 8px 12px; border-radius: 3px; -webkit-print-color-adjust: exact; page-break-inside: avoid; break-inside: avoid; }
-    .label { font-size: 8px; font-weight: 700; color: #0077b6; text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 3px; }
-    .value { font-size: 12px; color: #222; word-break: break-all; overflow-wrap: break-word; white-space: pre-wrap; }
-    .value-red { color: #c41e3a; font-weight: 700; font-size: 18px; }
-    
-    .row { display: table; width: 100%; margin-bottom: 10px; table-layout: fixed; }
-    .col { display: table-cell; width: 50%; padding-right: 15px; vertical-align: top; }
-    
-    .signatures { margin-top: 180px; padding-top: 20px; page-break-inside: avoid; break-inside: avoid; }
-    .sig-row { display: table; width: 100%; table-layout: fixed; }
-    .sig-col { display: table-cell; text-align: center; height: 50px; border-bottom: 2.5px solid #1a1a1a; font-size: 11px; font-weight: 700; color: #333; padding-bottom: 8px; vertical-align: bottom; }
-    .sig-spacer { display: table-cell; width: 60px; }
-    
-    .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #666; }
-    .page-break { 
-      page-break-before: always; 
+    .body-content { 
+      padding: 0 25px;
+      flex: 1;
+    }
+
+    /* ── Header spacer for background logo ── */
+    .header-spacer { height: 120px; }
+
+    /* ── Report ID badge ── */
+    .report-id-bar {
+      text-align: right;
+      padding: 2px 0 6px 0;
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+    }
+    .report-id-bar span {
+      background: #c41e3a;
+      color: #fff;
+      padding: 2px 10px;
+      border-radius: 3px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Compact section ── */
+    .section { 
+      margin-bottom: 6px;
+      border: 1px solid #d0d0d0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .section-header { 
+      background: #1b3a5c;
+      color: #fff;
+      font-size: 8px; 
+      font-weight: 700; 
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 8px;
+      -webkit-print-color-adjust: exact;
+    }
+    .section-header-red {
+      background: #c41e3a;
+      color: #fff;
+      font-size: 8px; 
+      font-weight: 700; 
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 8px;
+      -webkit-print-color-adjust: exact;
+    }
+
+    /* ── Data grid (table-based for reliability) ── */
+    .data-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-grid td {
+      padding: 3px 8px;
+      vertical-align: top;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 9px;
+      line-height: 1.3;
+    }
+    .data-grid td:last-child { border-right: none; }
+    .data-grid .lbl {
+      font-size: 7px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
       display: block;
+      margin-bottom: 1px;
+    }
+    .data-grid .val {
+      color: #1a1a1a;
+      font-size: 9px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+    .data-grid .val-price {
+      color: #c41e3a;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .data-grid .full-row td {
+      border-bottom: none;
+    }
+
+    /* ── Comment / text block ── */
+    .text-block {
+      padding: 4px 8px;
+      font-size: 9px;
+      line-height: 1.4;
+      color: #1a1a1a;
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .text-block .lbl {
+      font-size: 7px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* ── Signatures ── */
+    .signatures { 
+      margin-top: auto;
+      padding: 0 25px 0 25px;
+    }
+    .sig-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    .sig-table td {
+      text-align: center;
+      vertical-align: bottom;
+      padding-bottom: 4px;
+      height: 40px;
+    }
+    .sig-line {
+      border-top: 1.5px solid #1a1a1a;
+      font-size: 8px;
+      font-weight: 700;
+      color: #333;
+      padding-top: 3px;
+      text-align: center;
+    }
+    .sig-spacer { width: 40px; }
+
+    /* ── Footer ── */
+    .pdf-footer { 
+      text-align: center; 
+      font-size: 8px; 
+      color: #888; 
+      padding: 6px 0 10px 0;
     }
   </style>
 </head>
@@ -642,92 +769,104 @@ function ClientePanelContent() {
     <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
   </div>
 
-  <div class="body-content">
-    <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-      <thead>
-        <tr><td style="height: 180px;"></td></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding: 0 50px 80px 50px; vertical-align: top;">
-            <div class="section">
-              <div class="section-title">Datos Generales</div>
-              <div class="row">
-                <div class="col"><div class="field"><span class="label">Modelo</span><span class="value">${modeloValue}</span></div></div>
-                <div class="col"><div class="field"><span class="label">Serie</span><span class="value">${serieValue}</span></div></div>
-              </div>
-              <div class="row">
-                <div class="col"><div class="field"><span class="label">Sucursal</span><span class="value">${sucursalValue}</span></div></div>
-                <div class="col"><div class="field"><span class="label">Prioridad</span><span class="value">${reporte.prioridad || 'media'}</span></div></div>
-              </div>
-              <div class="field"><span class="label">Comentario / Problema</span><span class="value">${comentarioFinal}</span></div>
-              <div class="row">
-                <div class="col"><div class="field"><span class="label">Estado</span><span class="value">${obtenerNombreEstado(reporte.estado)}</span></div></div>
-                ${reporte.empresa ? `<div class="col"><div class="field"><span class="label">Empresa</span><span class="value">${reporte.empresa}</span></div></div>` : ''}
-              </div>
-              <div class="row">
-                <div class="col"><div class="field"><span class="label">Fecha de creación</span><span class="value">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span></div></div>
-                ${reporte.usuario_nombre ? `<div class="col"><div class="field"><span class="label">Solicitante</span><span class="value">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></div></div>` : ''}
-              </div>
-            </div>
+  <div class="page-wrapper">
+    <div class="body-content">
+      <!-- Header space for background logo -->
+      <div class="header-spacer"></div>
 
-            ${reporte.analisis_general ? `
-            <div class="section">
-              <div class="section-title">Información de Cotización</div>
-              ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
-                <div class="field">
-                  <span class="label">Costo de cotización</span>
-                  <span class="value-red">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span>
-                </div>` : ''}
-              <div class="field"><span class="label">Análisis</span><span class="value">${reporte.analisis_general}</span></div>
-            </div>` : ''}
+      <!-- Report ID -->
+      <div class="report-id-bar">
+        REPORTE: <span>#${reporte.id}</span>
+      </div>
 
-            ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones) ? `
-            <div class="section">
-              <div class="section-title">Trabajo Realizado</div>
-              ${reporte.reparacion ? `<div class="field"><span class="label">Reparación Realizada</span><span class="value">${reporte.reparacion}</span></div>` : ''}
-              ${reporte.materiales_refacciones ? `<div class="field"><span class="label">Materiales / Refacciones</span><span class="value">${reporte.materiales_refacciones}</span></div>` : ''}
-              ${reporte.recomendaciones ? `<div class="field"><span class="label">Recomendaciones</span><span class="value">${reporte.recomendaciones}</span></div>` : ''}
-              ${reporte.recomendaciones_adicionales ? `<div class="field"><span class="label">Recomendaciones Adicionales</span><span class="value">${reporte.recomendaciones_adicionales}</span></div>` : ''}
-            </div>` : ''}
+      <!-- ═══ DATOS GENERALES ═══ -->
+      <div class="section">
+        <div class="section-header">Datos Generales</div>
+        <table class="data-grid">
+          <tr>
+            <td style="width:25%"><span class="lbl">Equipo / Servicio</span><span class="val">${reporte.equipo_descripcion || 'N/A'}</span></td>
+            <td style="width:25%"><span class="lbl">Modelo</span><span class="val">${modeloValue}</span></td>
+            <td style="width:25%"><span class="lbl">Serie</span><span class="val">${serieValue}</span></td>
+            <td style="width:25%"><span class="lbl">Prioridad</span><span class="val">${(reporte.prioridad || 'media').charAt(0).toUpperCase() + (reporte.prioridad || 'media').slice(1)}</span></td>
+          </tr>
+          <tr>
+            <td><span class="lbl">Sucursal</span><span class="val">${sucursalValue}</span></td>
+            <td><span class="lbl">Estado</span><span class="val">${obtenerNombreEstado(reporte.estado)}</span></td>
+            <td><span class="lbl">Fecha de Creación</span><span class="val">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span></td>
+            <td>${reporte.empresa ? `<span class="lbl">Empresa</span><span class="val">${reporte.empresa}</span>` : `<span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre || ''} ${reporte.usuario_apellido || ''}</span>`}</td>
+          </tr>
+          ${(reporte.empresa && reporte.usuario_nombre) ? `
+          <tr>
+            <td colspan="4"><span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></td>
+          </tr>` : ''}
+        </table>
+      </div>
 
-            ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
-            <div class="page-break"></div>
-            <div class="section">
-              <div class="section-title">Archivos Adjuntos</div>
-              <div class="field">
-                <div class="value" style="font-size: 10px; line-height: 1.6;">
-                  ${archivosReporte
+      <!-- ═══ COMENTARIO / PROBLEMA ═══ -->
+      ${comentarioFinal ? `
+      <div class="section">
+        <div class="section-header">Comentario / Problema</div>
+        <div class="text-block">${comentarioFinal}</div>
+      </div>` : ''}
+
+      <!-- ═══ COTIZACIÓN ═══ -->
+      ${reporte.analisis_general ? `
+      <div class="section">
+        <div class="section-header-red">Información de Cotización</div>
+        ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+        <table class="data-grid">
+          <tr>
+            <td style="width:30%"><span class="lbl">Costo de Cotización</span><span class="val val-price">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span></td>
+            <td style="width:70%"><span class="lbl">Análisis General</span><span class="val">${reporte.analisis_general}</span></td>
+          </tr>
+        </table>` : `
+        <div class="text-block">
+          <span class="lbl">Análisis General</span>
+          ${reporte.analisis_general}
+        </div>`}
+      </div>` : ''}
+
+      <!-- ═══ TRABAJO REALIZADO ═══ -->
+      ${(reporte.reparacion || reporte.materiales_refacciones || reporte.recomendaciones || reporte.recomendaciones_adicionales) ? `
+      <div class="section">
+        <div class="section-header">Trabajo Realizado</div>
+        ${reporte.reparacion ? `<div class="text-block"><span class="lbl">Reparación Realizada</span>${reporte.reparacion}</div>` : ''}
+        ${reporte.materiales_refacciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Materiales / Refacciones</span>${reporte.materiales_refacciones}</div>` : ''}
+        ${reporte.recomendaciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones</span>${reporte.recomendaciones}</div>` : ''}
+        ${reporte.recomendaciones_adicionales ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones Adicionales</span>${reporte.recomendaciones_adicionales}</div>` : ''}
+      </div>` : ''}
+
+      <!-- ═══ ARCHIVOS ADJUNTOS ═══ -->
+      ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+      <div class="section">
+        <div class="section-header">Archivos Adjuntos</div>
+        <div class="text-block" style="font-size: 8px; line-height: 1.5;">
+          ${archivosReporte
             .filter(a => a.tipo_archivo !== 'audio')
             .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
             .join('<br/>')}
-                </div>
-              </div>
-            </div>
-            
-            <div class="signatures">
-              <div class="sig-row">
-                <div class="sig-col">Firma del técnico</div>
-                <div class="sig-spacer"></div>
-                <div class="sig-col">Firma del cliente</div>
-              </div>
-            </div>` : `
-            <div class="signatures">
-              <div class="sig-row">
-                <div class="sig-col">Firma del técnico</div>
-                <div class="sig-spacer"></div>
-                <div class="sig-col">Firma del cliente</div>
-              </div>
-            </div>`}
+        </div>
+      </div>` : ''}
+    </div>
 
-            <div class="footer">si-mant.com</div>
-          </td>
+    <!-- ═══ FIRMAS ═══ -->
+    <div class="signatures">
+      <table class="sig-table">
+        <tr>
+          <td></td>
+          <td class="sig-spacer"></td>
+          <td></td>
         </tr>
-      </tbody>
-      <tfoot>
-        <tr><td style="height: 100px;"></td></tr>
-      </tfoot>
-    </table>
+        <tr>
+          <td><div class="sig-line">Firma del Técnico</div></td>
+          <td class="sig-spacer"></td>
+          <td><div class="sig-line">Firma del Cliente</div></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ═══ FOOTER ═══ -->
+    <div class="pdf-footer">si-mant.com</div>
   </div>
 </body>
 </html>`;
