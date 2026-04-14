@@ -586,7 +586,7 @@ function ClientePanelContent() {
       margin: 0;
       padding: 0;
       width: 210mm;
-      min-height: 297mm;
+      height: 297mm;
     }
     body { 
       font-family: Arial, Helvetica, sans-serif; 
@@ -615,22 +615,24 @@ function ClientePanelContent() {
       position: relative;
       z-index: 10;
       width: 100%;
-      min-height: 297mm;
-      display: flex;
-      flex-direction: column;
+      border-collapse: collapse;
+      border: none;
     }
+    .page-wrapper > thead > tr > td,
+    .page-wrapper > tbody > tr > td,
+    .page-wrapper > tfoot > tr > td { padding: 0; }
+    
     .body-content { 
-      padding: 0 25px;
-      flex: 1;
+      padding: 0 28px;
     }
 
-    /* ── Header spacer for background logo ── */
-    .header-spacer { height: 120px; }
+    /* ── Header spacer for repeating background logo ── */
+    .header-spacer { height: 180px; }
 
     /* ── Report ID badge ── */
     .report-id-bar {
       text-align: right;
-      padding: 2px 0 6px 0;
+      padding: 2px 0 8px 0;
       font-size: 10px;
       font-weight: 700;
       color: #555;
@@ -638,7 +640,7 @@ function ClientePanelContent() {
     .report-id-bar span {
       background: #c41e3a;
       color: #fff;
-      padding: 2px 10px;
+      padding: 3px 12px;
       border-radius: 3px;
       font-size: 11px;
       letter-spacing: 0.5px;
@@ -646,31 +648,22 @@ function ClientePanelContent() {
 
     /* ── Compact section ── */
     .section { 
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       border: 1px solid #d0d0d0;
       border-radius: 3px;
       overflow: hidden;
     }
-    .section-header { 
-      background: #1b3a5c;
-      color: #fff;
-      font-size: 8px; 
+    .section-header, .section-header-red { 
+      font-size: 7px; 
       font-weight: 700; 
       text-transform: uppercase;
       letter-spacing: 1.2px;
       padding: 4px 8px;
       -webkit-print-color-adjust: exact;
-    }
-    .section-header-red {
-      background: #c41e3a;
       color: #fff;
-      font-size: 8px; 
-      font-weight: 700; 
-      text-transform: uppercase;
-      letter-spacing: 1.2px;
-      padding: 4px 8px;
-      -webkit-print-color-adjust: exact;
     }
+    .section-header { background: #1b3a5c; }
+    .section-header-red { background: #c41e3a; }
 
     /* ── Data grid (table-based for reliability) ── */
     .data-grid {
@@ -678,15 +671,15 @@ function ClientePanelContent() {
       border-collapse: collapse;
     }
     .data-grid td {
-      padding: 3px 8px;
+      padding: 3px 6px;
       vertical-align: top;
       border-bottom: 1px solid #e8e8e8;
-      font-size: 9px;
-      line-height: 1.3;
+      font-size: 8px;
+      line-height: 1.2;
     }
     .data-grid td:last-child { border-right: none; }
     .data-grid .lbl {
-      font-size: 7px;
+      font-size: 6px;
       font-weight: 700;
       color: #0077b6;
       text-transform: uppercase;
@@ -696,7 +689,7 @@ function ClientePanelContent() {
     }
     .data-grid .val {
       color: #1a1a1a;
-      font-size: 9px;
+      font-size: 8px;
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: pre-wrap;
@@ -704,7 +697,7 @@ function ClientePanelContent() {
     .data-grid .val-price {
       color: #c41e3a;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 11px;
     }
     .data-grid .full-row td {
       border-bottom: none;
@@ -712,9 +705,9 @@ function ClientePanelContent() {
 
     /* ── Comment / text block ── */
     .text-block {
-      padding: 4px 8px;
-      font-size: 9px;
-      line-height: 1.4;
+      padding: 4px 6px;
+      font-size: 8px;
+      line-height: 1.3;
       color: #1a1a1a;
       word-break: break-word;
       white-space: pre-wrap;
@@ -731,36 +724,35 @@ function ClientePanelContent() {
 
     /* ── Signatures ── */
     .signatures { 
-      margin-top: auto;
-      padding: 0 25px 0 25px;
+      margin-top: 40px;
+      padding: 0 28px 20px 28px;
     }
     .sig-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 30px;
     }
     .sig-table td {
       text-align: center;
       vertical-align: bottom;
       padding-bottom: 4px;
-      height: 40px;
+      height: 50px;
     }
     .sig-line {
       border-top: 1.5px solid #1a1a1a;
       font-size: 8px;
       font-weight: 700;
       color: #333;
-      padding-top: 3px;
+      padding-top: 4px;
       text-align: center;
     }
-    .sig-spacer { width: 40px; }
+    .sig-spacer { width: 60px; }
 
     /* ── Footer ── */
     .pdf-footer { 
       text-align: center; 
-      font-size: 8px; 
-      color: #888; 
-      padding: 6px 0 10px 0;
+      font-size: 7px; 
+      color: #aaa; 
+      padding: 4px 0 8px 0;
     }
   </style>
 </head>
@@ -769,36 +761,43 @@ function ClientePanelContent() {
     <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
   </div>
 
-  <div class="page-wrapper">
-    <div class="body-content">
-      <!-- Header space for background logo -->
-      <div class="header-spacer"></div>
-
-      <!-- Report ID -->
-      <div class="report-id-bar">
-        REPORTE: <span>#${reporte.id}</span>
-      </div>
+  <table class="page-wrapper">
+    <thead>
+      <tr>
+        <td>
+          <!-- Header space that repeats on EVERY page -->
+          <div class="header-spacer"></div>
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="body-content">
 
       <!-- ═══ DATOS GENERALES ═══ -->
       <div class="section">
         <div class="section-header">Datos Generales</div>
         <table class="data-grid">
           <tr>
+            <td style="width:25%"><span class="lbl">Reporte</span><span class="val" style="color:#c41e3a; font-weight:700;">#${reporte.id}</span></td>
             <td style="width:25%"><span class="lbl">Equipo / Servicio</span><span class="val">${reporte.equipo_descripcion || 'N/A'}</span></td>
             <td style="width:25%"><span class="lbl">Modelo</span><span class="val">${modeloValue}</span></td>
             <td style="width:25%"><span class="lbl">Serie</span><span class="val">${serieValue}</span></td>
-            <td style="width:25%"><span class="lbl">Prioridad</span><span class="val">${(reporte.prioridad || 'media').charAt(0).toUpperCase() + (reporte.prioridad || 'media').slice(1)}</span></td>
           </tr>
           <tr>
+            <td><span class="lbl">Prioridad</span><span class="val">${(reporte.prioridad || 'media').charAt(0).toUpperCase() + (reporte.prioridad || 'media').slice(1)}</span></td>
             <td><span class="lbl">Sucursal</span><span class="val">${sucursalValue}</span></td>
             <td><span class="lbl">Estado</span><span class="val">${obtenerNombreEstado(reporte.estado)}</span></td>
             <td><span class="lbl">Fecha de Creación</span><span class="val">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span></td>
-            <td>${reporte.empresa ? `<span class="lbl">Empresa</span><span class="val">${reporte.empresa}</span>` : `<span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre || ''} ${reporte.usuario_apellido || ''}</span>`}</td>
           </tr>
-          ${(reporte.empresa && reporte.usuario_nombre) ? `
           <tr>
-            <td colspan="4"><span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre} ${reporte.usuario_apellido || ''}</span></td>
-          </tr>` : ''}
+            <td colspan="2"><span class="lbl">Empresa</span><span class="val">${reporte.empresa || 'N/A'}</span></td>
+            <td colspan="2"><span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre || ''} ${reporte.usuario_apellido || ''}</span></td>
+          </tr>
+          <tr>
+            <td colspan="4"><span class="lbl">Técnico Asignado</span><span class="val">${reporte.empleado_nombre || reporte.empleado_asignado_nombre || 'N/A'}</span></td>
+          </tr>
         </table>
       </div>
 
@@ -840,7 +839,7 @@ function ClientePanelContent() {
       ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
       <div class="section">
         <div class="section-header">Archivos Adjuntos</div>
-        <div class="text-block" style="font-size: 8px; line-height: 1.5;">
+        <div class="text-block" style="font-size: 8px; line-height: 1.6;">
           ${archivosReporte
             .filter(a => a.tipo_archivo !== 'audio')
             .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
@@ -867,7 +866,10 @@ function ClientePanelContent() {
 
     <!-- ═══ FOOTER ═══ -->
     <div class="pdf-footer">si-mant.com</div>
-  </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </body>
 </html>`;
 

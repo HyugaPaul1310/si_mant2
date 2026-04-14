@@ -1,4 +1,5 @@
 // @ts-nocheck
+import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import {
   actualizarEstadoReporteAsignado,
   actualizarEstadoTareaBackend,
@@ -10,10 +11,9 @@ import {
   rechazarAsignacionBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
-import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
-import { subirArchivosReporte, subirArchivosReporteConProgreso, subirArchivosEmpleadoConProgreso } from '@/lib/reportes';
-import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import { obtenerSucursalesPorEmpresa } from '@/lib/empresas';
+import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
+import { subirArchivosEmpleadoConProgreso } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -808,7 +808,7 @@ function EmpleadoPanelContent() {
     // --- Iniciar Progreso Premium ---
     const hasAudio = !!audioUri;
     const hasPhotos = fotosRevisionUris.length > 0;
-    
+
     // Configurar pasos dinámicamente
     const steps = [{ label: 'Preparando...', icon: 'construct-outline', done: true }];
     if (hasAudio) steps.push({ label: 'Subiendo Audio...', icon: 'mic-outline', done: false });
@@ -834,7 +834,7 @@ function EmpleadoPanelContent() {
           // Determinar en qué paso estamos
           let stepIdx = 0;
           let phaseLabel = '';
-          
+
           if (phase === 'audio') {
             stepIdx = steps.findIndex(s => s.label.includes('Audio'));
             phaseLabel = 'Subiendo Nota de Voz...';
@@ -849,7 +849,7 @@ function EmpleadoPanelContent() {
 
           if (stepIdx !== -1) {
             setCurrentUploadStep(stepIdx);
-            
+
             // Cálculo de porcentaje global aproximado
             const totalStepsCount = steps.length;
             const stepWeight = 100 / totalStepsCount;
@@ -980,10 +980,10 @@ function EmpleadoPanelContent() {
       // 1. Actualizar base de datos primero para asegurar el cambio de estado
       const respuesta = await actualizarEstadoReporteAsignado(
         reporteSeleccionado.id,
-        'revision completada',      
-        analisisTexto,              
+        'revision completada',
+        analisisTexto,
         precioCotizacion || null,
-        fase2Data                   
+        fase2Data
       );
 
       if (!respuesta.success) throw new Error(respuesta.error || 'Error al actualizar el reporte');
@@ -997,7 +997,7 @@ function EmpleadoPanelContent() {
         (uploaded, total, phase, elapsedMs) => {
           let stepIdx = 0;
           let phaseLabel = '';
-          
+
           if (phase === 'audio') {
             stepIdx = steps.findIndex(s => s.label.includes('Audio'));
             phaseLabel = 'Subiendo Nota de Voz...';
@@ -1021,7 +1021,7 @@ function EmpleadoPanelContent() {
 
           if (stepIdx !== -1) {
             setCurrentUploadStep(stepIdx);
-            
+
             const totalStepsCount = steps.length;
             const stepWeight = 100 / totalStepsCount;
             const basePercent = stepIdx * stepWeight;
@@ -1079,7 +1079,7 @@ function EmpleadoPanelContent() {
 
     // --- Iniciar Progreso Premium ---
     const hasPhotos = fotosPostprocesoUris.length > 0;
-    
+
     const steps = [{ label: 'Preparando...', icon: 'construct-outline', done: true }];
     if (hasPhotos) steps.push({ label: 'Fotos de Finalización...', icon: 'camera-outline', done: false });
     steps.push({ label: 'Finalizando Reporte...', icon: 'cloud-upload-outline', done: false });
@@ -2251,12 +2251,12 @@ function EmpleadoPanelContent() {
                                     setReporteSeleccionado(reporte);
                                     setShowReportesModal(false);
                                     setShowReporteDetalle(true);
-                                    
+
                                     setSucursalImagenUrl(reporte.sucursal_imagen_url || undefined);
                                     if (!reporte.sucursal_imagen_url && reporte.empresa_id) {
                                       obtenerSucursalesPorEmpresa(String(reporte.empresa_id)).then(res => {
                                         if (res.success && res.data) {
-                                          const suc = res.data.find((s: any) => 
+                                          const suc = res.data.find((s: any) =>
                                             s.nombre?.trim().toLowerCase() === reporte.sucursal?.trim().toLowerCase()
                                           );
                                           if (suc && suc.imagen_url) {
@@ -2398,7 +2398,7 @@ function EmpleadoPanelContent() {
                 {sucursalImagenUrl && (
                   <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile]}>
                     <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Imagen de la Sucursal</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => {
                         setArchivoVisualizando({ tipo_archivo: 'imagen', url: getProxyUrl(sucursalImagenUrl) });
@@ -3063,7 +3063,7 @@ function EmpleadoPanelContent() {
                               if (!reporte.sucursal_imagen_url && reporte.empresa_id) {
                                 obtenerSucursalesPorEmpresa(String(reporte.empresa_id)).then(res => {
                                   if (res.success && res.data) {
-                                    const suc = res.data.find((s: any) => 
+                                    const suc = res.data.find((s: any) =>
                                       s.nombre?.trim().toLowerCase() === reporte.sucursal?.trim().toLowerCase()
                                     );
                                     if (suc && suc.imagen_url) {
