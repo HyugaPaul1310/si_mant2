@@ -12,12 +12,12 @@ import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Plat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
-    actualizarReporteBackend,
-    apiCall,
-    getApiBaseUrl,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente,
-    verificarEncuestaExiste
+  actualizarReporteBackend,
+  apiCall,
+  getApiBaseUrl,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente,
+  verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -825,7 +825,7 @@ function ClientePanelContent() {
       ${reporte.analisis_general ? `
       <div class="section">
         <div class="section-header-red">Información de Cotización</div>
-        ${reporte.precio_cotizacion && reporte.precio_cotizacion > 0 ? `
+        ${(parseFloat(reporte.precio_cotizacion) > 0 && (reporte.estado || '').toLowerCase() !== 'en_cotizacion') ? `
         <table class="data-grid">
           <tr>
             <td style="width:30%"><span class="lbl">Costo de Cotización</span><span class="val val-price">${formatDisplayPrice(reporte.precio_cotizacion, reporte.moneda)}</span></td>
@@ -3337,7 +3337,7 @@ function ClientePanelContent() {
                     </View>
                     <View style={styles.detailField}>
                       <Text style={[styles.detailLabel, { fontFamily }]}>Precio Cotizado</Text>
-                      {cotizacionSeleccionada.precio_cotizacion && cotizacionSeleccionada.precio_cotizacion > 0 ? (
+                      {(parseFloat(cotizacionSeleccionada.precio_cotizacion) > 0 && (cotizacionSeleccionada.estado || '').toLowerCase() !== 'en_cotizacion') ? (
                         <Text style={[styles.detailValue, { fontFamily, fontSize: 18, fontWeight: 'bold', color: '#f59e0b' }]}>
                           {formatDisplayPrice(cotizacionSeleccionada.precio_cotizacion, cotizacionSeleccionada.moneda)}
                         </Text>
