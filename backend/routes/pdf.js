@@ -47,13 +47,18 @@ router.post('/generate', async (req, res) => {
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
+            displayHeaderFooter: true,
+            footerTemplate: `
+                <div style="width: 100%; text-align: right; padding-right: 28px; padding-bottom: 8px; font-size: 8px; color: #999999; font-family: Arial, sans-serif;">
+                    Página <span class="pageNumber"></span> de <span class="totalPages"></span>
+                </div>
+            `,
             margin: {
                 top: '0',
                 right: '0',
-                bottom: '0',
+                bottom: '20mm',
                 left: '0'
-            },
-            preferCSSPageSize: true
+            }
         });
 
         console.log(`[PDF] Generado exitosamente. Tamaño: ${pdfBuffer.length} bytes`);

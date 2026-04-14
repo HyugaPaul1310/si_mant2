@@ -1,27 +1,27 @@
 // @ts-nocheck
 import {
-  actualizarEstadoReporteAsignado,
-  actualizarReporteBackend,
-  actualizarUsuarioBackend,
-  apiCall,
-  asignarHerramientaAEmpleadoManualBackend,
-  asignarReporteAEmpleadoBackend,
-  cambiarEstadoUsuarioBackend,
-  cambiarRolUsuarioBackend,
-  crearHerramientaBackend,
-  crearTareaBackend,
-  editarAsignacionBackend,
-  eliminarReporteBackend,
-  eliminarUsuarioBackend,
-  getApiBaseUrl,
-  marcarHerramientaComoDevueltaBackend,
-  marcarHerramientaComoPerdidaBackend,
-  obtenerArchivosReporteBackend,
-  obtenerInventarioEmpleadoBackend,
-  obtenerReportesBackend,
-  obtenerTareasBackend,
-  obtenerUsuariosBackend,
-  registerBackend
+    actualizarEstadoReporteAsignado,
+    actualizarReporteBackend,
+    actualizarUsuarioBackend,
+    apiCall,
+    asignarHerramientaAEmpleadoManualBackend,
+    asignarReporteAEmpleadoBackend,
+    cambiarEstadoUsuarioBackend,
+    cambiarRolUsuarioBackend,
+    crearHerramientaBackend,
+    crearTareaBackend,
+    editarAsignacionBackend,
+    eliminarReporteBackend,
+    eliminarUsuarioBackend,
+    getApiBaseUrl,
+    marcarHerramientaComoDevueltaBackend,
+    marcarHerramientaComoPerdidaBackend,
+    obtenerArchivosReporteBackend,
+    obtenerInventarioEmpleadoBackend,
+    obtenerReportesBackend,
+    obtenerTareasBackend,
+    obtenerUsuariosBackend,
+    registerBackend
 } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal } from '@/lib/date-utils';
@@ -36,22 +36,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
-  Image,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Easing,
+    Image,
+    Linking,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
@@ -1277,6 +1277,19 @@ function AdminPanelContent() {
       color: #aaa; 
       padding: 4px 0 8px 0;
     }
+
+    /* ── Page Number ── */
+    .page-number-footer {
+      position: fixed;
+      bottom: 10mm;
+      right: 28px;
+      font-size: 8px;
+      color: #999;
+      font-family: Arial, sans-serif;
+      z-index: 9999;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
   </style>
 </head>
 <body>
@@ -1389,6 +1402,7 @@ function AdminPanelContent() {
 
     <!-- ═══ FOOTER ═══ -->
     <div class="pdf-footer">si-mant.com</div>
+    <div class="page-number-footer">Página 1</div>
           </div>
         </td>
       </tr>

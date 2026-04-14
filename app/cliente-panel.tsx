@@ -12,12 +12,12 @@ import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Plat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
-  actualizarReporteBackend,
-  apiCall,
-  getApiBaseUrl,
-  obtenerArchivosReporteBackend,
-  obtenerReportesCliente,
-  verificarEncuestaExiste
+    actualizarReporteBackend,
+    apiCall,
+    getApiBaseUrl,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente,
+    verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -754,6 +754,19 @@ function ClientePanelContent() {
       color: #aaa; 
       padding: 4px 0 8px 0;
     }
+
+    /* ── Page Number ── */
+    .page-number-footer {
+      position: fixed;
+      bottom: 10mm;
+      right: 28px;
+      font-size: 8px;
+      color: #999;
+      font-family: Arial, sans-serif;
+      z-index: 9999;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
   </style>
 </head>
 <body>
@@ -866,6 +879,7 @@ function ClientePanelContent() {
 
     <!-- ═══ FOOTER ═══ -->
     <div class="pdf-footer">si-mant.com</div>
+    <div class="page-number-footer">Página 1</div>
         </td>
       </tr>
     </tbody>
