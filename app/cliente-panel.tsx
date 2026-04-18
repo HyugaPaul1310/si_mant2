@@ -12,12 +12,12 @@ import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Plat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
-  actualizarReporteBackend,
-  apiCall,
-  getApiBaseUrl,
-  obtenerArchivosReporteBackend,
-  obtenerReportesCliente,
-  verificarEncuestaExiste
+    actualizarReporteBackend,
+    apiCall,
+    getApiBaseUrl,
+    obtenerArchivosReporteBackend,
+    obtenerReportesCliente,
+    verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
@@ -573,6 +573,8 @@ function ClientePanelContent() {
       const serieValue = serieMatch ? serieMatch[1].trim() : (reporte.equipo_serie || 'N/A');
       const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
       const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
+      const pdfArchivos = (archivosReporte || []).filter((a: any) => a.tipo_archivo !== 'audio');
+      const shouldBreakBeforeAttachments = pdfArchivos.length > 5;
 
       // --- TEMPLATE COMPACTO (1 HOJA) ---
       const htmlTemplate = `<!DOCTYPE html>
@@ -754,19 +756,6 @@ function ClientePanelContent() {
       color: #aaa; 
       padding: 4px 0 8px 0;
     }
-
-    /* ── Page Number ── */
-    .page-number-footer {
-      position: fixed;
-      bottom: 10mm;
-      right: 28px;
-      font-size: 8px;
-      color: #999;
-      font-family: Arial, sans-serif;
-      z-index: 9999;
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
-    }
   </style>
 </head>
 <body>
@@ -849,12 +838,12 @@ function ClientePanelContent() {
       </div>` : ''}
 
       <!-- ═══ ARCHIVOS ADJUNTOS ═══ -->
-      ${(normalizeStatus(reporte.estado) === 'cerrado' && archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+      ${(normalizeStatus(reporte.estado) === 'cerrado' && pdfArchivos.length > 0) ? `
+      ${shouldBreakBeforeAttachments ? '<div style="page-break-before: always; break-before: page; height:0; visibility:hidden;"></div>' : ''}
       <div class="section">
         <div class="section-header">Archivos Adjuntos</div>
         <div class="text-block" style="font-size: 8px; line-height: 1.6;">
-          ${archivosReporte
-            .filter(a => a.tipo_archivo !== 'audio')
+          ${pdfArchivos
             .map((a, i) => `${i + 1}. ${a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')} (${a.tipo_archivo})`)
             .join('<br/>')}
         </div>
@@ -879,7 +868,6 @@ function ClientePanelContent() {
 
     <!-- ═══ FOOTER ═══ -->
     <div class="pdf-footer">si-mant.com</div>
-    <div class="page-number-footer">Página 1</div>
         </td>
       </tr>
     </tbody>

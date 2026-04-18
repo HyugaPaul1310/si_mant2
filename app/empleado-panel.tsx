@@ -682,6 +682,9 @@ function EmpleadoPanelContent() {
         console.error('[PDF] Error cargando archivos:', err);
       }
 
+      const pdfArchivos = (archivosReporte || []).filter((a: any) => a.tipo_archivo !== 'audio');
+      const shouldBreakBeforeAttachments = pdfArchivos.length > 5;
+
       const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -755,10 +758,26 @@ function EmpleadoPanelContent() {
 
     /* ── Compact section ── */
     .section { 
+      display: block;
       margin-bottom: 5px;
       border: 1px solid #d0d0d0;
       border-radius: 3px;
       overflow: hidden;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      -webkit-column-break-inside: avoid;
+      -moz-column-break-inside: avoid;
+    }
+    .force-page-break {
+      display: block;
+      page-break-before: always !important;
+      break-before: page !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+      visibility: hidden;
+      height: 0;
+      margin: 0;
+      padding: 0;
     }
     .section-header, .section-header-red { 
       font-size: 7px; 
@@ -818,6 +837,7 @@ function EmpleadoPanelContent() {
       color: #1a1a1a;
       word-break: break-word;
       white-space: pre-wrap;
+      page-break-inside: avoid;
     }
     .text-block .lbl {
       font-size: 7px;
@@ -833,6 +853,7 @@ function EmpleadoPanelContent() {
     .signatures { 
       margin-top: 40px;
       padding: 0 28px 20px 28px;
+      page-break-inside: avoid;
     }
     .sig-table {
       width: 100%;
@@ -863,17 +884,7 @@ function EmpleadoPanelContent() {
     }
 
     /* ── Page Number ── */
-    .page-number-footer {
-      position: fixed;
-      bottom: 10mm;
-      right: 28px;
-      font-size: 8px;
-      color: #999;
-      font-family: Arial, sans-serif;
-      z-index: 9999;
-      print-color-adjust: exact;
-      -webkit-print-color-adjust: exact;
-    }
+    /* La numeración de páginas se genera desde Puppeteer en el footerTemplate */
   </style>
 </head>
 <body>
@@ -935,12 +946,12 @@ function EmpleadoPanelContent() {
       </div>` : ''}
 
       <!-- ═══ ARCHIVOS ADJUNTOS ═══ -->
-      ${(archivosReporte && archivosReporte.filter(a => a.tipo_archivo !== 'audio').length > 0) ? `
+      ${(pdfArchivos.length > 0) ? `
+      ${shouldBreakBeforeAttachments ? '<div class="force-page-break"></div>' : ''}
       <div class="section">
         <div class="section-header">Archivos Adjuntos</div>
         <div class="text-block" style="font-size: 8px; line-height: 1.6;">
-          ${archivosReporte
-            .filter(a => a.tipo_archivo !== 'audio')
+          ${pdfArchivos
             .map((a, i) => (i + 1) + '. ' + (a.nombre_original || (a.tipo_archivo === 'foto' ? 'Imagen' : 'Archivo')) + ' (' + a.tipo_archivo + ')')
             .join('<br/>')}
         </div>
@@ -965,7 +976,6 @@ function EmpleadoPanelContent() {
 
     <!-- ═══ FOOTER ═══ -->
     <div class="pdf-footer">si-mant.com</div>
-    <div class="page-number-footer">Página 1</div>
           </div>
         </td>
       </tr>
