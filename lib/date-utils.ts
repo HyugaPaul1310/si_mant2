@@ -44,3 +44,22 @@ export function formatDateTimeToLocal(dateStr: string | Date | null | undefined)
         return 'Error fecha';
     }
 }
+
+/**
+ * Verifica si una fecha de la base de datos concuerda localmente con la fecha buscada YYYY-MM-DD
+ */
+export function matchesSearchDate(dbDateStr: string | Date | null | undefined, searchYYYYMMDD: string): boolean {
+    if (!dbDateStr) return false;
+    try {
+        const d = new Date(dbDateStr);
+        if (isNaN(d.getTime())) return String(dbDateStr).toLowerCase().includes(searchYYYYMMDD);
+        
+        const localY = d.getFullYear();
+        const localM = String(d.getMonth() + 1).padStart(2, '0');
+        const localD = String(d.getDate()).padStart(2, '0');
+        
+        return `${localY}-${localM}-${localD}` === searchYYYYMMDD;
+    } catch (error) {
+        return String(dbDateStr).toLowerCase().includes(searchYYYYMMDD);
+    }
+}

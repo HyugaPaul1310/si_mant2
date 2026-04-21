@@ -1,17 +1,19 @@
 // @ts-nocheck
+import CustomDatePicker from '@/components/CustomDatePicker';
 import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import { PDF_TEMPLATE_BASE64 } from '@/constants/pdf-templates';
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarEstadoTareaBackend,
-    apiCall,
-    obtenerArchivosReporteBackend,
-    obtenerInventarioEmpleadoBackend,
-    obtenerReportesAsignados,
-    obtenerTareasEmpleadoBackend,
-    rechazarAsignacionBackend
+  actualizarEstadoReporteAsignado,
+  actualizarEstadoTareaBackend,
+  apiCall,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesAsignados,
+  obtenerTareasEmpleadoBackend,
+  rechazarAsignacionBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
+import { matchesSearchDate } from '@/lib/date-utils';
 import { obtenerSucursalesPorEmpresa } from '@/lib/empresas';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
 import { subirArchivosEmpleadoConProgreso } from '@/lib/reportes';
@@ -24,19 +26,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -129,6 +131,8 @@ function EmpleadoPanelContent() {
   const [mostrarFiltros, setMostrarFiltros] = useState(true);
   const [listaHerramientas, setListaHerramientas] = useState<any[]>([]);
   const [loadingHerramientas, setLoadingHerramientas] = useState(false);
+  const [showHerramientaDetalle, setShowHerramientaDetalle] = useState(false);
+  const [herramientaSeleccionada, setHerramientaSeleccionada] = useState<any>(null);
   const [archivosReporte, setArchivosReporte] = useState<any[]>([]);
   const [cargandoArchivos, setCargandoArchivos] = useState(false);
   const [showArchivoModal, setShowArchivoModal] = useState(false);
@@ -241,9 +245,7 @@ function EmpleadoPanelContent() {
     if (filtroFecha.trim() !== '') {
       const search = filtroFecha.replace(/\//g, '-').toLowerCase();
       filtrados = filtrados.filter((r) => {
-        const fecha = (r.fecha_reporte || '').toLowerCase();
-        const created = (r.created_at || '').toLowerCase();
-        return fecha.includes(search) || created.includes(search);
+        return matchesSearchDate(r.fecha_reporte, search) || matchesSearchDate(r.created_at, search);
       });
     }
 
@@ -309,9 +311,7 @@ function EmpleadoPanelContent() {
     if (filtroFecha.trim() !== '') {
       const search = filtroFecha.replace(/\//g, '-').toLowerCase();
       filtrados = filtrados.filter((r) => {
-        const fecha = (r.fecha_reporte || '').toLowerCase();
-        const created = (r.created_at || '').toLowerCase();
-        return fecha.includes(search) || created.includes(search);
+        return matchesSearchDate(r.fecha_reporte, search) || matchesSearchDate(r.created_at, search);
       });
     }
 
@@ -637,13 +637,13 @@ function EmpleadoPanelContent() {
         const terminados = reportesMapeados.filter((r: any) => {
           const st = (r.estado || '').toLowerCase();
           return st === 'finalizado_por_tecnico' ||
-                 st === 'cerrado_por_cliente' ||
-                 st === 'listo_para_encuesta' ||
-                 st === 'encuesta_satisfaccion' ||
-                 st === 'terminado' ||
-                 st === 'cerrado' ||
-                 st === 'resuelto' ||
-                 st === 'rechazado';
+            st === 'cerrado_por_cliente' ||
+            st === 'listo_para_encuesta' ||
+            st === 'encuesta_satisfaccion' ||
+            st === 'terminado' ||
+            st === 'cerrado' ||
+            st === 'resuelto' ||
+            st === 'rechazado';
         }) || [];
         setListaReportesTerminados(terminados);
       }
@@ -2118,7 +2118,7 @@ function EmpleadoPanelContent() {
               </View>
             ) : (
               <>
-                <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 20 }}>
                   <View style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -2169,13 +2169,28 @@ function EmpleadoPanelContent() {
                             : '#10b981';
 
                       return (
-                        <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
-                          <View style={[styles.cardAccentLeft, { backgroundColor: estadoColor }]} />
-                          <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
-                            <View style={styles.cardHeader}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
-                                <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Asignada por: {tarea.admin_nombre}</Text>
+                        <View key={index} style={[
+                          styles.cardContainer,
+                          isMobile && styles.cardContainerMobile,
+                          {
+                            flexDirection: 'column',
+                            backgroundColor: '#1e293b',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            padding: 16,
+                            marginBottom: 12,
+                            shadowColor: '#000',
+                            shadowOpacity: 0.2,
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowRadius: 4,
+                          }
+                        ]}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', flex: 1, paddingRight: 8 }}>
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: estadoColor, marginRight: 10, marginTop: 6 }} />
+                                <Text style={[{ color: '#f8fafc', fontSize: 15, fontWeight: '700', flex: 1 }, { fontFamily }]} numberOfLines={1}>{tarea.descripcion}</Text>
                               </View>
                               <TouchableOpacity
                                 onPress={() => {
@@ -2184,18 +2199,39 @@ function EmpleadoPanelContent() {
                                   setShowTareaDetalle(true);
                                 }}
                                 activeOpacity={0.7}
-                                style={styles.cardEyeButton}
+                                style={{ padding: 4 }}
                               >
-                                <Ionicons name="eye-outline" size={22} color="#64748b" />
+                                <Ionicons name="eye-outline" size={20} color="#94a3b8" />
                               </TouchableOpacity>
                             </View>
-                            <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{tarea.descripcion}</Text>
-                            <View style={styles.cardFooter}>
-                              <Text style={[styles.cardDate, { fontFamily }]}>
-                                {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </Text>
-                              <View style={[styles.statusBadge, { backgroundColor: `${estadoColor}25`, borderColor: `${estadoColor}50` }]}>
-                                <Text style={[styles.statusBadgeText, { color: estadoColor, fontFamily }]}>
+
+                            <Text style={[{ color: '#94a3b8', fontSize: 13, marginBottom: 16, marginLeft: 18, lineHeight: 18 }, { fontFamily }]} numberOfLines={2}>
+                              {tarea.descripcion}
+                            </Text>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginLeft: 18 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16, maxWidth: '45%' }}>
+                                  <Ionicons name="person-outline" size={12} color="#64748b" style={{ marginRight: 4 }} />
+                                  <Text style={[{ color: '#94a3b8', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>{tarea.admin_nombre}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                  <Ionicons name="calendar-outline" size={12} color="#64748b" style={{ marginRight: 4 }} />
+                                  <Text style={[{ color: '#94a3b8', fontSize: 11 }, { fontFamily }]} numberOfLines={1}>
+                                    {new Date(tarea.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: `${estadoColor}60`,
+                                backgroundColor: 'transparent'
+                              }}>
+                                <Text style={[{ color: estadoColor, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }, { fontFamily }]}>
                                   {tarea.estado === 'pendiente' ? 'Pendiente' : tarea.estado === 'en_proceso' ? 'En Proceso' : 'Completada'}
                                 </Text>
                               </View>
@@ -2285,19 +2321,29 @@ function EmpleadoPanelContent() {
 
               {tareaSeleccionada.estado !== 'completada' && (
                 <LinearGradient
-                  colors={['#047857', '#10b981']}
+                  colors={['#059669', '#10b981']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
+                  style={[styles.detailActionButton, {
+                    borderRadius: 14,
+                    shadowColor: '#10b981',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    elevation: 5,
+                    borderWidth: 1,
+                    borderColor: 'rgba(52, 211, 153, 0.4)'
+                  }]}
                 >
                   <TouchableOpacity
                     onPress={marcarComoCompletada}
                     disabled={actualizandoTarea}
                     activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
                   >
-                    <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                      {actualizandoTarea ? 'Actualizando...' : '✓ Marcar Completada'}
+                    {!actualizandoTarea && <Ionicons name="checkmark-circle" size={18} color="#fff" />}
+                    <Text style={[styles.detailActionButtonText, { fontFamily, fontSize: 14, fontWeight: '700' }]}>
+                      {actualizandoTarea ? 'Actualizando...' : 'Marcar Completada'}
                     </Text>
                   </TouchableOpacity>
                 </LinearGradient>
@@ -2336,7 +2382,7 @@ function EmpleadoPanelContent() {
               </View>
             ) : (
               <>
-                <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+                <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 20 }}>
                   <View style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -2632,31 +2678,12 @@ function EmpleadoPanelContent() {
                             filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                             isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                           ]}>
-                            <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
-                            <TextInput
-                              style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
-                              placeholder="YYYY/MM/DD"
-                              placeholderTextColor="#64748b"
+                            <CustomDatePicker
                               value={filtroFecha}
-                              keyboardType="numeric"
-                              maxLength={10}
-                              onChangeText={(text) => {
-                                const digits = text.replace(/[^0-9]/g, '');
-                                let formatted = digits;
-                                if (digits.length > 4) {
-                                  formatted = digits.slice(0, 4) + '/' + digits.slice(4);
-                                }
-                                if (digits.length > 6) {
-                                  formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
-                                }
-                                setFiltroFecha(formatted);
-                              }}
+                              onChange={setFiltroFecha}
+                              isMobile={isMobile}
+                              fontFamily={fontFamily}
                             />
-                            {filtroFecha.length > 0 && (
-                              <TouchableOpacity onPress={() => setFiltroFecha('')}>
-                                <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
-                              </TouchableOpacity>
-                            )}
                           </View>
                         </View>
                       </View>
@@ -3619,19 +3646,12 @@ function EmpleadoPanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         { height: isMobile ? 36 : 38, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? "#06b6d4" : "#64748b"} />
-                        <TextInput
-                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 4 : 8 }, isMobile && { fontSize: 13 }]}
-                          placeholder="YYYY/MM/DD..."
-                          placeholderTextColor="#64748b"
+                        <CustomDatePicker
                           value={filtroFecha}
-                          onChangeText={handleFiltroFechaChange}
+                          onChange={setFiltroFecha}
+                          isMobile={isMobile}
+                          fontFamily={fontFamily}
                         />
-                        {filtroFecha.length > 0 && (
-                          <TouchableOpacity onPress={() => setFiltroFecha('')}>
-                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
-                          </TouchableOpacity>
-                        )}
                       </View>
                     </View>
                   </View>
@@ -3758,10 +3778,17 @@ function EmpleadoPanelContent() {
 
                         <TouchableOpacity
                           onPress={() => generarPDF(rep)}
-                          style={[styles.eyeCard, { marginLeft: 8, borderColor: '#ef4444' }]}
+                          style={[
+                            styles.eyeCard,
+                            {
+                              marginLeft: 8,
+                              borderColor: '#ef4444',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                            }
+                          ]}
                           disabled={generandoPDF !== null}
                         >
-                          {generandoPDF === rep.id ? (
+                          {generandoPDF === String(rep.id) ? (
                             <ActivityIndicator size="small" color="#ef4444" />
                           ) : (
                             <Ionicons name="document-text-outline" size={16} color="#ef4444" />
@@ -3800,7 +3827,7 @@ function EmpleadoPanelContent() {
                   </View>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                  <TouchableOpacity onPress={cargarHerramientas} style={styles.refreshButton} activeOpacity={0.7}>
+                  <TouchableOpacity onPress={() => cargarHerramientas(false)} style={styles.refreshButton} activeOpacity={0.7}>
                     <Text style={[styles.refreshText, { fontFamily }]}>Actualizar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setShowInventarioModal(false)} activeOpacity={0.7}>
@@ -3821,30 +3848,78 @@ function EmpleadoPanelContent() {
                   </Text>
                 </View>
               ) : (
-                <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
-                  {listaHerramientas.map((herramienta: any, index: number) => (
-                    <View key={index} style={[styles.cardContainer, isMobile && styles.cardContainerMobile]}>
-                      <View style={[styles.cardAccentLeft, { backgroundColor: '#ec4899' }]} />
-                      <View style={[styles.cardContent, isMobile && styles.cardContentMobile]}>
-                        <View style={styles.cardHeader}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.cardMainTitle, { fontFamily }]} numberOfLines={1}>{herramienta.herramienta_nombre || herramienta.nombre}</Text>
-                            <Text style={[styles.cardUserInfo, { fontFamily }]} numberOfLines={1}>Categoría: {herramienta.categoria || 'General'}</Text>
-                          </View>
-                        </View>
-                        <Text style={[styles.cardDescription, { fontFamily }]} numberOfLines={2}>{herramienta.observaciones || 'Sin observaciones'}</Text>
-                        <View style={styles.cardFooter}>
-                          <Text style={[styles.cardDate, { fontFamily }]}>
-                            Asignada: {herramienta.created_at ? new Date(herramienta.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Fecha desconocida'}
-                          </Text>
-                          <View style={[styles.statusBadge, { backgroundColor: '#be185d25', borderColor: '#be185d50' }]}>
-                            <Text style={[styles.statusBadgeText, { color: '#ec4899', fontFamily }]}>Asignada</Text>
-                          </View>
-                        </View>
+                <View style={styles.inventoryTableWrapper}>
+                  {!isMobile && (
+                    <View style={styles.inventoryTableHeader}>
+                      <Text style={[styles.inventoryHeaderCell, styles.colTool, { fontFamily }]}>Herramienta</Text>
+                      <Text style={[styles.inventoryHeaderCell, styles.colCategory, { fontFamily }]}>Categoría</Text>
+                      <Text style={[styles.inventoryHeaderCell, styles.colObs, { fontFamily }]}>Observaciones</Text>
+                      <Text style={[styles.inventoryHeaderCell, styles.colDate, { fontFamily }]}>Fecha</Text>
+                      <View style={styles.colStatus}>
+                        <Text style={[styles.inventoryHeaderCell, { fontFamily }]}>Estado</Text>
                       </View>
                     </View>
-                  ))}
-                </ScrollView>
+                  )}
+                  <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
+                    {listaHerramientas.map((herramienta: any, index: number) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.inventoryTableRow}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setHerramientaSeleccionada(herramienta);
+                          setShowHerramientaDetalle(true);
+                        }}
+                      >
+                        {/* HERRAMIENTA */}
+                        <View style={styles.colTool}>
+                          <Text style={[styles.inventoryCellText, { fontFamily, fontWeight: '700' }]} numberOfLines={1}>
+                            {herramienta.herramienta_nombre || herramienta.nombre}
+                          </Text>
+                          {isMobile && (
+                            <Text style={[styles.inventoryCellSubText, { fontFamily }]}>
+                              {herramienta.categoria || 'General'}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* CATEGORIA (Desktop) */}
+                        {!isMobile && (
+                          <View style={styles.colCategory}>
+                            <Text style={[styles.inventoryCellText, { fontFamily }]}>
+                              {herramienta.categoria || 'General'}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* OBSERVACIONES (Desktop) */}
+                        {!isMobile && (
+                          <View style={styles.colObs}>
+                            <Text style={[styles.inventoryCellText, { fontFamily, fontSize: 12, color: '#94a3b8' }]} numberOfLines={2}>
+                              {herramienta.observaciones || 'Sin observaciones'}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* FECHA (Desktop) */}
+                        {!isMobile && (
+                          <View style={styles.colDate}>
+                            <Text style={[styles.inventoryCellText, { fontFamily, fontSize: 12 }]}>
+                              {herramienta.created_at ? new Date(herramienta.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '--'}
+                            </Text>
+                          </View>
+                        )}
+
+                        {/* ESTADO */}
+                        <View style={styles.colStatus}>
+                          <View style={styles.estadoSoloBadge}>
+                            <Text style={[styles.estadoSoloText, { fontFamily }]}>Asignada</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               )}
             </View>
           </View>
@@ -4561,6 +4636,71 @@ function EmpleadoPanelContent() {
           </View>
         )
       }
+      {/* Modal Detalle de Herramienta */}
+      {showHerramientaDetalle && herramientaSeleccionada && (
+        <View style={[styles.modalOverlay, { zIndex: 9999 }]}>
+          <View style={styles.toolDetailCard}>
+            <View style={styles.toolDetailHeader}>
+              <View style={styles.toolDetailIcon}>
+                <Ionicons name="construct" size={28} color="#ec4899" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.toolDetailTitle, { fontFamily }]}>
+                  {herramientaSeleccionada.herramienta_nombre || herramientaSeleccionada.nombre}
+                </Text>
+                <Text style={{ color: '#ec4899', fontSize: 12, fontWeight: '600', fontFamily }}>Detalles del Equipo</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowHerramientaDetalle(false)} activeOpacity={0.7} style={{ padding: 4 }}>
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+              <View style={styles.toolDetailInfoRow}>
+                <Text style={[styles.toolDetailLabel, { fontFamily }]}>Categoría</Text>
+                <View style={styles.toolDetailValueContainer}>
+                  <Text style={[styles.toolDetailValue, { fontFamily }]}>
+                    {herramientaSeleccionada.categoria || 'General'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.toolDetailInfoRow}>
+                <Text style={[styles.toolDetailLabel, { fontFamily }]}>Observaciones</Text>
+                <View style={styles.toolDetailValueContainer}>
+                  <Text style={[styles.toolDetailValue, { fontFamily, color: herramientaSeleccionada.observaciones ? '#f1f5f9' : '#64748b' }]}>
+                    {herramientaSeleccionada.observaciones || 'Sin observaciones registradas'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.toolDetailInfoRow}>
+                <Text style={[styles.toolDetailLabel, { fontFamily }]}>Fecha de Asignación</Text>
+                <View style={styles.toolDetailValueContainer}>
+                  <Text style={[styles.toolDetailValue, { fontFamily }]}>
+                    {herramientaSeleccionada.created_at ? new Date(herramientaSeleccionada.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No disponible'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.toolDetailInfoRow}>
+                <Text style={[styles.toolDetailLabel, { fontFamily }]}>Estado Actual</Text>
+                <View style={styles.estadoSoloBadge}>
+                  <Text style={[styles.estadoSoloText, { fontFamily }]}>Asignada</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.modalSecondary, { marginTop: 24, width: '100%', backgroundColor: '#1e293b' }]}
+              onPress={() => setShowHerramientaDetalle(false)}
+            >
+              <Text style={[styles.modalSecondaryText, { fontFamily, color: '#fff' }]}>Entendido</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Overlay de Progreso de Carga Premium */}
       <UploadProgressOverlay
         visible={showUploadProgress}
@@ -6137,18 +6277,130 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(6, 182, 212, 0.1)',
   },
   estadoSoloBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#10b98125',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#10b98150',
+    backgroundColor: '#ec489915',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#ec489930',
   },
   estadoSoloText: {
-    color: '#10b981',
+    color: '#ec4899',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // Inventory Table Styles
+  inventoryTableWrapper: {
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.2)',
+    overflow: 'hidden',
+    margin: 16,
+  },
+  inventoryTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(236, 72, 153, 0.2)',
+  },
+  inventoryHeaderCell: {
+    color: '#ec4899',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  inventoryTableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(51, 65, 85, 0.3)',
+  },
+  inventoryCellText: {
+    color: '#cbd5e1',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  inventoryCellSubText: {
+    color: '#64748b',
     fontSize: 11,
+    marginTop: 2,
+  },
+  // Column Flexes
+  colTool: { flex: 2 },
+  colCategory: { flex: 1.2 },
+  colObs: { flex: 2.5 },
+  colDate: { flex: 1.2 },
+  colStatus: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  // Tool Detail Styles
+  toolDetailCard: {
+    width: '90%',
+    maxWidth: 500,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.3)',
+    padding: 24,
+    shadowColor: '#ec4899',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  toolDetailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  toolDetailIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 72, 153, 0.2)',
+  },
+  toolDetailTitle: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+    flex: 1,
+  },
+  toolDetailInfoRow: {
+    marginBottom: 20,
+  },
+  toolDetailLabel: {
+    color: '#94a3b8',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  toolDetailValueContainer: {
+    backgroundColor: 'rgba(30, 41, 59, 0.3)',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+  },
+  toolDetailValue: {
+    color: '#f1f5f9',
+    fontSize: 15,
     fontWeight: '600',
+    lineHeight: 22,
   },
 });
 

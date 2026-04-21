@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { Ionicons } from '@expo/vector-icons';
+import CustomDatePicker from '@/components/CustomDatePicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
@@ -21,6 +22,7 @@ import {
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
 import { obtenerNombreEstado } from '../lib/estado-mapeo';
+import { matchesSearchDate } from '../lib/date-utils';
 
 type Cliente = {
   nombre?: string;
@@ -1142,8 +1144,7 @@ function ClientePanelContent() {
     if (filtroFecha.trim() !== '') {
       const search = filtroFecha.replace(/\//g, '-').toLowerCase();
       lista = lista.filter((r) => {
-        const created = (r.created_at || '').toLowerCase();
-        return created.includes(search);
+        return matchesSearchDate(r.created_at, search);
       });
     }
 
@@ -1184,8 +1185,7 @@ function ClientePanelContent() {
     if (filtroFecha.trim() !== '') {
       const search = filtroFecha.replace(/\//g, '-').toLowerCase();
       lista = lista.filter((r) => {
-        const created = (r.created_at || '').toLowerCase();
-        return created.includes(search);
+        return matchesSearchDate(r.created_at, search);
       });
     }
 
@@ -1210,8 +1210,7 @@ function ClientePanelContent() {
     if (filtroFecha.trim() !== '') {
       const search = filtroFecha.replace(/\//g, '-').toLowerCase();
       lista = lista.filter((c) => {
-        const created = (c.created_at || '').toLowerCase();
-        return created.includes(search);
+        return matchesSearchDate(c.created_at, search);
       });
     }
 
@@ -1855,29 +1854,12 @@ function ClientePanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
-                        </View>
-                        <TextInput
-                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 8 : 12 }, isMobile && { fontSize: 13 }]}
-                          placeholder="YYYY/MM/DD..."
-                          placeholderTextColor="#64748b"
-                          value={filtroFecha}
-                          keyboardType="numeric"
-                          maxLength={10}
-                          onChangeText={(text) => {
-                            const digits = text.replace(/[^0-9]/g, '');
-                            let formatted = digits;
-                            if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
-                            if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
-                            setFiltroFecha(formatted);
-                          }}
+                        <CustomDatePicker 
+                          value={filtroFecha} 
+                          onChange={setFiltroFecha} 
+                          isMobile={isMobile} 
+                          fontFamily={fontFamily} 
                         />
-                        {filtroFecha.length > 0 && (
-                          <TouchableOpacity onPress={() => setFiltroFecha('')} style={{ padding: 4 }}>
-                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
-                          </TouchableOpacity>
-                        )}
                       </View>
                     </View>
                   </View>
@@ -2115,29 +2097,12 @@ function ClientePanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
-                        </View>
-                        <TextInput
-                          style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 8 : 12 }, isMobile && { fontSize: 13 }]}
-                          placeholder="YYYY/MM/DD..."
-                          placeholderTextColor="#64748b"
-                          value={filtroFecha}
-                          keyboardType="numeric"
-                          maxLength={10}
-                          onChangeText={(text) => {
-                            const digits = text.replace(/[^0-9]/g, '');
-                            let formatted = digits;
-                            if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
-                            if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
-                            setFiltroFecha(formatted);
-                          }}
+                        <CustomDatePicker 
+                          value={filtroFecha} 
+                          onChange={setFiltroFecha} 
+                          isMobile={isMobile} 
+                          fontFamily={fontFamily} 
                         />
-                        {filtroFecha.length > 0 && (
-                          <TouchableOpacity onPress={() => setFiltroFecha('')} style={{ padding: 4 }}>
-                            <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
-                          </TouchableOpacity>
-                        )}
                       </View>
                     </View>
                   </View>
@@ -3044,29 +3009,12 @@ function ClientePanelContent() {
                           filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                           isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                         ]}>
-                          <View style={{ width: 24, alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <Ionicons name="calendar-outline" size={isMobile ? 14 : 18} color={filtroFecha.length > 0 ? '#06b6d4' : '#64748b'} />
-                          </View>
-                          <TextInput
-                            style={[styles.searchInputPro, { fontFamily, paddingVertical: isMobile ? 8 : 12 }, isMobile && { fontSize: 13 }]}
-                            placeholder="YYYY/MM/DD..."
-                            placeholderTextColor="#64748b"
-                            value={filtroFecha}
-                            keyboardType="numeric"
-                            maxLength={10}
-                            onChangeText={(text) => {
-                              const digits = text.replace(/[^0-9]/g, '');
-                              let formatted = digits;
-                              if (digits.length > 4) formatted = digits.slice(0, 4) + '/' + digits.slice(4);
-                              if (digits.length > 6) formatted = digits.slice(0, 4) + '/' + digits.slice(4, 6) + '/' + digits.slice(6, 8);
-                              setFiltroFecha(formatted);
-                            }}
+                          <CustomDatePicker 
+                            value={filtroFecha} 
+                            onChange={setFiltroFecha} 
+                            isMobile={isMobile} 
+                            fontFamily={fontFamily} 
                           />
-                          {filtroFecha.length > 0 && (
-                            <TouchableOpacity onPress={() => setFiltroFecha('')} style={{ padding: 4 }}>
-                              <Ionicons name="close-circle" size={isMobile ? 16 : 20} color="#64748b" />
-                            </TouchableOpacity>
-                          )}
                         </View>
                       </View>
                     </View>
