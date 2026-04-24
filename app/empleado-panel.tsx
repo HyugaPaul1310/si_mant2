@@ -3,14 +3,14 @@ import CustomDatePicker from '@/components/CustomDatePicker';
 import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import { PDF_TEMPLATE_BASE64 } from '@/constants/pdf-templates';
 import {
-  actualizarEstadoReporteAsignado,
-  actualizarEstadoTareaBackend,
-  apiCall,
-  obtenerArchivosReporteBackend,
-  obtenerInventarioEmpleadoBackend,
-  obtenerReportesAsignados,
-  obtenerTareasEmpleadoBackend,
-  rechazarAsignacionBackend
+    actualizarEstadoReporteAsignado,
+    actualizarEstadoTareaBackend,
+    apiCall,
+    obtenerArchivosReporteBackend,
+    obtenerInventarioEmpleadoBackend,
+    obtenerReportesAsignados,
+    obtenerTareasEmpleadoBackend,
+    rechazarAsignacionBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { matchesSearchDate } from '@/lib/date-utils';
@@ -26,19 +26,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -119,6 +119,7 @@ function EmpleadoPanelContent() {
   const [listaReportesTerminados, setListaReportesTerminados] = useState<any[]>([]);
   const [loadingHistorialReportes, setLoadingHistorialReportes] = useState(false);
   const [generandoPDF, setGenerandoPDF] = useState<string | null>(null);
+  const [generandoPDFBorrador, setGenerandoPDFBorrador] = useState(false);
   const [mostrarFiltrosTerminados, setMostrarFiltrosTerminados] = useState(false);
   const [showInventarioModal, setShowInventarioModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -1017,6 +1018,321 @@ function EmpleadoPanelContent() {
       Alert.alert('Error', 'No se pudo generar el PDF');
     } finally {
       setGenerandoPDF(null);
+    }
+  };
+
+  // Genera un PDF de vista previa con el análisis actual (borrador) SIN enviar al backend
+  const generarPDFBorrador = async () => {
+    if (!reporteSeleccionado || !descripcionTrabajo.trim()) return;
+    if (generandoPDFBorrador) return;
+    setGenerandoPDFBorrador(true);
+    try {
+      const reporte = reporteSeleccionado;
+      const fullDescripcion = reporte.descripcion || '';
+      const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
+      const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
+      const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
+      const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
+      const modeloValue = modeloMatch ? modeloMatch[1].trim() : 'N/A';
+      const serieValue = serieMatch ? serieMatch[1].trim() : 'N/A';
+      const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
+      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
+
+      const htmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { margin: 0; size: A4; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 210mm;
+      height: 297mm;
+    }
+    body { 
+      font-family: Arial, Helvetica, sans-serif; 
+      font-size: 9px;
+      color: #1a1a1a; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      background: #fff;
+    }
+    .background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 210mm;
+      height: 297mm;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .background-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .draft-watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(217,119,6,0.06);
+      pointer-events: none;
+      z-index: 0;
+      white-space: nowrap;
+      letter-spacing: 6px;
+    }
+    .page-wrapper {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      border-collapse: collapse;
+      border: none;
+    }
+    .page-wrapper > thead > tr > td,
+    .page-wrapper > tbody > tr > td,
+    .page-wrapper > tfoot > tr > td { padding: 0; }
+    
+    .body-content { 
+      padding: 0 28px;
+    }
+
+    .header-spacer { height: 180px; }
+
+    .report-id-bar {
+      text-align: right;
+      padding: 2px 0 8px 0;
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+    }
+    .report-id-bar span {
+      background: #c41e3a;
+      color: #fff;
+      padding: 3px 12px;
+      border-radius: 3px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    .section { 
+      display: block;
+      margin-bottom: 5px;
+      border: 1px solid #d0d0d0;
+      border-radius: 3px;
+      overflow: hidden;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      -webkit-column-break-inside: avoid;
+      -moz-column-break-inside: avoid;
+    }
+    .section-header, .section-header-red, .section-header-orange { 
+      font-size: 7px; 
+      font-weight: 700; 
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 8px;
+      -webkit-print-color-adjust: exact;
+      color: #fff;
+    }
+    .section-header { background: #1b3a5c; }
+    .section-header-red { background: #c41e3a; }
+    .section-header-orange { background: #d97706; }
+
+    .data-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-grid td {
+      padding: 3px 6px;
+      vertical-align: top;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 8px;
+      line-height: 1.2;
+    }
+    .data-grid td:last-child { border-right: none; }
+    .data-grid .lbl {
+      font-size: 6px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 1px;
+    }
+    .data-grid .val {
+      color: #1a1a1a;
+      font-size: 8px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .text-block {
+      padding: 4px 6px;
+      font-size: 8px;
+      line-height: 1.3;
+      color: #1a1a1a;
+      word-break: break-word;
+      white-space: pre-wrap;
+      page-break-inside: avoid;
+    }
+    .text-block .lbl {
+      font-size: 7px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .signatures { 
+      margin-top: 40px;
+      padding: 0 28px 20px 28px;
+      page-break-inside: avoid;
+    }
+    .sig-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .sig-table td {
+      text-align: center;
+      vertical-align: bottom;
+      padding-bottom: 4px;
+      height: 50px;
+    }
+    .sig-line {
+      border-top: 1.5px solid #1a1a1a;
+      font-size: 8px;
+      font-weight: 700;
+      color: #333;
+      padding-top: 4px;
+      text-align: center;
+    }
+    .sig-spacer { width: 60px; }
+
+    .pdf-footer { 
+      text-align: center; 
+      font-size: 7px; 
+      color: #aaa; 
+      padding: 4px 0 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="background-container">
+    <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
+  </div>
+  <div class="draft-watermark">BORRADOR</div>
+
+  <table class="page-wrapper">
+    <thead>
+      <tr>
+        <td>
+          <div class="header-spacer"></div>
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="body-content">
+
+      <!-- DATOS GENERALES -->
+      <div class="section">
+        <div class="section-header">Datos Generales</div>
+        <table class="data-grid">
+          <tr>
+            <td style="width:25%"><span class="lbl">Reporte</span><span class="val" style="color:#c41e3a; font-weight:700;">#${reporte.id}</span></td>
+            <td style="width:25%"><span class="lbl">Equipo / Servicio</span><span class="val">${reporte.equipo_descripcion || 'N/A'}</span></td>
+            <td style="width:25%"><span class="lbl">Modelo</span><span class="val">${modeloValue}</span></td>
+            <td style="width:25%"><span class="lbl">Serie</span><span class="val">${serieValue}</span></td>
+          </tr>
+          <tr>
+            <td><span class="lbl">Prioridad</span><span class="val">${(reporte.prioridad || 'media').charAt(0).toUpperCase() + (reporte.prioridad || 'media').slice(1)}</span></td>
+            <td><span class="lbl">Sucursal</span><span class="val">${sucursalValue}</span></td>
+            <td><span class="lbl">Estado</span><span class="val">${obtenerNombreEstado(reporte.estado)}</span></td>
+            <td><span class="lbl">Fecha de Creación</span><span class="val">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span></td>
+          </tr>
+          <tr>
+            <td colspan="2"><span class="lbl">Empresa</span><span class="val">${reporte.empresa || 'N/A'}</span></td>
+            <td colspan="2"><span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre || ''} ${reporte.usuario_apellido || ''}</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- COMENTARIO / PROBLEMA -->
+      ${comentarioFinal ? `
+      <div class="section">
+        <div class="section-header">Comentario / Problema</div>
+        <div class="text-block">${comentarioFinal}</div>
+      </div>` : ''}
+
+      <!-- ANÁLISIS TÉCNICO (BORRADOR) -->
+      <div class="section">
+        <div class="section-header">Análisis Técnico</div>
+        <div class="text-block">${descripcionTrabajo.trim().replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      </div>
+
+    </div>
+
+    <!-- FIRMAS -->
+    <div class="signatures">
+      <table class="sig-table">
+        <tr>
+          <td></td>
+          <td class="sig-spacer"></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><div class="sig-line">Firma del Técnico</div></td>
+          <td class="sig-spacer"></td>
+          <td><div class="sig-line">Firma del Cliente</div></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="pdf-footer">si-mant.com &mdash; BORRADOR / NO OFICIAL</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(`https://si-mant.com/api/pdf/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: htmlTemplate })
+        });
+        if (!response.ok) throw new Error('Error al generar PDF');
+        const arrayBuffer = await response.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `VistaPrevia_Reporte_${reporte.id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        showToast('Vista previa descargada. Revísala y si está correcta, haz clic en Enviar Análisis.', 'info');
+      } else {
+        showToast('La vista previa PDF está disponible en la versión Web.', 'info');
+      }
+    } catch (error: any) {
+      console.error('[PDF-BORRADOR] Error:', error);
+      showToast('Error al generar la vista previa PDF', 'error');
+    } finally {
+      setGenerandoPDFBorrador(false);
     }
   };
 
@@ -3428,6 +3744,46 @@ function EmpleadoPanelContent() {
 
                 {reporteSeleccionado.estado === 'asignado' && (
                   <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: 1 }}>
+
+                    {/* Botón Vista Previa PDF — aparece solo cuando hay análisis escrito */}
+                    {descripcionTrabajo.trim().length > 0 && (
+                      <TouchableOpacity
+                        onPress={generarPDFBorrador}
+                        disabled={generandoPDFBorrador}
+                        activeOpacity={0.85}
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          minHeight: 48,
+                          borderRadius: 14,
+                          borderWidth: 1.5,
+                          borderColor: generandoPDFBorrador ? '#334155' : '#06b6d4',
+                          backgroundColor: generandoPDFBorrador ? 'rgba(6,182,212,0.05)' : 'rgba(6,182,212,0.12)',
+                          shadowColor: '#06b6d4',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: generandoPDFBorrador ? 0 : 0.25,
+                          shadowRadius: 6,
+                          elevation: generandoPDFBorrador ? 0 : 3,
+                        }}
+                      >
+                        <Ionicons
+                          name={generandoPDFBorrador ? 'hourglass-outline' : 'document-text-outline'}
+                          size={18}
+                          color={generandoPDFBorrador ? '#64748b' : '#06b6d4'}
+                        />
+                        <Text style={[{
+                          color: generandoPDFBorrador ? '#64748b' : '#06b6d4',
+                          fontWeight: '700',
+                          fontSize: isMobile ? 12 : 14,
+                        }, { fontFamily }]}>
+                          {generandoPDFBorrador ? 'Generando...' : 'Vista Previa PDF'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
                     <LinearGradient
                       colors={['#d97706', '#f59e0b']}
                       start={{ x: 0, y: 0 }}
