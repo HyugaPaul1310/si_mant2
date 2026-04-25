@@ -24,7 +24,7 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -77,7 +77,8 @@ function EmpleadoPanelContent() {
     { label: 'Subiendo Fotos Revisión...', icon: 'images-outline', done: false },
     { label: 'Subiendo Fotos Postproceso...', icon: 'camera-outline', done: false },
     { label: 'Finalizando Reporte...', icon: 'cloud-upload-outline', done: false },
-  ]);
+]);
+
   const [currentUploadStep, setCurrentUploadStep] = useState(0);
   const [estimatedTimeLeft, setEstimatedTimeLeft] = useState('');
 
@@ -175,6 +176,8 @@ function EmpleadoPanelContent() {
   // Estados para IMAGENES DE ANALISIS
   const [fotosRevisionUris, setFotosRevisionUris] = useState<string[]>([]);
   const [fotosPostprocesoUris, setFotosPostprocesoUris] = useState<string[]>([]);
+  const nombresArchivosLocalesCache = useRef<Record<string, string>>({});
+
 
 
 
@@ -1280,6 +1283,31 @@ function EmpleadoPanelContent() {
         <div class="text-block">${descripcionTrabajo.trim().replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
       </div>
 
+      <!-- TRABAJO REALIZADO -->
+      ${(reparacion || materialesRefacciones || recomendaciones || recomendacionesAdicionales) ? `
+      <div class="section">
+        <div class="section-header">Trabajo Realizado</div>
+        ${reparacion ? `<div class="text-block"><span class="lbl">Reparación Realizada</span>${reparacion.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${materialesRefacciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Materiales / Refacciones</span>${materialesRefacciones.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${recomendaciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones</span>${recomendaciones.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${recomendacionesAdicionales ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones Adicionales</span>${recomendacionesAdicionales.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+      </div>` : ''}
+
+      ${(fotosRevisionUris.length > 0 || fotosPostprocesoUris.length > 0) ? `
+      <div class="force-page-break"></div>
+      <div class="section">
+        <div class="section-header">Archivos Adjuntos (Borrador Local)</div>
+        <div class="text-block" style="font-size: 8px; line-height: 1.6;">
+          ${[...fotosRevisionUris.map((uri) => {
+            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+            return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
+          }), ...fotosPostprocesoUris.map((uri) => {
+            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+            return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
+          })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
+        </div>
+      </div>` : ''}
+
     </div>
 
     <!-- FIRMAS -->
@@ -1325,6 +1353,350 @@ function EmpleadoPanelContent() {
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 100);
         showToast('Vista previa descargada. Revísala y si está correcta, haz clic en Enviar Análisis.', 'info');
+      } else {
+        showToast('La vista previa PDF está disponible en la versión Web.', 'info');
+      }
+    } catch (error: any) {
+      console.error('[PDF-BORRADOR] Error:', error);
+      showToast('Error al generar la vista previa PDF', 'error');
+    } finally {
+      setGenerandoPDFBorrador(false);
+    }
+  };
+
+  // Genera un PDF de vista previa con Fase 1 (Analisis) y Fase 2 (Reparacion) SIN enviar al backend
+  const generarPDFBorradorExpress = async () => {
+    if (!reporteSeleccionado || !descripcionTrabajo.trim()) {
+      showToast('Por favor escribe el Análisis General para generar el PDF', 'warning');
+      return;
+    }
+    if (generandoPDFBorrador) return;
+    setGenerandoPDFBorrador(true);
+    try {
+      const reporte = reporteSeleccionado;
+      const fullDescripcion = reporte.descripcion || '';
+      const modeloMatch = fullDescripcion.match(/Modelo:\s*([^\n]+)/i);
+      const serieMatch = fullDescripcion.match(/Serie:\s*([^\n]+)/i);
+      const sucursalMatch = fullDescripcion.match(/Sucursal:\s*([^\n]+)/i);
+      const comentarioMatch = fullDescripcion.match(/Comentario:\s*([\s\S]+?)(?:\nPrioridad:|$)/i);
+      const modeloValue = modeloMatch ? modeloMatch[1].trim() : 'N/A';
+      const serieValue = serieMatch ? serieMatch[1].trim() : 'N/A';
+      const sucursalValue = sucursalMatch ? sucursalMatch[1].trim() : (reporte.sucursal || 'N/A');
+      const comentarioFinal = comentarioMatch ? comentarioMatch[1].trim() : (reporte.comentario || '');
+
+
+      const htmlTemplate = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    @page { margin: 0; size: A4; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 210mm;
+      height: 297mm;
+    }
+    body { 
+      font-family: Arial, Helvetica, sans-serif; 
+      font-size: 9px;
+      color: #1a1a1a; 
+      -webkit-print-color-adjust: exact; 
+      print-color-adjust: exact; 
+      background: #fff;
+    }
+    .background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 210mm;
+      height: 297mm;
+      z-index: 1;
+      overflow: hidden;
+    }
+    .background-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .draft-watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(217,119,6,0.06);
+      pointer-events: none;
+      z-index: 0;
+      white-space: nowrap;
+      letter-spacing: 6px;
+    }
+    .page-wrapper {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      border-collapse: collapse;
+      border: none;
+    }
+    .page-wrapper > thead > tr > td,
+    .page-wrapper > tbody > tr > td,
+    .page-wrapper > tfoot > tr > td { padding: 0; }
+    
+    .body-content { 
+      padding: 0 28px;
+    }
+
+    .header-spacer { height: 180px; }
+
+    .report-id-bar {
+      text-align: right;
+      padding: 2px 0 8px 0;
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+    }
+    .report-id-bar span {
+      background: #c41e3a;
+      color: #fff;
+      padding: 3px 12px;
+      border-radius: 3px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    .section { 
+      display: block;
+      margin-bottom: 5px;
+      border: 1px solid #d0d0d0;
+      border-radius: 3px;
+      overflow: hidden;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      -webkit-column-break-inside: avoid;
+      -moz-column-break-inside: avoid;
+    }
+    .section-header, .section-header-red, .section-header-orange { 
+      font-size: 7px; 
+      font-weight: 700; 
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 8px;
+      -webkit-print-color-adjust: exact;
+      color: #fff;
+    }
+    .section-header { background: #1b3a5c; }
+    .section-header-red { background: #c41e3a; }
+    .section-header-orange { background: #d97706; }
+
+    .data-grid {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .data-grid td {
+      padding: 3px 6px;
+      vertical-align: top;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 8px;
+      line-height: 1.2;
+    }
+    .data-grid td:last-child { border-right: none; }
+    .data-grid .lbl {
+      font-size: 6px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 1px;
+    }
+    .data-grid .val {
+      color: #1a1a1a;
+      font-size: 8px;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .text-block {
+      padding: 4px 6px;
+      font-size: 8px;
+      line-height: 1.3;
+      color: #1a1a1a;
+      word-break: break-word;
+      white-space: pre-wrap;
+      page-break-inside: avoid;
+    }
+    .text-block .lbl {
+      font-size: 7px;
+      font-weight: 700;
+      color: #0077b6;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .signatures { 
+      margin-top: 40px;
+      padding: 0 28px 20px 28px;
+      page-break-inside: avoid;
+    }
+    .sig-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .sig-table td {
+      text-align: center;
+      vertical-align: bottom;
+      padding-bottom: 4px;
+      height: 50px;
+    }
+    .sig-line {
+      border-top: 1.5px solid #1a1a1a;
+      font-size: 8px;
+      font-weight: 700;
+      color: #333;
+      padding-top: 4px;
+      text-align: center;
+    }
+    .sig-spacer { width: 60px; }
+
+    .pdf-footer { 
+      text-align: center; 
+      font-size: 7px; 
+      color: #aaa; 
+      padding: 4px 0 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="background-container">
+    <img src="${PDF_TEMPLATE_BASE64}" class="background-image" />
+  </div>
+  <div class="draft-watermark">BORRADOR</div>
+
+  <table class="page-wrapper">
+    <thead>
+      <tr>
+        <td>
+          <div class="header-spacer"></div>
+        </td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="body-content">
+
+      <!-- DATOS GENERALES -->
+      <div class="section">
+        <div class="section-header">Datos Generales</div>
+        <table class="data-grid">
+          <tr>
+            <td style="width:25%"><span class="lbl">Reporte</span><span class="val" style="color:#c41e3a; font-weight:700;">#${reporte.id}</span></td>
+            <td style="width:25%"><span class="lbl">Equipo / Servicio</span><span class="val">${reporte.equipo_descripcion || 'N/A'}</span></td>
+            <td style="width:25%"><span class="lbl">Modelo</span><span class="val">${modeloValue}</span></td>
+            <td style="width:25%"><span class="lbl">Serie</span><span class="val">${serieValue}</span></td>
+          </tr>
+          <tr>
+            <td><span class="lbl">Prioridad</span><span class="val">${(reporte.prioridad || 'media').charAt(0).toUpperCase() + (reporte.prioridad || 'media').slice(1)}</span></td>
+            <td><span class="lbl">Sucursal</span><span class="val">${sucursalValue}</span></td>
+            <td><span class="lbl">Estado</span><span class="val">${obtenerNombreEstado(reporte.estado)}</span></td>
+            <td><span class="lbl">Fecha de Creación</span><span class="val">${reporte.created_at ? new Date(reporte.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span></td>
+          </tr>
+          <tr>
+            <td colspan="2"><span class="lbl">Empresa</span><span class="val">${reporte.empresa || 'N/A'}</span></td>
+            <td colspan="2"><span class="lbl">Solicitante</span><span class="val">${reporte.usuario_nombre || ''} ${reporte.usuario_apellido || ''}</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- COMENTARIO / PROBLEMA -->
+      ${comentarioFinal ? `
+      <div class="section">
+        <div class="section-header">Comentario / Problema</div>
+        <div class="text-block">${comentarioFinal}</div>
+      </div>` : ''}
+
+      <!-- ANÁLISIS TÉCNICO -->
+      <div class="section">
+        <div class="section-header">Análisis Técnico</div>
+        <div class="text-block">${descripcionTrabajo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+      </div>
+
+      <!-- TRABAJO REALIZADO -->
+      ${(reparacion || materialesRefacciones || recomendaciones || recomendacionesAdicionales) ? `
+      <div class="section">
+        <div class="section-header">Trabajo Realizado</div>
+        ${reparacion ? `<div class="text-block"><span class="lbl">Reparación Realizada</span>${reparacion.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${materialesRefacciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Materiales / Refacciones</span>${materialesRefacciones.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${recomendaciones ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones</span>${recomendaciones.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+        ${recomendacionesAdicionales ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones Adicionales</span>${recomendacionesAdicionales.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
+      </div>` : ''}
+
+      ${(fotosRevisionUris.length > 0 || fotosPostprocesoUris.length > 0) ? `
+      <div class="force-page-break"></div>
+      <div class="section">
+        <div class="section-header">Archivos Adjuntos</div>
+        <div class="text-block" style="font-size: 8px; line-height: 1.6;">
+          ${[...fotosRevisionUris.map((uri) => {
+            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+            return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
+          }), ...fotosPostprocesoUris.map((uri) => {
+            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+            return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
+          })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
+        </div>
+      </div>` : ''}
+
+    </div>
+
+    <!-- FIRMAS -->
+    <div class="signatures">
+      <table class="sig-table">
+        <tr>
+          <td></td>
+          <td class="sig-spacer"></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><div class="sig-line">Firma del Técnico</div></td>
+          <td class="sig-spacer"></td>
+          <td><div class="sig-line">Firma del Cliente</div></td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="pdf-footer">si-mant.com &mdash; BORRADOR / NO OFICIAL</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+      if (Platform.OS === 'web') {
+        const response = await fetch(`https://si-mant.com/api/pdf/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: htmlTemplate })
+        });
+        if (!response.ok) throw new Error('Error al generar PDF');
+        const arrayBuffer = await response.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `VistaPrevia_Express_${reporte.id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+        showToast('Vista previa descargada. Revísala y si está correcta, haz clic en Finalizar Servicio CSC.', 'info');
       } else {
         showToast('La vista previa PDF está disponible en la versión Web.', 'info');
       }
@@ -1530,6 +1902,10 @@ function EmpleadoPanelContent() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        result.assets.forEach(asset => {
+          const fileName = asset.fileName || asset.uri.split('/').pop() || 'Imagen.jpg';
+          nombresArchivosLocalesCache.current[asset.uri] = fileName;
+        });
         const newUris = result.assets.map(asset => asset.uri);
         setFotosRevisionUris(prev => [...prev, ...newUris]);
       }
@@ -1549,6 +1925,10 @@ function EmpleadoPanelContent() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
+        result.assets.forEach(asset => {
+          const fileName = asset.fileName || asset.uri.split('/').pop() || 'Imagen.jpg';
+          nombresArchivosLocalesCache.current[asset.uri] = fileName;
+        });
         const newUris = result.assets.map(asset => asset.uri);
         setFotosPostprocesoUris(prev => [...prev, ...newUris]);
       }
@@ -3117,6 +3497,13 @@ function EmpleadoPanelContent() {
                   <TouchableOpacity
                     onPress={() => {
                       setShowReporteDetalle(false);
+                      setDescripcionTrabajo('');
+                      setReparacion('');
+                      setMaterialesRefacciones('');
+                      setRecomendaciones('');
+                      setRecomendacionesAdicionales('');
+                      setFotosRevisionUris([]);
+                      setFotosPostprocesoUris([]);
                       setShowExpressModal(true);
                     }}
                     activeOpacity={0.85}
@@ -4506,11 +4893,56 @@ function EmpleadoPanelContent() {
                   onPress={() => {
                     setShowExpressModal(false);
                     setShowReporteDetalle(true);
+                    setDescripcionTrabajo('');
+                    setFotosRevisionUris([]);
+                    setReparacion('');
+                    setMaterialesRefacciones('');
+                    setRecomendaciones('');
+                    setRecomendacionesAdicionales('');
+                    setFotosPostprocesoUris([]);
                   }}
                   activeOpacity={0.7}
                 >
                   <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cancelar</Text>
                 </TouchableOpacity>
+
+                {descripcionTrabajo.trim().length > 0 && (
+                  <TouchableOpacity
+                    onPress={generarPDFBorradorExpress}
+                    disabled={generandoPDFBorrador}
+                    activeOpacity={0.85}
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      minHeight: 48,
+                      borderRadius: 14,
+                      borderWidth: 1.5,
+                      borderColor: generandoPDFBorrador ? '#334155' : '#ef4444',
+                      backgroundColor: generandoPDFBorrador ? 'rgba(239, 68, 68, 0.05)' : 'rgba(239, 68, 68, 0.1)',
+                      shadowColor: '#ef4444',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: generandoPDFBorrador ? 0 : 0.25,
+                      shadowRadius: 6,
+                      elevation: generandoPDFBorrador ? 0 : 3,
+                    }}
+                  >
+                    <Ionicons
+                      name={generandoPDFBorrador ? 'hourglass-outline' : 'document-text-outline'}
+                      size={18}
+                      color={generandoPDFBorrador ? '#64748b' : '#ef4444'}
+                    />
+                    <Text style={[{
+                      color: generandoPDFBorrador ? '#64748b' : '#ef4444',
+                      fontWeight: '700',
+                      fontSize: isMobile ? 12 : 14,
+                    }, { fontFamily }]}>
+                      {generandoPDFBorrador ? 'Generando...' : 'Previsualizar PDF'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
 
                 <LinearGradient
                   colors={['#ef4444', '#b91c1c']}
