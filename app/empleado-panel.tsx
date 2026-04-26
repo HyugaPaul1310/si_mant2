@@ -3,14 +3,14 @@ import CustomDatePicker from '@/components/CustomDatePicker';
 import UploadProgressOverlay from '@/components/UploadProgressOverlay';
 import { PDF_TEMPLATE_BASE64 } from '@/constants/pdf-templates';
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarEstadoTareaBackend,
-    apiCall,
-    obtenerArchivosReporteBackend,
-    obtenerInventarioEmpleadoBackend,
-    obtenerReportesAsignados,
-    obtenerTareasEmpleadoBackend,
-    rechazarAsignacionBackend
+  actualizarEstadoReporteAsignado,
+  actualizarEstadoTareaBackend,
+  apiCall,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesAsignados,
+  obtenerTareasEmpleadoBackend,
+  rechazarAsignacionBackend
 } from '@/lib/api-backend';
 import { getProxyUrl } from '@/lib/cloudflare';
 import { matchesSearchDate } from '@/lib/date-utils';
@@ -24,21 +24,21 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -77,7 +77,7 @@ function EmpleadoPanelContent() {
     { label: 'Subiendo Fotos Revisión...', icon: 'images-outline', done: false },
     { label: 'Subiendo Fotos Postproceso...', icon: 'camera-outline', done: false },
     { label: 'Finalizando Reporte...', icon: 'cloud-upload-outline', done: false },
-]);
+  ]);
 
   const [currentUploadStep, setCurrentUploadStep] = useState(0);
   const [estimatedTimeLeft, setEstimatedTimeLeft] = useState('');
@@ -1280,7 +1280,7 @@ function EmpleadoPanelContent() {
       <!-- ANÁLISIS TÉCNICO (BORRADOR) -->
       <div class="section">
         <div class="section-header">Análisis Técnico</div>
-        <div class="text-block">${descripcionTrabajo.trim().replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div class="text-block">${descripcionTrabajo.trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
       </div>
 
       <!-- TRABAJO REALIZADO -->
@@ -1293,18 +1293,20 @@ function EmpleadoPanelContent() {
         ${recomendacionesAdicionales ? `<div class="text-block" style="border-top:1px solid #e8e8e8;"><span class="lbl">Recomendaciones Adicionales</span>${recomendacionesAdicionales.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>` : ''}
       </div>` : ''}
 
-      ${(fotosRevisionUris.length > 0 || fotosPostprocesoUris.length > 0) ? `
+      ${(fotosRevisionUris.length > 0 || fotosPostprocesoUris.length > 0 || archivosReporte.some(a => a.tipo_archivo === 'foto_revision' || a.tipo_archivo === 'foto')) ? `
       <div class="force-page-break"></div>
       <div class="section">
         <div class="section-header">Archivos Adjuntos (Borrador Local)</div>
         <div class="text-block" style="font-size: 8px; line-height: 1.6;">
-          ${[...fotosRevisionUris.map((uri) => {
-            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
-            return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
-          }), ...fotosPostprocesoUris.map((uri) => {
-            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
-            return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
-          })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
+          ${[
+            ...archivosReporte.filter(a => a.tipo_archivo === 'foto_revision' || a.tipo_archivo === 'foto').map(a => `${a.nombre_original || 'Imagen'} (${a.tipo_archivo})`),
+            ...fotosRevisionUris.map((uri) => {
+              const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+              return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
+            }), ...fotosPostprocesoUris.map((uri) => {
+              const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+              return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
+            })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
         </div>
       </div>` : ''}
 
@@ -1327,7 +1329,7 @@ function EmpleadoPanelContent() {
     </div>
 
     <!-- FOOTER -->
-    <div class="pdf-footer">si-mant.com &mdash; BORRADOR / NO OFICIAL</div>
+    <div class="pdf-footer">si-mant.com</div>
         </td>
       </tr>
     </tbody>
@@ -1643,12 +1645,12 @@ function EmpleadoPanelContent() {
         <div class="section-header">Archivos Adjuntos</div>
         <div class="text-block" style="font-size: 8px; line-height: 1.6;">
           ${[...fotosRevisionUris.map((uri) => {
-            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
-            return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
-          }), ...fotosPostprocesoUris.map((uri) => {
-            const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
-            return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
-          })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
+        const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+        return name?.includes('.') ? name + ' (foto_revision)' : 'Imagen (foto_revision)';
+      }), ...fotosPostprocesoUris.map((uri) => {
+        const name = nombresArchivosLocalesCache.current[uri] || uri.split('/').pop();
+        return name?.includes('.') ? name + ' (foto)' : 'Imagen (foto)';
+      })].map((txt, i) => (i + 1) + '. ' + txt).join('<br/>')}
         </div>
       </div>` : ''}
 
@@ -1671,7 +1673,7 @@ function EmpleadoPanelContent() {
     </div>
 
     <!-- FOOTER -->
-    <div class="pdf-footer">si-mant.com &mdash; BORRADOR / NO OFICIAL</div>
+    <div class="pdf-footer">si-mant.com</div>
         </td>
       </tr>
     </tbody>
@@ -4104,29 +4106,60 @@ function EmpleadoPanelContent() {
 
               <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 2 }}>
                 {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
-                  <LinearGradient
-                    colors={['#10b981', '#06b6d4']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.detailActionButton}
-                  >
-                    <TouchableOpacity
-                      onPress={async () => {
-                        if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
-                          showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
-                          return;
-                        }
-                        setShowConfirmarFinalizarModal(true);
-                      }}
-                      disabled={guardandoFase2}
-                      activeOpacity={0.85}
-                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: 1 }}>
+                    {reparacion.trim().length > 0 && materialesRefacciones.trim().length > 0 && recomendaciones.trim().length > 0 && (
+                      <TouchableOpacity
+                        onPress={generarPDFBorrador}
+                        disabled={generandoPDFBorrador}
+                        activeOpacity={0.85}
+                        style={{
+                          flex: 1,
+                          backgroundColor: '#164e63',
+                          borderRadius: 12,
+                          borderWidth: 1,
+                          borderColor: '#0891b2',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          flexDirection: 'row',
+                          gap: 8,
+                          minHeight: 48
+                        }}
+                      >
+                        {generandoPDFBorrador ? (
+                          <ActivityIndicator color="#06b6d4" />
+                        ) : (
+                          <Ionicons name="document-text-outline" size={20} color="#06b6d4" />
+                        )}
+                        <Text style={[styles.detailActionButtonText, { fontFamily, color: '#ecfdf5' }]}>
+                          {generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <LinearGradient
+                      colors={['#10b981', '#06b6d4']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[styles.detailActionButton, { flex: 1 }]}
                     >
-                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                        {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
+                      <TouchableOpacity
+                        onPress={async () => {
+                          if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
+                            showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
+                            return;
+                          }
+                          setShowConfirmarFinalizarModal(true);
+                        }}
+                        disabled={guardandoFase2}
+                        activeOpacity={0.85}
+                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                      >
+                        <Text style={[styles.detailActionButtonText, { fontFamily }]}>
+                          {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
+                        </Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  </View>
                 )}
 
                 {reporteSeleccionado.estado === 'asignado' && (
@@ -4166,7 +4199,7 @@ function EmpleadoPanelContent() {
                           fontWeight: '700',
                           fontSize: isMobile ? 12 : 14,
                         }, { fontFamily }]}>
-                          {generandoPDFBorrador ? 'Generando...' : 'Vista Previa PDF'}
+                          {generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -4939,7 +4972,7 @@ function EmpleadoPanelContent() {
                       fontWeight: '700',
                       fontSize: isMobile ? 12 : 14,
                     }, { fontFamily }]}>
-                      {generandoPDFBorrador ? 'Generando...' : 'Previsualizar PDF'}
+                      {generandoPDFBorrador ? 'Generando...' : 'Generar PDF CSC'}
                     </Text>
                   </TouchableOpacity>
                 )}

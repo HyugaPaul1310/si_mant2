@@ -1,6 +1,6 @@
 // @ts-nocheck
-import { Ionicons } from '@expo/vector-icons';
 import CustomDatePicker from '@/components/CustomDatePicker';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
@@ -13,16 +13,16 @@ import { ActivityIndicator, Alert, Animated, Easing, Image, Linking, Modal, Plat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
 import {
-    actualizarReporteBackend,
-    apiCall,
-    getApiBaseUrl,
-    obtenerArchivosReporteBackend,
-    obtenerReportesCliente,
-    verificarEncuestaExiste
+  actualizarReporteBackend,
+  apiCall,
+  getApiBaseUrl,
+  obtenerArchivosReporteBackend,
+  obtenerReportesCliente,
+  verificarEncuestaExiste
 } from '../lib/api-backend';
 import { getProxyUrl } from '../lib/cloudflare';
-import { obtenerNombreEstado } from '../lib/estado-mapeo';
 import { matchesSearchDate } from '../lib/date-utils';
+import { obtenerNombreEstado } from '../lib/estado-mapeo';
 
 type Cliente = {
   nombre?: string;
@@ -1854,11 +1854,11 @@ function ClientePanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <CustomDatePicker 
-                          value={filtroFecha} 
-                          onChange={setFiltroFecha} 
-                          isMobile={isMobile} 
-                          fontFamily={fontFamily} 
+                        <CustomDatePicker
+                          value={filtroFecha}
+                          onChange={setFiltroFecha}
+                          isMobile={isMobile}
+                          fontFamily={fontFamily}
                         />
                       </View>
                     </View>
@@ -2097,11 +2097,11 @@ function ClientePanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <CustomDatePicker 
-                          value={filtroFecha} 
-                          onChange={setFiltroFecha} 
-                          isMobile={isMobile} 
-                          fontFamily={fontFamily} 
+                        <CustomDatePicker
+                          value={filtroFecha}
+                          onChange={setFiltroFecha}
+                          isMobile={isMobile}
+                          fontFamily={fontFamily}
                         />
                       </View>
                     </View>
@@ -3009,11 +3009,11 @@ function ClientePanelContent() {
                           filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                           isMobile && { height: 44, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                         ]}>
-                          <CustomDatePicker 
-                            value={filtroFecha} 
-                            onChange={setFiltroFecha} 
-                            isMobile={isMobile} 
-                            fontFamily={fontFamily} 
+                          <CustomDatePicker
+                            value={filtroFecha}
+                            onChange={setFiltroFecha}
+                            isMobile={isMobile}
+                            fontFamily={fontFamily}
                           />
                         </View>
                       </View>
