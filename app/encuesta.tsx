@@ -183,13 +183,8 @@ export default function EncuestaPage() {
 
       setGuardando(false);
 
-      // Navegar directamente con parámetro de éxito
-      // Forzar recarga completa para actualizar estados
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        window.location.href = `/cliente-panel?encuestaEnviada=true&reporteId=${reporteId}`;
-      } else {
-        router.replace({ pathname: '/cliente-panel', params: { encuestaEnviada: 'true', reporteId } });
-      }
+      // Navegar con router para evitar recargas que pueden fallar en el servidor web
+      router.replace('/cliente-panel');
 
     } catch (error: any) {
       console.error('Error al guardar encuesta:', error);
@@ -209,7 +204,7 @@ export default function EncuestaPage() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0f172a' }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/cliente-panel')} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.replace('/(app)/cliente-panel')} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color="#22d3ee" />
         </TouchableOpacity>
         <View style={styles.headerContent}>

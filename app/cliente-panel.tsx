@@ -2721,7 +2721,13 @@ function ClientePanelContent() {
               </TouchableOpacity>
 
               {/* Botón Responder Encuesta - solo cuando hubo trabajo y no fue cancelado */}
-              {(selectedReporte.estado === 'cerrado' || selectedReporte.estado === 'terminado' || selectedReporte.estado === 'cerrado_por_cliente') &&
+              {(
+                selectedReporte.estado === 'cerrado' ||
+                selectedReporte.estado === 'terminado' ||
+                selectedReporte.estado === 'cerrado_por_cliente' ||
+                selectedReporte.estado === 'listo_para_encuesta' ||
+                selectedReporte.estado === 'finalizado_por_tecnico'
+              ) &&
                 selectedReporte.estado !== 'cancelado' &&
                 !selectedReporte.esCancelado &&
                 !encuestasEnviadas.has(selectedReporte.id) &&
