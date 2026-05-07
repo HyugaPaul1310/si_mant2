@@ -5,7 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -78,6 +80,7 @@ export default function EncuestaPage() {
 
   const [respuestas, setRespuestas] = useState<{ [key: string]: string }>({});
   const [guardando, setGuardando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
   const [usuario, setUsuario] = useState<any>(null);
 
   useEffect(() => {
@@ -182,9 +185,12 @@ export default function EncuestaPage() {
       console.log('Encuesta finalizada correctamente');
 
       setGuardando(false);
+      setEnviado(true);
 
-      // Navegar con router para evitar recargas que pueden fallar en el servidor web
-      router.replace('/cliente-panel');
+      // Auto-redirigir después de 4 segundos
+      setTimeout(() => {
+        router.replace('/cliente-panel');
+      }, 4000);
 
     } catch (error: any) {
       console.error('Error al guardar encuesta:', error);
@@ -204,7 +210,7 @@ export default function EncuestaPage() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0f172a' }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(app)/cliente-panel')} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => router.replace('/cliente-panel')} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color="#22d3ee" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
@@ -321,6 +327,62 @@ export default function EncuestaPage() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Pantalla de carga - bloquea toda interacción mientras se envía */}
+      <Modal
+        visible={guardando}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#22d3ee" style={{ marginBottom: 20 }} />
+            <Ionicons name="cloud-upload-outline" size={48} color="#22d3ee" style={{ marginBottom: 16 }} />
+            <Text style={[styles.loadingTitle, { fontFamily }]}>Enviando encuesta...</Text>
+            <Text style={[styles.loadingSubtitle, { fontFamily }]}>
+              Por favor no cierres ni cambies de pantalla.{'\n'}Esto puede tardar unos segundos.
+            </Text>
+            <View style={styles.loadingDotsContainer}>
+              <View style={[styles.loadingDot, { backgroundColor: '#22d3ee' }]} />
+              <View style={[styles.loadingDot, { backgroundColor: '#06b6d4', opacity: 0.7 }]} />
+              <View style={[styles.loadingDot, { backgroundColor: '#0891b2', opacity: 0.4 }]} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pantalla de éxito - se muestra después de enviar */}
+      <Modal
+        visible={enviado}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.loadingOverlay}>
+          <View style={styles.successCard}>
+            <View style={styles.successIconCircle}>
+              <Ionicons name="checkmark-circle" size={72} color="#10b981" />
+            </View>
+            <Text style={[styles.successTitle, { fontFamily }]}>¡Encuesta Enviada!</Text>
+            <Text style={[styles.successMessage, { fontFamily }]}>
+              Gracias por confiar en SI MANT.{"\n"}Tu opinión es muy importante para nosotros y nos ayuda a seguir mejorando nuestro servicio.
+            </Text>
+            <View style={styles.successDivider} />
+            <Text style={[styles.successFooter, { fontFamily }]}>
+              Serás redirigido automáticamente...
+            </Text>
+            <TouchableOpacity
+              style={styles.successButton}
+              onPress={() => router.replace('/cliente-panel')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="home-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={[styles.successButtonText, { fontFamily }]}>Ir al Panel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -496,5 +558,114 @@ const styles = StyleSheet.create({
   buttonMobile: {
     paddingVertical: 10,
     paddingHorizontal: 12,
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+    maxWidth: 320,
+    width: '85%',
+    shadowColor: '#22d3ee',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  loadingTitle: {
+    color: '#f1f5f9',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  loadingDotsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  loadingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  successCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 24,
+    padding: 36,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#10b98140',
+    maxWidth: 360,
+    width: '88%',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 40,
+    elevation: 25,
+  },
+  successIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#10b98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  successTitle: {
+    color: '#10b981',
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+  successMessage: {
+    color: '#cbd5e1',
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  successDivider: {
+    width: '60%',
+    height: 1,
+    backgroundColor: '#334155',
+    marginBottom: 16,
+  },
+  successFooter: {
+    color: '#64748b',
+    fontSize: 12,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  successButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    width: '100%',
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
