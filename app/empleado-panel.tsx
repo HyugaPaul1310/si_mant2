@@ -3010,7 +3010,7 @@ function EmpleadoPanelContent() {
 
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
-                style={styles.detailCloseButton}
+                style={[styles.detailCloseButton, isMobile && { flex: 0, width: '100%' }]}
                 onPress={() => { setShowTareaDetalle(false); setTareaSeleccionada(null); }}
                 activeOpacity={0.7}
               >
@@ -3031,13 +3031,13 @@ function EmpleadoPanelContent() {
                     elevation: 5,
                     borderWidth: 1,
                     borderColor: 'rgba(52, 211, 153, 0.4)'
-                  }]}
+                  }, isMobile && { flex: 0, width: '100%' }]}
                 >
                   <TouchableOpacity
                     onPress={marcarComoCompletada}
                     disabled={actualizandoTarea}
                     activeOpacity={0.85}
-                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6 }}
+                    style={{ justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, paddingVertical: 14, minHeight: 48 }}
                   >
                     {!actualizandoTarea && <Ionicons name="checkmark-circle" size={18} color="#fff" />}
                     <Text style={[styles.detailActionButtonText, { fontFamily, fontSize: 14, fontWeight: '700' }]}>
@@ -3191,7 +3191,7 @@ function EmpleadoPanelContent() {
                 <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando reportes...</Text>
               </View>
             ) : (
-              <>
+              <View style={{ flex: 1 }}>
                 {/* Filtros */}
                 <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
                   <TouchableOpacity
@@ -3224,7 +3224,7 @@ function EmpleadoPanelContent() {
                   {mostrarFiltros && (
                     <>
                       {/* Chips Estado */}
-                      <View style={[styles.filtroSection, isMobile && { gap: 2 }]}>
+                      <View style={[styles.filtroSection, isMobile && { gap: 6, paddingHorizontal: 14, paddingBottom: 12 }]}>
                         <Text style={[styles.filtroLabel, { fontFamily }, isMobile && { fontSize: 11 }]}>
                           <Ionicons name="flag-outline" size={isMobile ? 12 : 14} color="#94a3b8" /> Estado
                         </Text>
@@ -3253,7 +3253,7 @@ function EmpleadoPanelContent() {
                       </View>
 
                       {/* Chips Prioridad */}
-                      <View style={[styles.filtroSection, isMobile && { gap: 2 }]}>
+                      <View style={[styles.filtroSection, isMobile && { gap: 6, paddingHorizontal: 14, paddingBottom: 12 }]}>
                         <Text style={[styles.filtroLabel, { fontFamily }, isMobile && { fontSize: 11 }]}>
                           <Ionicons name="alert-circle-outline" size={isMobile ? 12 : 14} color="#94a3b8" /> Prioridad
                         </Text>
@@ -3409,7 +3409,7 @@ function EmpleadoPanelContent() {
                     </Text>
                   </View>
                 ) : (
-                  <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+                  <ScrollView style={isMobile ? { flex: 1 } : styles.listScroll} showsVerticalScrollIndicator={false}>
                     <View style={styles.listSpacing}>
                       {reportesFiltrados.map((reporte: any) => {
                         const badgeColor = obtenerColorEstado(reporte.estado);
@@ -3417,11 +3417,11 @@ function EmpleadoPanelContent() {
                           <View key={reporte.id} style={styles.reportCard}>
                             <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
                               <View style={styles.reportHeaderText}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                  <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
+                                <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 4 : 8, marginBottom: 2 }}>
+                                  <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily, flexShrink: 1 }]} numberOfLines={isMobile ? 2 : 1}>
                                     {reporte.equipo_descripcion || 'Equipo / servicio'}
                                   </Text>
-                                  <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                                  <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)', alignSelf: isMobile ? 'flex-start' : 'center' }}>
                                     <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {reporte.id}</Text>
                                   </View>
                                 </View>
@@ -3480,7 +3480,7 @@ function EmpleadoPanelContent() {
                     </View>
                   </ScrollView>
                 )}
-              </>
+              </View>
             )}
           </View>
         </View>
@@ -4097,16 +4097,16 @@ function EmpleadoPanelContent() {
 
             <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
               <TouchableOpacity
-                style={[styles.detailCloseButton, isMobile && { width: '100%' }]}
+                style={[styles.detailCloseButton, isMobile && { width: '100%', flex: 0 }]}
                 onPress={() => cerrarModalReporteDetalle()}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
               </TouchableOpacity>
 
-              <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 2 }}>
+              <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 2, width: isMobile ? '100%' : undefined }}>
                 {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
-                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: 1 }}>
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }}>
                     {reparacion.trim().length > 0 && materialesRefacciones.trim().length > 0 && recomendaciones.trim().length > 0 && (
                       <TouchableOpacity
                         onPress={generarPDFBorrador}
@@ -4140,7 +4140,7 @@ function EmpleadoPanelContent() {
                       colors={['#10b981', '#06b6d4']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={[styles.detailActionButton, { flex: 1 }]}
+                      style={[styles.detailActionButton, { flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }]}
                     >
                       <TouchableOpacity
                         onPress={async () => {
@@ -4152,7 +4152,7 @@ function EmpleadoPanelContent() {
                         }}
                         disabled={guardandoFase2}
                         activeOpacity={0.85}
-                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                        style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
                       >
                         <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                           {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
@@ -4163,7 +4163,7 @@ function EmpleadoPanelContent() {
                 )}
 
                 {reporteSeleccionado.estado === 'asignado' && (
-                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: 1 }}>
+                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }}>
 
                     {/* Botón Vista Previa PDF — aparece solo cuando hay análisis escrito */}
                     {descripcionTrabajo.trim().length > 0 && (
@@ -4208,13 +4208,13 @@ function EmpleadoPanelContent() {
                       colors={['#d97706', '#f59e0b']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={styles.detailActionButton}
+                      style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
                     >
                       <TouchableOpacity
                         onPress={confirmarEnvioAnalisis}
                         disabled={guardandoCotizacion}
                         activeOpacity={0.85}
-                        style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                        style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
                       >
                         <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                           {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
@@ -4223,7 +4223,7 @@ function EmpleadoPanelContent() {
                     </LinearGradient>
 
                     <TouchableOpacity
-                      style={[styles.detailCloseButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                      style={[styles.detailCloseButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }, isMobile && { flex: 0, width: '100%' }]}
                       onPress={() => {
                         setReporteARechazar(reporteSeleccionado);
                         setShowRechazarModal(true);
@@ -4244,7 +4244,7 @@ function EmpleadoPanelContent() {
                     colors={['#d97706', '#f59e0b']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.detailActionButton}
+                    style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
                   >
                     <TouchableOpacity
                       onPress={() => {
@@ -4252,7 +4252,7 @@ function EmpleadoPanelContent() {
                         setShowCotizarModal(true);
                       }}
                       activeOpacity={0.85}
-                      style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
+                      style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
                     >
                       <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                         Enviar Análisis
@@ -4268,7 +4268,7 @@ function EmpleadoPanelContent() {
       }
 
       {showHistorialReportesModal && (
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, isMobile && styles.modalOverlayMobile]}>
           <View style={[styles.largeModal, isMobile && styles.largeModalMobile]}>
             <View style={[styles.largeModalHeader, isMobile && styles.largeModalHeaderMobile]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1 }}>
@@ -4489,17 +4489,17 @@ function EmpleadoPanelContent() {
             ) : null}
 
             {!loadingHistorialReportes && reportesTerminadosFiltrados.length > 0 ? (
-              <ScrollView style={[styles.listScroll, isMobile && styles.listScrollMobile]} showsVerticalScrollIndicator={false}>
+              <ScrollView style={isMobile ? { flex: 1 } : styles.listScroll} showsVerticalScrollIndicator={false}>
                 <View style={styles.listSpacing}>
                   {reportesTerminadosFiltrados.map((rep) => (
                     <View key={rep.id} style={styles.reportCard}>
                       <View style={styles.reportHeader}>
                         <View style={styles.reportHeaderText}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                          <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 4 : 8, marginBottom: 2 }}>
+                            <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily, flexShrink: 1 }]} numberOfLines={isMobile ? 2 : 1}>
                               {rep.equipo_descripcion || 'Equipo / servicio'}
                             </Text>
-                            <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                            <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)', alignSelf: isMobile ? 'flex-start' : 'center' }}>
                               <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {rep.id}</Text>
                             </View>
                           </View>
@@ -4624,7 +4624,7 @@ function EmpleadoPanelContent() {
                   </Text>
                 </View>
               ) : (
-                <View style={styles.inventoryTableWrapper}>
+                <View style={[styles.inventoryTableWrapper, isMobile && { flex: 1 }]}>
                   {!isMobile && (
                     <View style={styles.inventoryTableHeader}>
                       <Text style={[styles.inventoryHeaderCell, styles.colTool, { fontFamily }]}>Herramienta</Text>
@@ -4636,7 +4636,7 @@ function EmpleadoPanelContent() {
                       </View>
                     </View>
                   )}
-                  <ScrollView style={[styles.modalList, isMobile && styles.modalListMobile]} showsVerticalScrollIndicator={false}>
+                  <ScrollView style={isMobile ? { flex: 1 } : styles.modalList} showsVerticalScrollIndicator={false}>
                     {listaHerramientas.map((herramienta: any, index: number) => (
                       <TouchableOpacity
                         key={index}
@@ -4922,7 +4922,7 @@ function EmpleadoPanelContent() {
 
               <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
                 <TouchableOpacity
-                  style={styles.detailCloseButton}
+                  style={[styles.detailCloseButton, isMobile && { flex: 0, width: '100%' }]}
                   onPress={() => {
                     setShowExpressModal(false);
                     setShowReporteDetalle(true);
@@ -4945,7 +4945,8 @@ function EmpleadoPanelContent() {
                     disabled={generandoPDFBorrador}
                     activeOpacity={0.85}
                     style={{
-                      flex: 1,
+                      flex: isMobile ? 0 : 1,
+                      width: isMobile ? '100%' : undefined,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -4981,7 +4982,7 @@ function EmpleadoPanelContent() {
                   colors={['#ef4444', '#b91c1c']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
+                  style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
                 >
                   <TouchableOpacity
                     onPress={async () => {
@@ -4999,7 +5000,7 @@ function EmpleadoPanelContent() {
                     }}
                     disabled={guardandoCotizacion || guardandoFase2}
                     activeOpacity={0.85}
-                    style={{ flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
+                    style={{ paddingVertical: 14, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                       {(guardandoCotizacion || guardandoFase2) ? 'Guardando...' : 'Finalizar Servicio CSC'}
@@ -5191,7 +5192,7 @@ function EmpleadoPanelContent() {
 
               <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
                 <TouchableOpacity
-                  style={styles.detailCloseButton}
+                  style={[styles.detailCloseButton, isMobile && { flex: 0, width: '100%' }]}
                   onPress={() => {
                     setShowCotizarModal(false);
                     setShowReporteDetalle(true);
@@ -5207,13 +5208,13 @@ function EmpleadoPanelContent() {
                   colors={['#d97706', '#f59e0b']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.detailActionButton}
+                  style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
                 >
                   <TouchableOpacity
                     onPress={guardarCotizacion}
                     disabled={guardandoCotizacion}
                     activeOpacity={0.85}
-                    style={{ flex: 1, paddingVertical: 12, justifyContent: 'center', alignItems: 'center' }}
+                    style={{ paddingVertical: 14, justifyContent: 'center', alignItems: 'center', minHeight: 48 }}
                   >
                     <Text style={[styles.detailActionButtonText, { fontFamily }]}>
                       {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
@@ -5513,10 +5514,10 @@ function EmpleadoPanelContent() {
             </ScrollView>
 
             <TouchableOpacity
-              style={[styles.modalSecondary, { marginTop: 24, width: '100%', backgroundColor: '#1e293b' }]}
+              style={[styles.modalSecondary, { marginTop: 24, width: '100%', backgroundColor: '#1e293b', flex: 0, minHeight: 48, paddingVertical: 14 }]}
               onPress={() => setShowHerramientaDetalle(false)}
             >
-              <Text style={[styles.modalSecondaryText, { fontFamily, color: '#fff' }]}>Entendido</Text>
+              <Text style={[styles.modalSecondaryText, { fontFamily, color: '#fff', fontSize: 14 }]}>Entendido</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -6065,7 +6066,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalOverlayMobile: {
-    padding: 12,
+    padding: 0,
   },
   largeModal: {
     width: '100%',
@@ -6086,11 +6087,13 @@ const styles = StyleSheet.create({
   largeModalMobile: {
     width: '100%',
     maxWidth: '100%',
-    maxHeight: '90%',
-    height: 'auto',
-    minHeight: 600,
-    borderRadius: 12,
+    maxHeight: '95%',
+    height: '95%',
+    borderRadius: 16,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
     marginVertical: 0,
+    alignSelf: 'flex-end',
   },
   largeModalHeader: {
     flexDirection: 'row',
@@ -6632,6 +6635,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     borderRadius: 16,
     marginBottom: 16,
+    paddingBottom: 8,
   },
   filtrosHeader: {
     flexDirection: 'row',
@@ -6727,8 +6731,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   searchFilterContainerMobile: {
-    marginHorizontal: 16,
-    marginBottom: 10,
+    marginHorizontal: 12,
+    marginBottom: 8,
+    gap: 4,
   },
   searchFilterLabelPro: {
     paddingHorizontal: 4,
@@ -6792,7 +6797,7 @@ const styles = StyleSheet.create({
   },
   // ─── Admin-style Report Card styles ─────────────────────────────
   listScroll: { maxHeight: 550 },
-  listScrollMobile: { maxHeight: 450 },
+  listScrollMobile: { flex: 1, maxHeight: undefined },
   listSpacing: { gap: 16, paddingBottom: 20 },
   reportCard: {
     backgroundColor: 'rgba(30, 41, 59, 0.7)',
