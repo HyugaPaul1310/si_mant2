@@ -812,8 +812,8 @@ function AdminPanelContent() {
     try {
       const { success, data } = await obtenerUsuariosBackend();
       if (success && data) {
-        // Filtrar solo empleados
-        const emps = data.filter((u: any) => u.rol === 'empleado');
+        // Filtrar solo empleados activos (excluir inactivos)
+        const emps = data.filter((u: any) => u.rol === 'empleado' && u.estado === 'activo');
         setEmpleadosInventario(emps);
         // Inicializar filtrados por si acaso el useEffect de filtrado demora
         if (!searchInventario) {
