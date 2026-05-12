@@ -400,7 +400,7 @@ export default function GestionEmpresasScreen() {
 
           {/* Acciones sobre la empresa seleccionada */}
           {empresaSeleccionada && (
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
               <TouchableOpacity style={[s.actionChip, subiendoImagen && { opacity: 0.5 }]} onPress={handleActualizarLogoEmpresa} disabled={subiendoImagen}>
                 {subiendoImagen ? <ActivityIndicator size="small" color={CC} /> : <Ionicons name="image-outline" size={14} color={CC} />}
                 <Text style={s.actionChipText}>{subiendoImagen ? 'Subiendo...' : 'Cambiar logo'}</Text>
@@ -422,12 +422,12 @@ export default function GestionEmpresasScreen() {
 
         {/* ── SUCURSALES + EQUIPOS ─────────────────────────────────────── */}
         {empresaSeleccionada && (
-          <View style={{ flexDirection: 'row', gap: 12, marginHorizontal: 16 }}>
+          <View style={{ flexDirection: isWide ? 'row' : 'column', gap: 12, marginHorizontal: 16 }}>
 
             {/* Left: sucursales */}
-            <View style={{ flex: 3 }}>
+            <View style={isWide ? { flex: 3 } : { flex: undefined }}>
               <View style={s.sectionHeader}>
-                <Text style={s.sectionLabel}>SUCURSALES: {empresaSeleccionada.nombre}</Text>
+                <Text style={[s.sectionLabel, !isWide && { flexShrink: 1 }]} numberOfLines={isWide ? undefined : 2}>SUCURSALES: {empresaSeleccionada.nombre}</Text>
                 <TouchableOpacity style={s.addBtn} onPress={() => {
                   setNombreSucursal(''); setDireccionSucursal(''); setCiudadSucursal('');
                   setShowNuevaSucursalModal(true);
@@ -451,25 +451,28 @@ export default function GestionEmpresasScreen() {
                 return (
                   <TouchableOpacity
                     key={suc.id}
-                    style={[s.sucCard, isSelected && s.sucCardSelected]}
+                    style={[s.sucCard, isSelected && s.sucCardSelected, !isWide && { flexDirection: 'column', alignItems: 'stretch' }]}
                     onPress={() => setSucursalSeleccionada(suc)}
                     activeOpacity={0.85}
                   >
-                    {/* thumbnail */}
-                    <View style={s.sucThumbBox}>
-                      {suc.imagen_url ? (
-                        <Image source={{ uri: getProxyUrl(suc.imagen_url) }} style={s.sucThumb} />
-                      ) : (
-                        <View style={[s.sucThumb, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
-                          <Ionicons name="storefront-outline" size={22} color="#334155" />
-                        </View>
-                      )}
+                    {/* Top row: thumbnail + text */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={s.sucThumbBox}>
+                        {suc.imagen_url ? (
+                          <Image source={{ uri: getProxyUrl(suc.imagen_url) }} style={s.sucThumb} />
+                        ) : (
+                          <View style={[s.sucThumb, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
+                            <Ionicons name="storefront-outline" size={22} color="#334155" />
+                          </View>
+                        )}
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[s.sucName, isSelected && { color: '#fff' }]} numberOfLines={1}>{suc.nombre}</Text>
+                        <Text style={s.sucDir} numberOfLines={2}>{suc.direccion}</Text>
+                        {suc.ciudad ? <Text style={s.sucCity}>{suc.ciudad}</Text> : null}
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.sucName, isSelected && { color: '#fff' }]} numberOfLines={1}>{suc.nombre}</Text>
-                      <Text style={s.sucDir} numberOfLines={2}>{suc.direccion}</Text>
-                      {suc.ciudad ? <Text style={s.sucCity}>{suc.ciudad}</Text> : null}
-                    </View>
+                    {/* Action buttons row */}
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 8 }}>
                       <TouchableOpacity onPress={() => {
                         setSucursalSeleccionada(suc);
@@ -499,8 +502,8 @@ export default function GestionEmpresasScreen() {
               })}
             </View>
 
-            {/* Right: equipos panel */}
-            {sucursalSeleccionada && (
+            {/* Right: equipos panel — only inline on desktop */}
+            {isWide && sucursalSeleccionada && (
               <View style={{ flex: 2 }}>
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionLabel}>INVENTARIO: EQUIPOS</Text>
@@ -514,36 +517,23 @@ export default function GestionEmpresasScreen() {
                   </TouchableOpacity>
                 </View>
 
-
-
                 <View style={[s.card, { padding: 0, overflow: 'hidden' }]}>
                   <View style={s.eqHeader}>
                     <Text style={s.eqHeaderText}>LISTA TÉCNICA DE EQUIPOS</Text>
                   </View>
-
                   {cargandoEquipos ? <ActivityIndicator color={CC} style={{ margin: 16 }} /> : null}
-
                   {!cargandoEquipos && equipos.length === 0 && (
                     <View style={{ alignItems: 'center', paddingVertical: 20 }}>
                       <Ionicons name="hardware-chip-outline" size={28} color="#334155" />
                       <Text style={{ color: '#475569', marginTop: 8, fontSize: 13 }}>Sin equipos registrados</Text>
                     </View>
                   )}
-
                   {equipos.map(eq => (
-                    <TouchableOpacity
-                      key={eq.id}
-                      style={[s.eqItem, { activeOpacity: 0.8 }]}
-                      onPress={async () => {
-                        setEquipoHistorial(eq);
-                        setShowHistorialModal(true);
-                        setCargandoHistorial(true);
-                        const res = await obtenerHistorialEquipo(String(eq.id));
-                        setHistorialEquipo(res.data || []);
-                        setCargandoHistorial(false);
-                      }}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity key={eq.id} style={s.eqItem} onPress={async () => {
+                      setEquipoHistorial(eq); setShowHistorialModal(true); setCargandoHistorial(true);
+                      const res = await obtenerHistorialEquipo(String(eq.id));
+                      setHistorialEquipo(res.data || []); setCargandoHistorial(false);
+                    }} activeOpacity={0.8}>
                       <View style={s.eqThumbBox}>
                         {eq.imagen_url ? (
                           <Image source={{ uri: getProxyUrl(eq.imagen_url) }} style={s.eqThumb} />
@@ -553,31 +543,16 @@ export default function GestionEmpresasScreen() {
                           </View>
                         )}
                       </View>
-                      <View style={{ flex: 1 }}>
+                      <View style={{ flex: 1, minWidth: 0 }}>
                         <Text style={s.eqName} numberOfLines={1}>{eq.nombre}</Text>
                         {eq.modelo ? <Text style={s.eqSub} numberOfLines={1}>Modelo: {eq.modelo}</Text> : null}
                         {eq.serie ? <Text style={s.eqSub} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
                       </View>
                       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <TouchableOpacity
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            setEquipoEditando(eq);
-                            setEditEqNombre(eq.nombre);
-                            setEditEqModelo(eq.modelo || '');
-                            setEditEqSerie(eq.serie || '');
-                            setEditEqImageUrl(eq.imagen_url || '');
-                            setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : '');
-                            setShowEditarEquipoModal(true);
-                          }}
-                          style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}
-                        >
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : ''); setShowEditarEquipoModal(true); }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name="pencil" size={16} color="#a78bfa" />
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }}
-                          style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}
-                        >
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name="trash" size={16} color="#f87171" />
                         </TouchableOpacity>
                         <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(6, 182, 212, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
@@ -592,6 +567,87 @@ export default function GestionEmpresasScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ─── MOBILE: Equipos Bottom Sheet ──────────────────────────────── */}
+      {!isWide && (
+        <Modal
+          visible={!!sucursalSeleccionada}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSucursalSeleccionada(null)}
+        >
+          <View style={{ flex: 1, backgroundColor: BG }}>
+            {/* Header with back button */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+              <TouchableOpacity onPress={() => setSucursalSeleccionada(null)} style={{ marginRight: 12 }}>
+                <Ionicons name="arrow-back" size={21} color={CC} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                <Text style={{ color: '#e2e8f0', fontSize: 16, fontWeight: '800' }} numberOfLines={1}>{sucursalSeleccionada?.nombre}</Text>
+                <Text style={{ color: '#64748b', fontSize: 12, marginTop: 2 }} numberOfLines={1}>{sucursalSeleccionada?.direccion}</Text>
+              </View>
+              <TouchableOpacity style={s.addBtn} onPress={() => {
+                setNuevoEquipoNombre(''); setNuevoEquipoModelo(''); setNuevoEquipoSerie('');
+                setNuevoEquipoImageUrl(''); setNuevoEquipoImagePreview('');
+                setShowNuevoEquipoModal(true);
+              }}>
+                <Ionicons name="add" size={14} color="#0b1220" />
+                <Text style={s.addBtnText}>Añadir</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Equipos list */}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+              <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+                <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 8, marginTop: 4 }}>LISTA TÉCNICA DE EQUIPOS</Text>
+              </View>
+
+              {cargandoEquipos ? <ActivityIndicator color={CC} style={{ margin: 20 }} /> : null}
+
+              {!cargandoEquipos && equipos.length === 0 && (
+                <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                  <Ionicons name="hardware-chip-outline" size={32} color="#334155" />
+                  <Text style={{ color: '#475569', marginTop: 8, fontSize: 13 }}>Sin equipos registrados</Text>
+                </View>
+              )}
+
+              {equipos.map(eq => (
+                <TouchableOpacity key={eq.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: BORDER }} onPress={async () => {
+                  setEquipoHistorial(eq); setShowHistorialModal(true); setCargandoHistorial(true);
+                  const res = await obtenerHistorialEquipo(String(eq.id));
+                  setHistorialEquipo(res.data || []); setCargandoHistorial(false);
+                }} activeOpacity={0.8}>
+                  <View>
+                    {eq.imagen_url ? (
+                      <Image source={{ uri: getProxyUrl(eq.imagen_url) }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                    ) : (
+                      <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="hardware-chip-outline" size={20} color="#334155" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ color: '#e2e8f0', fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{eq.nombre}</Text>
+                    {eq.modelo ? <Text style={{ color: '#64748b', fontSize: 11, marginTop: 1 }} numberOfLines={1}>Modelo: {eq.modelo}</Text> : null}
+                    {eq.serie ? <Text style={{ color: '#64748b', fontSize: 11, marginTop: 1 }} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : ''); setShowEditarEquipoModal(true); }} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="pencil" size={14} color="#a78bfa" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="trash" size={14} color="#f87171" />
+                    </TouchableOpacity>
+                    <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(6, 182, 212, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="time" size={14} color="#06b6d4" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
 
       {/* ─── HISTORIAL DE EQUIPO ──────────────────────────────────────────── */}
       {/* ─── HISTORIAL DE EQUIPO ──────────────────────────────────────────── */}
@@ -859,15 +915,15 @@ export default function GestionEmpresasScreen() {
       <Modal visible={showNuevoEquipoModal} transparent animationType="fade">
         <View style={s.overlay}>
           <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
-            <View style={s.modalCardPremium}>
+            <View style={[s.modalCardPremium, !isWide && s.modalCardPremiumMobile]}>
               <View style={{ marginBottom: 32 }}>
                 <Text style={s.modalTitlePremium}>Nuevo Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column' }]}>
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 20 }]}>
                 {/* Columna Izquierda: Imagen */}
-                <View style={s.modalLeftPremium}>
-                  <View style={s.imageBoxPremium}>
+                <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                  <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
                       activeOpacity={0.9}
@@ -916,8 +972,8 @@ export default function GestionEmpresasScreen() {
                 </View>
 
                 {/* Columna Derecha: Formulario */}
-                <View style={s.modalRightPremium}>
-                  <View style={{ flex: 1 }}>
+                <View style={[s.modalRightPremium, !isWide && { flex: undefined }]}>
+                  <View>
                     <View style={s.inputContainerPremium}>
                       <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
                       <View style={s.inputWrapperPremium}>
@@ -1049,15 +1105,15 @@ export default function GestionEmpresasScreen() {
       <Modal visible={showEditarEquipoModal} transparent animationType="fade" onRequestClose={() => setShowEditarEquipoModal(false)}>
         <View style={s.overlay}>
           <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
-            <View style={s.modalCardPremium}>
+            <View style={[s.modalCardPremium, !isWide && s.modalCardPremiumMobile]}>
               <View style={{ marginBottom: 32 }}>
                 <Text style={s.modalTitlePremium}>Editar Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column' }]}>
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 20 }]}>
                 {/* Columna Izquierda: Imagen */}
-                <View style={s.modalLeftPremium}>
-                  <View style={s.imageBoxPremium}>
+                <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                  <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
                       activeOpacity={0.9}
@@ -1106,8 +1162,8 @@ export default function GestionEmpresasScreen() {
                 </View>
 
                 {/* Columna Derecha: Formulario */}
-                <View style={s.modalRightPremium}>
-                  <View style={{ flex: 1 }}>
+                <View style={[s.modalRightPremium, !isWide && { flex: undefined }]}>
+                  <View>
                     <View style={s.inputContainerPremium}>
                       <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
                       <View style={s.inputWrapperPremium}>
@@ -1314,21 +1370,29 @@ const s = StyleSheet.create({
   // Premium Modal Styles
   modalCardPremium: {
     width: '90%',
-    maxWidth: 1100, // Forces an elegant absolute size on large screens (about 50%)
+    maxWidth: 1100,
     height: '85%',
     maxHeight: 850,
     minHeight: 600,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)', // bg-slate-900/80
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
     paddingVertical: 56,
     paddingHorizontal: 64,
     borderRadius: 32,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#312e81', // shadow-indigo-900
+    shadowColor: '#312e81',
     shadowOffset: { width: 0, height: 25 },
     shadowOpacity: 0.5,
     shadowRadius: 40,
     elevation: 24,
+  },
+  modalCardPremiumMobile: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: BG,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    borderRadius: 0,
   },
   modalBodyPremium: {
     flexDirection: 'row',
