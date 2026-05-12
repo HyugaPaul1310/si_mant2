@@ -92,6 +92,7 @@ export default function GestionEmpresasScreen() {
   const [editEmpresaNombre, setEditEmpresaNombre] = useState('');
 
   // edit sucursal inline
+  const [sucursalEditando, setSucursalEditando] = useState<Sucursal | null>(null);
   const [editSucursalNombre, setEditSucursalNombre] = useState('');
   const [editSucursalDireccion, setEditSucursalDireccion] = useState('');
   const [editSucursalCiudad, setEditSucursalCiudad] = useState('');
@@ -217,13 +218,17 @@ export default function GestionEmpresasScreen() {
   };
 
   const handleActualizarImagenSucursal = () => {
-    if (!sucursalSeleccionada) return;
+    if (!sucursalEditando) return;
     pickAndUploadImage(async (url) => {
-      const res = await actualizarSucursal(sucursalSeleccionada.id, { imagen_url: url });
+      const res = await actualizarSucursal(sucursalEditando.id, { imagen_url: url });
       if (res.success) {
-        const updated = sucursales.map(s => s.id === sucursalSeleccionada.id ? { ...s, imagen_url: url } : s);
+        const updated = sucursales.map(s => s.id === sucursalEditando.id ? { ...s, imagen_url: url } : s);
         setSucursales(updated);
-        setSucursalSeleccionada(prev => prev ? { ...prev, imagen_url: url } : prev);
+        setSucursalEditando(prev => prev ? { ...prev, imagen_url: url } : prev);
+        // Also update sucursalSeleccionada if it matches
+        if (sucursalSeleccionada?.id === sucursalEditando.id) {
+          setSucursalSeleccionada(prev => prev ? { ...prev, imagen_url: url } : prev);
+        }
       }
     });
   };
@@ -274,14 +279,15 @@ export default function GestionEmpresasScreen() {
   };
 
   const handleGuardarSucursal = async () => {
-    if (!sucursalSeleccionada) return;
-    const res = await actualizarSucursal(sucursalSeleccionada.id, {
+    if (!sucursalEditando) return;
+    const res = await actualizarSucursal(sucursalEditando.id, {
       nombre: editSucursalNombre,
       direccion: editSucursalDireccion,
       ciudad: editSucursalCiudad,
     });
     if (!res.success) { setError(res.error || 'Error'); return; }
     setShowEditarSucursalModal(false);
+    setSucursalEditando(null);
     await cargarSucursales(empresaSeleccionada!.id);
   };
 
@@ -475,7 +481,7 @@ export default function GestionEmpresasScreen() {
                     {/* Action buttons row */}
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 8 }}>
                       <TouchableOpacity onPress={() => {
-                        setSucursalSeleccionada(suc);
+                        setSucursalEditando(suc);
                         setEditSucursalNombre(suc.nombre);
                         setEditSucursalDireccion(suc.direccion);
                         setEditSucursalCiudad(suc.ciudad || '');
@@ -900,7 +906,7 @@ export default function GestionEmpresasScreen() {
             <TextInput style={[s.input, { minHeight: 70, textAlignVertical: 'top' }]} placeholder="Dirección" placeholderTextColor="#64748b" value={editSucursalDireccion} onChangeText={setEditSucursalDireccion} multiline />
             <TextInput style={s.input} placeholder="Ciudad" placeholderTextColor="#64748b" value={editSucursalCiudad} onChangeText={setEditSucursalCiudad} />
             <View style={s.modalActions}>
-              <TouchableOpacity onPress={() => setShowEditarSucursalModal(false)} style={s.secBtn}>
+              <TouchableOpacity onPress={() => { setShowEditarSucursalModal(false); setSucursalEditando(null); }} style={s.secBtn}>
                 <Text style={s.secBtnText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleGuardarSucursal} style={s.primaryBtn}>

@@ -1,33 +1,33 @@
 // @ts-nocheck
+import CustomDatePicker from '@/components/CustomDatePicker';
 import {
-    actualizarEstadoReporteAsignado,
-    actualizarReporteBackend,
-    actualizarUsuarioBackend,
-    apiCall,
-    asignarHerramientaAEmpleadoManualBackend,
-    asignarReporteAEmpleadoBackend,
-    cambiarEstadoUsuarioBackend,
-    cambiarRolUsuarioBackend,
-    crearHerramientaBackend,
-    crearTareaBackend,
-    editarAsignacionBackend,
-    eliminarReporteBackend,
-    eliminarUsuarioBackend,
-    getApiBaseUrl,
-    marcarHerramientaComoDevueltaBackend,
-    marcarHerramientaComoPerdidaBackend,
-    obtenerArchivosReporteBackend,
-    obtenerInventarioEmpleadoBackend,
-    obtenerReportesBackend,
-    obtenerTareasBackend,
-    obtenerUsuariosBackend,
-    registerBackend
+  actualizarEstadoReporteAsignado,
+  actualizarReporteBackend,
+  actualizarUsuarioBackend,
+  apiCall,
+  asignarHerramientaAEmpleadoManualBackend,
+  asignarReporteAEmpleadoBackend,
+  cambiarEstadoUsuarioBackend,
+  cambiarRolUsuarioBackend,
+  crearHerramientaBackend,
+  crearTareaBackend,
+  editarAsignacionBackend,
+  eliminarReporteBackend,
+  eliminarUsuarioBackend,
+  getApiBaseUrl,
+  marcarHerramientaComoDevueltaBackend,
+  marcarHerramientaComoPerdidaBackend,
+  obtenerArchivosReporteBackend,
+  obtenerInventarioEmpleadoBackend,
+  obtenerReportesBackend,
+  obtenerTareasBackend,
+  obtenerUsuariosBackend,
+  registerBackend
 } from '@/lib/api-backend';
 import { getProxyUrl, uploadToCloudflare } from '@/lib/cloudflare';
 import { formatDateToLocal, matchesSearchDate } from '@/lib/date-utils';
 import { obtenerEmpresas, type Empresa } from '@/lib/empresas';
 import { obtenerColorEstado, obtenerNombreEstado } from '@/lib/estado-mapeo';
-import CustomDatePicker from '@/components/CustomDatePicker';
 import { guardarArchivoReporte, obtenerTodasLasEncuestas } from '@/lib/reportes';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -37,22 +37,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Animated,
-    Easing,
-    Image,
-    Linking,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PDF_TEMPLATE_BASE64 } from '../constants/pdf-templates';
@@ -2133,12 +2133,8 @@ function AdminPanelContent() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.container, isMobile && styles.containerMobile]}>
+      <View style={{ flex: 1, backgroundColor: '#0b1220' }}>
+        <View style={[styles.container, isMobile && styles.containerMobile, { flex: 1, paddingBottom: 0 }]}>
           <View style={styles.centeredSection}>
             <View style={[styles.headerRow, isMobile && styles.headerRowMobile]}>
               <View style={styles.headerLeft}>
@@ -2215,96 +2211,98 @@ function AdminPanelContent() {
 
           {/* CONTENIDO DE LAS TABS */}
           {activeTab === 'inicio' && (
-            <View style={[styles.tabContent, styles.centeredSection]}>
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              <View style={[styles.tabContent, styles.centeredSection]}>
 
-              {showStats && (
-                <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
-                  {stats.map((stat, index) => (
-                    <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
-                      <View style={styles.statHeader}>
-                        <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
-                          <Ionicons name={stat.iconName as any} size={24} color="white" />
+                {showStats && (
+                  <View style={[styles.statsRow, isMobile && styles.statsRowMobile]}>
+                    {stats.map((stat, index) => (
+                      <View key={index} style={[styles.statCard, isMobile && styles.statCardMobile]}>
+                        <View style={styles.statHeader}>
+                          <View style={[styles.statIcon, { backgroundColor: stat.iconBg }]}>
+                            <Ionicons name={stat.iconName as any} size={24} color="white" />
+                          </View>
+                          <View style={styles.statChip}>
+                            <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
+                          </View>
                         </View>
-                        <View style={styles.statChip}>
-                          <Text style={[styles.statChipText, { fontFamily }]}>Hoy</Text>
-                        </View>
+                        <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
+                        <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
                       </View>
-                      <Text style={[styles.statValue, { fontFamily }]}>{stat.value}</Text>
-                      <Text style={[styles.statLabel, { fontFamily, color: stat.accent }]}>{stat.label}</Text>
-                    </View>
+                    ))}
+                  </View>
+                )}
+
+
+                <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+                  <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
+                  <Text style={[styles.sectionSubtitle, { fontFamily }]}>Accede a las herramientas del sistema</Text>
+                </View>
+
+                <View style={[styles.optionsGrid, isMobile && styles.optionsGridMobile]}>
+                  {mainOptions.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      activeOpacity={0.9}
+                      style={[styles.optionTouchable, isMobile && styles.optionTouchableMobile]}
+                      onPress={() => openEmailModalIfOption(option.title)}
+                    >
+                      <LinearGradient
+                        colors={option.gradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.optionCard}
+                      >
+                        <View style={styles.optionContent}>
+                          <View style={styles.optionIconWrapper}>
+                            <Ionicons name={option.iconName as any} size={28} color="white" />
+                          </View>
+                          <View style={styles.optionTextWrapper}>
+                            <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
+                            <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
+                          </View>
+                        </View>
+
+                        {/* Badge de Notificación para Cotizaciones Pendientes */}
+                        {/* Badge de Notificación Genérico */}
+                        {!!option.badge && option.badge > 0 && (
+                          <View style={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            backgroundColor: '#ef4444',
+                            minWidth: 26,
+                            height: 26,
+                            borderRadius: 13,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            paddingHorizontal: 6,
+                            borderWidth: 3,
+                            borderColor: '#0b1220', // Combina con el fondo del panel oscuro
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 3 },
+                            shadowOpacity: 0.4,
+                            shadowRadius: 4,
+                            elevation: 8,
+                            zIndex: 10
+                          }}>
+                            <Text style={[{ color: '#fff', fontSize: 12, fontWeight: '900' }, { fontFamily }]}>
+                              {option.badge}
+                            </Text>
+                          </View>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
                   ))}
                 </View>
-              )}
-
-
-              <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Opciones Principales</Text>
-                <Text style={[styles.sectionSubtitle, { fontFamily }]}>Accede a las herramientas del sistema</Text>
               </View>
-
-              <View style={[styles.optionsGrid, isMobile && styles.optionsGridMobile]}>
-                {mainOptions.map((option, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    activeOpacity={0.9}
-                    style={[styles.optionTouchable, isMobile && styles.optionTouchableMobile]}
-                    onPress={() => openEmailModalIfOption(option.title)}
-                  >
-                    <LinearGradient
-                      colors={option.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.optionCard}
-                    >
-                      <View style={styles.optionContent}>
-                        <View style={styles.optionIconWrapper}>
-                          <Ionicons name={option.iconName as any} size={28} color="white" />
-                        </View>
-                        <View style={styles.optionTextWrapper}>
-                          <Text style={[styles.optionTitle, { fontFamily }]}>{option.title}</Text>
-                          <Text style={[styles.optionDescription, { fontFamily }]}>{option.description}</Text>
-                        </View>
-                      </View>
-
-                      {/* Badge de Notificación para Cotizaciones Pendientes */}
-                      {/* Badge de Notificación Genérico */}
-                      {!!option.badge && option.badge > 0 && (
-                        <View style={{
-                          position: 'absolute',
-                          top: -8,
-                          right: -8,
-                          backgroundColor: '#ef4444',
-                          minWidth: 26,
-                          height: 26,
-                          borderRadius: 13,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          paddingHorizontal: 6,
-                          borderWidth: 3,
-                          borderColor: '#0b1220', // Combina con el fondo del panel oscuro
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 3 },
-                          shadowOpacity: 0.4,
-                          shadowRadius: 4,
-                          elevation: 8,
-                          zIndex: 10
-                        }}>
-                          <Text style={[{ color: '#fff', fontSize: 12, fontWeight: '900' }, { fontFamily }]}>
-                            {option.badge}
-                          </Text>
-                        </View>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            </ScrollView>
           )}
 
 
           {/* TAB 3: ENCUESTAS */}
           {activeTab === 'encuestas' && (
-            <View style={[styles.tabContent, styles.centeredSection]}>
+            <View style={[styles.tabContent, styles.centeredSection, { flex: 1 }]}>
               <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile, { fontFamily }]}>Encuestas</Text>
@@ -2400,113 +2398,102 @@ function AdminPanelContent() {
               ) : null}
 
               {!loadingEncuestas && !errorEncuestas && encuestasFiltradas.length > 0 ? (
-                <View style={{ flex: 1, marginTop: 24 }}>
-                  <ScrollView
-                    style={[styles.listScroll, isMobile && styles.listScrollMobile]}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 40 }}
-                  >
-                    <View style={styles.listSpacing}>
-                      {encuestasFiltradas.map((encuesta: any) => (
-                        <TouchableOpacity
-                          key={encuesta.id}
-                          activeOpacity={0.9}
-                          style={{ marginBottom: 16 }}
-                          onPress={() => {
-                            setSelectedEncuesta(encuesta);
-                            setShowEncuestaDetailModal(true);
-                          }}
+                <ScrollView style={{ flex: 1, marginTop: 24 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                  <View style={styles.listSpacing}>
+                    {encuestasFiltradas.map((encuesta: any) => (
+                      <TouchableOpacity
+                        key={encuesta.id}
+                        activeOpacity={0.9}
+                        style={{ marginBottom: 16 }}
+                        onPress={() => {
+                          setSelectedEncuesta(encuesta);
+                          setShowEncuestaDetailModal(true);
+                        }}
+                      >
+                        <LinearGradient
+                          colors={['rgba(30, 41, 59, 0.8)', 'rgba(15, 23, 42, 0.9)']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.reportCardPremium}
                         >
-                          <LinearGradient
-                            colors={['rgba(30, 41, 59, 0.8)', 'rgba(15, 23, 42, 0.9)']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.reportCardPremium}
-                          >
-                            <View style={styles.cardGlow} />
+                          <View style={styles.cardGlow} />
 
-                            <View style={styles.reportHeaderPremium}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={[styles.reportTitlePremium, { fontFamily }]} numberOfLines={1}>
-                                  {encuesta.reporte_titulo || encuesta.titulo || 'Encuesta de Satisfacción'}
+                          <View style={[styles.reportHeaderPremium, isMobile && { flexDirection: 'column', gap: 10, alignItems: 'flex-start' }]}>
+                            <View style={{ flex: isMobile ? undefined : 1, width: isMobile ? '100%' : undefined }}>
+                              <Text style={[styles.reportTitlePremium, { fontFamily }]} numberOfLines={isMobile ? 2 : 1}>
+                                {encuesta.reporte_titulo || encuesta.titulo || 'Encuesta de Satisfacción'}
+                              </Text>
+                              <View style={styles.clientInfoRow}>
+                                <Ionicons name="business-outline" size={12} color="#94a3b8" />
+                                <Text style={[styles.reportSubtitlePremium, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.empresa || 'Sin empresa'}
                                 </Text>
-                                <View style={styles.clientInfoRow}>
-                                  <Ionicons name="mail-outline" size={12} color="#94a3b8" />
-                                  <Text style={[styles.reportSubtitlePremium, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.cliente_email || 'Sin cliente'}
-                                  </Text>
-                                  <Text style={{ color: '#475569', marginHorizontal: 6 }}>•</Text>
-                                  <Ionicons name="business-outline" size={12} color="#94a3b8" />
-                                  <Text style={[styles.reportSubtitlePremium, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.empresa || 'Sin empresa'}
-                                  </Text>
-                                </View>
                               </View>
+                            </View>
 
-                              <View style={[styles.ratingBadge, {
-                                backgroundColor: obtenerColorCalificacion(encuesta.satisfaccion).bg,
-                                borderColor: obtenerColorCalificacion(encuesta.satisfaccion).border
+                            <View style={[styles.ratingBadge, isMobile && { alignSelf: 'flex-start' }, {
+                              backgroundColor: obtenerColorCalificacion(encuesta.satisfaccion).bg,
+                              borderColor: obtenerColorCalificacion(encuesta.satisfaccion).border
+                            }]}>
+                              <Ionicons
+                                name="star"
+                                size={14}
+                                color={obtenerColorCalificacion(encuesta.satisfaccion).icon}
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text style={[styles.ratingText, {
+                                color: obtenerColorCalificacion(encuesta.satisfaccion).text,
+                                fontFamily
                               }]}>
-                                <Ionicons
-                                  name="star"
-                                  size={14}
-                                  color={obtenerColorCalificacion(encuesta.satisfaccion).icon}
-                                  style={{ marginRight: 4 }}
-                                />
-                                <Text style={[styles.ratingText, {
-                                  color: obtenerColorCalificacion(encuesta.satisfaccion).text,
-                                  fontFamily
-                                }]}>
-                                  {encuesta.satisfaccion || '-'}
+                                {encuesta.satisfaccion || '-'}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.cardDivider} />
+
+                          <View style={styles.metaContainerPremium}>
+                            <View style={styles.metaItem}>
+                              <View style={styles.metaIconWrapper}>
+                                <Ionicons name="person-outline" size={12} color="#06b6d4" />
+                              </View>
+                              <View>
+                                <Text style={styles.metaLabel}>REALIZADO POR</Text>
+                                <Text style={[styles.metaValue, { fontFamily }]} numberOfLines={1}>
+                                  {encuesta.empleado_nombre || 'Sin nombre'}
                                 </Text>
                               </View>
                             </View>
 
-                            <View style={styles.cardDivider} />
-
-                            <View style={styles.metaContainerPremium}>
-                              <View style={styles.metaItem}>
-                                <View style={styles.metaIconWrapper}>
-                                  <Ionicons name="person-outline" size={12} color="#06b6d4" />
-                                </View>
-                                <View>
-                                  <Text style={styles.metaLabel}>REALIZADO POR</Text>
-                                  <Text style={[styles.metaValue, { fontFamily }]} numberOfLines={1}>
-                                    {encuesta.empleado_nombre || 'Sin nombre'}
-                                  </Text>
-                                </View>
+                            <View style={styles.metaItem}>
+                              <View style={styles.metaIconWrapper}>
+                                <Ionicons name="calendar-outline" size={12} color="#06b6d4" />
                               </View>
-
-                              <View style={styles.metaItem}>
-                                <View style={styles.metaIconWrapper}>
-                                  <Ionicons name="calendar-outline" size={12} color="#06b6d4" />
-                                </View>
-                                <View>
-                                  <Text style={styles.metaLabel}>FECHA</Text>
-                                  <Text style={[styles.metaValue, { fontFamily }]}>
-                                    {formatDateToLocal(encuesta.created_at)}
-                                  </Text>
-                                </View>
+                              <View>
+                                <Text style={styles.metaLabel}>FECHA</Text>
+                                <Text style={[styles.metaValue, { fontFamily }]}>
+                                  {formatDateToLocal(encuesta.created_at)}
+                                </Text>
                               </View>
-
-                              {!isMobile && (
-                                <TouchableOpacity
-                                  style={styles.actionButtonPremium}
-                                  onPress={() => {
-                                    setSelectedEncuesta(encuesta);
-                                    setShowEncuestaDetailModal(true);
-                                  }}
-                                >
-                                  <Ionicons name="chevron-forward" size={18} color="#06b6d4" />
-                                </TouchableOpacity>
-                              )}
                             </View>
-                          </LinearGradient>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
+
+                            {!isMobile && (
+                              <TouchableOpacity
+                                style={styles.actionButtonPremium}
+                                onPress={() => {
+                                  setSelectedEncuesta(encuesta);
+                                  setShowEncuestaDetailModal(true);
+                                }}
+                              >
+                                <Ionicons name="chevron-forward" size={18} color="#06b6d4" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
               ) : null}
             </View>
           )}
@@ -2650,7 +2637,7 @@ function AdminPanelContent() {
 
 
         </View>
-      </ScrollView>
+      </View>
 
       {/* Todos los modales y overlays van aquí */}
 
@@ -3598,11 +3585,11 @@ function AdminPanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         isMobile && { height: 36, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <CustomDatePicker 
-                          value={filtroFecha} 
-                          onChange={handleFiltroFechaChange} 
-                          isMobile={isMobile} 
-                          fontFamily={fontFamily} 
+                        <CustomDatePicker
+                          value={filtroFecha}
+                          onChange={handleFiltroFechaChange}
+                          isMobile={isMobile}
+                          fontFamily={fontFamily}
                         />
                       </View>
                     </View>
@@ -3994,11 +3981,11 @@ function AdminPanelContent() {
                         filtroFecha.length > 0 && styles.searchFilterInputWrapperFocused,
                         { height: isMobile ? 36 : 38, backgroundColor: 'rgba(15, 23, 42, 0.4)' }
                       ]}>
-                        <CustomDatePicker 
-                          value={filtroFecha} 
-                          onChange={handleFiltroFechaChange} 
-                          isMobile={isMobile} 
-                          fontFamily={fontFamily} 
+                        <CustomDatePicker
+                          value={filtroFecha}
+                          onChange={handleFiltroFechaChange}
+                          isMobile={isMobile}
+                          fontFamily={fontFamily}
                         />
                       </View>
                     </View>
@@ -6655,17 +6642,17 @@ function AdminPanelContent() {
           <View style={styles.overlayHeavy}>
             <View style={[styles.largeModal, isMobile && styles.largeModalMobile, { maxWidth: 800, backgroundColor: '#0b1220', borderColor: '#1e293b', padding: 0 }]}>
               {/* Header Rediseñado */}
-              <View style={{ padding: 24, borderBottomWidth: 1, borderBottomColor: '#1e293b', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#0f172a' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
-                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.15)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.3)' }}>
-                    <Ionicons name="list" size={24} color="#67e8f9" />
+              <View style={{ padding: isMobile ? 16 : 24, borderBottomWidth: 1, borderBottomColor: '#1e293b', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', backgroundColor: '#0f172a' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: isMobile ? 10 : 14, flex: 1, paddingRight: isMobile ? 8 : 16 }}>
+                  <View style={{ backgroundColor: 'rgba(6, 182, 212, 0.15)', borderRadius: 12, padding: isMobile ? 8 : 10, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.3)' }}>
+                    <Ionicons name="list" size={isMobile ? 20 : 24} color="#67e8f9" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[{ color: '#fff', fontSize: 22, fontWeight: '800' }, { fontFamily }]}>Historial de Tareas</Text>
-                    <Text style={[{ color: '#64748b', fontSize: 13, marginTop: 2 }, { fontFamily }]}>Registro completo de asignaciones directas</Text>
+                    <Text style={[{ color: '#fff', fontSize: isMobile ? 18 : 22, fontWeight: '800' }, { fontFamily }]} numberOfLines={isMobile ? 2 : undefined}>Historial de Tareas</Text>
+                    <Text style={[{ color: '#64748b', fontSize: isMobile ? 11 : 13, marginTop: 2, lineHeight: isMobile ? 14 : 18 }, { fontFamily }]} numberOfLines={isMobile ? 2 : undefined}>Registro completo de asignaciones directas</Text>
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flexDirection: 'row', gap: isMobile ? 6 : 10, alignItems: 'center', marginTop: isMobile ? 4 : 0 }}>
                   <TouchableOpacity
                     onPress={async () => {
                       setLoadingTareas(true);
@@ -6674,17 +6661,17 @@ function AdminPanelContent() {
                       else setTareas(data || []);
                       setLoadingTareas(false);
                     }}
-                    style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: 12, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}
+                    style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: isMobile ? 10 : 12, height: isMobile ? 36 : 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}
                   >
-                    <Ionicons name="refresh" size={18} color="#67e8f9" />
+                    <Ionicons name="refresh" size={isMobile ? 16 : 18} color="#67e8f9" />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: 12, height: 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}>
-                    <Ionicons name="close" size={20} color="#94a3b8" />
+                  <TouchableOpacity onPress={() => setShowTareasHistorialModal(false)} style={{ backgroundColor: 'rgba(51, 65, 85, 0.3)', borderRadius: 10, paddingHorizontal: isMobile ? 10 : 12, height: isMobile ? 36 : 40, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#334155' }}>
+                    <Ionicons name="close" size={isMobile ? 18 : 20} color="#94a3b8" />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <View style={{ flex: 1, padding: 20 }}>
+              <View style={{ flexShrink: 1, padding: isMobile ? 14 : 20, width: '100%' }}>
                 {loadingTareas && (
                   <View style={{ paddingVertical: 100, alignItems: 'center' }}>
                     <Text style={[{ color: '#67e8f9', fontSize: 15, fontWeight: '600' }, { fontFamily }]}>Cargando historial...</Text>
@@ -6712,7 +6699,7 @@ function AdminPanelContent() {
                 ) : null}
 
                 {!loadingTareas && !errorTareas && tareas.length > 0 ? (
-                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                     {/* Contador Estilizado */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(6, 182, 212, 0.05)', borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(6, 182, 212, 0.2)' }}>
                       <View style={{ backgroundColor: '#06b6d4', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
@@ -6730,7 +6717,7 @@ function AdminPanelContent() {
                           style={{
                             backgroundColor: '#161f2e',
                             borderRadius: 16,
-                            padding: 20,
+                            padding: isMobile ? 16 : 20,
                             borderWidth: 1,
                             borderColor: '#1e293b',
                             shadowColor: '#000',
@@ -6765,12 +6752,12 @@ function AdminPanelContent() {
                           {/* Info Rows */}
                           <View style={{ gap: 12 }}>
                             {/* Row: Creado Por & Asignado A */}
-                            <View style={{ flexDirection: 'row', gap: 20 }}>
+                            <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 12 : 20 }}>
                               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                 <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(139, 92, 246, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)' }}>
                                   <Ionicons name="person-circle" size={18} color="#a78bfa" />
                                 </View>
-                                <View>
+                                <View style={{ flex: 1 }}>
                                   <Text style={[{ color: '#64748b', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>CREADO POR</Text>
                                   <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]} numberOfLines={1}>{tarea.admin_nombre || 'Admin'}</Text>
                                 </View>
@@ -6780,7 +6767,7 @@ function AdminPanelContent() {
                                 <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(14, 165, 233, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(14, 165, 233, 0.2)' }}>
                                   <Ionicons name="people" size={18} color="#0ea5e9" />
                                 </View>
-                                <View>
+                                <View style={{ flex: 1 }}>
                                   <Text style={[{ color: '#0ea5e9', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>ASIGNADO A</Text>
                                   <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]} numberOfLines={1}>{tarea.empleado_email || 'No asignado'}</Text>
                                 </View>
@@ -6792,9 +6779,9 @@ function AdminPanelContent() {
                               <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(100, 116, 139, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(100, 116, 139, 0.2)' }}>
                                 <Ionicons name="calendar-clear" size={16} color="#94a3b8" />
                               </View>
-                              <View>
+                              <View style={{ flex: 1 }}>
                                 <Text style={[{ color: '#64748b', fontSize: 10, fontWeight: '800' }, { fontFamily }]}>FECHA DE CREACIÓN</Text>
-                                <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]}>
+                                <Text style={[{ color: '#cbd5e1', fontSize: 13, fontWeight: '600' }, { fontFamily }]} numberOfLines={isMobile ? 2 : 1}>
                                   {tarea.created_at ? new Date(tarea.created_at).toLocaleDateString('es-MX', {
                                     year: 'numeric',
                                     month: 'long',
@@ -7499,7 +7486,7 @@ function AdminPanelContent() {
                 </View>
               ) : (
                 <ScrollView
-                  style={[styles.listScroll, isMobile && styles.listScrollMobile, { marginTop: 20 }]}
+                  style={[styles.listScroll, isMobile && styles.listScrollMobile, { marginTop: 20, flexShrink: 1 }]}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ paddingBottom: 20 }}
                 >
@@ -7601,9 +7588,9 @@ function AdminPanelContent() {
                 </ScrollView>
               )}
 
-              <View style={[styles.modalActions, { marginTop: 10, gap: 12, paddingHorizontal: 20, paddingVertical: 20, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.05)' }]}>
+              <View style={[styles.modalActions, { marginTop: 10, gap: 12, paddingHorizontal: 20, paddingVertical: 20, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.05)' }, isMobile && { flexDirection: 'column-reverse' }]}>
                 <TouchableOpacity
-                  style={[styles.modalSecondary, { flex: 1, height: 48, borderRadius: 14 }]}
+                  style={[styles.modalSecondary, { flex: isMobile ? undefined : 1, width: isMobile ? '100%' : undefined, height: 48, borderRadius: 14 }]}
                   onPress={() => setShowInventarioModal(false)}
                 >
                   <Text style={[styles.modalSecondaryText, { fontFamily, fontWeight: '700' }]}>Cerrar</Text>
@@ -7612,7 +7599,7 @@ function AdminPanelContent() {
                   colors={['#8b5cf6', '#6366f1']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={{ flex: 1.5, borderRadius: 14, overflow: 'hidden', shadowColor: '#8b5cf6', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
+                  style={{ flex: isMobile ? undefined : 1.5, width: isMobile ? '100%' : undefined, borderRadius: 14, overflow: 'hidden', shadowColor: '#8b5cf6', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
                 >
                   <TouchableOpacity
                     style={{ height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}
@@ -7622,7 +7609,7 @@ function AdminPanelContent() {
                     }}
                   >
                     <Ionicons name="add-circle-outline" size={20} color="#fff" />
-                    <Text style={[styles.modalPrimaryText, { fontFamily, fontWeight: '800', letterSpacing: 0.5 }]}>Asignar Herramienta</Text>
+                    <Text style={[styles.modalPrimaryText, { fontFamily, fontWeight: '800', letterSpacing: 0.5 }]} numberOfLines={1} adjustsFontSizeToFit>Asignar Herramienta</Text>
                   </TouchableOpacity>
                 </LinearGradient>
               </View>
@@ -7921,7 +7908,7 @@ function AdminPanelContent() {
 
                 {/* Herramienta y Cantidad en fila */}
                 <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
-                  <View style={{ flex: 2 }}>
+                  <View style={{ flex: isMobile ? undefined : 2 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <Ionicons name="hammer" size={14} color="#f59e0b" />
                       <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Herramienta <Text style={{ color: '#ef4444' }}>*</Text></Text>
@@ -7936,7 +7923,7 @@ function AdminPanelContent() {
                     />
                   </View>
 
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: isMobile ? undefined : 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                       <Ionicons name="layers" size={14} color="#06b6d4" />
                       <Text style={[{ color: '#cbd5e1', fontSize: 12, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' }, { fontFamily }]}>Cantidad <Text style={{ color: '#ef4444' }}>*</Text></Text>

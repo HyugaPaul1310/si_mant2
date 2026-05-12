@@ -3191,7 +3191,7 @@ function EmpleadoPanelContent() {
                 <Text style={[{ color: '#cbd5e1', fontSize: 14 }, { fontFamily }]}>Cargando reportes...</Text>
               </View>
             ) : (
-              <View style={{ flex: 1 }}>
+              <View style={{ flexShrink: 1, width: '100%' }}>
                 {/* Filtros */}
                 <View style={[styles.filtrosContainer, isMobile && styles.filtrosContainerMobile]}>
                   <TouchableOpacity
@@ -3409,7 +3409,7 @@ function EmpleadoPanelContent() {
                     </Text>
                   </View>
                 ) : (
-                  <ScrollView style={isMobile ? { flex: 1 } : styles.listScroll} showsVerticalScrollIndicator={false}>
+                  <ScrollView style={isMobile ? { flexShrink: 1 } : styles.listScroll} showsVerticalScrollIndicator={false}>
                     <View style={styles.listSpacing}>
                       {reportesFiltrados.map((reporte: any) => {
                         const badgeColor = obtenerColorEstado(reporte.estado);
