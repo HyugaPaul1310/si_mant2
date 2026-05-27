@@ -4325,41 +4325,8 @@ function AdminPanelContent() {
                   </View>
                 </View>
 
-                {/* Detalles de Reparación Express */}
-                {(reporteACotizar.reparacion || reporteACotizar.materiales_refacciones || reporteACotizar.recomendaciones) && (
-                  <View style={{ gap: 8 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Ionicons name="build-outline" size={14} color="#10b981" />
-                      <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '700', letterSpacing: 0.5 }, { fontFamily }]}>DATOS DE REPARACIÓN (EXPRESS)</Text>
-                    </View>
-                    <View style={{ gap: 8 }}>
-                      {reporteACotizar.reparacion && (
-                        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', borderLeftWidth: 4, borderLeftColor: '#10b981' }}>
-                          <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>REPARACIÓN REALIZADA</Text>
-                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
-                            {reporteACotizar.reparacion}
-                          </Text>
-                        </View>
-                      )}
-                      {reporteACotizar.materiales_refacciones && (
-                        <View style={{ backgroundColor: 'rgba(16, 185, 129, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)', borderLeftWidth: 4, borderLeftColor: '#10b981' }}>
-                          <Text style={[{ fontSize: 11, color: '#10b981', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>MATERIALES / REFACCIONES</Text>
-                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
-                            {reporteACotizar.materiales_refacciones}
-                          </Text>
-                        </View>
-                      )}
-                      {reporteACotizar.recomendaciones && (
-                        <View style={{ backgroundColor: 'rgba(245, 158, 11, 0.05)', padding: 14, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.2)', borderLeftWidth: 4, borderLeftColor: '#f59e0b' }}>
-                          <Text style={[{ fontSize: 11, color: '#f59e0b', fontWeight: '600', marginBottom: 4 }, { fontFamily }]}>RECOMENDACIONES O PRÓXIMOS MANTENIMIENTOS</Text>
-                          <Text style={[{ fontSize: isMobile ? 13 : 14, color: '#e2e8f0', lineHeight: 20 }, { fontFamily }]}>
-                            {reporteACotizar.recomendaciones}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                )}
+                {/* Nota: los detalles de reparación express se omiten aquí intencionalmente.
+                    Se mostrarán al admin y cliente cuando revisen el reporte ya cotizado. */}
 
                 {/* IMAGENES DE ANALISIS */}
                 {!cargandoArchivos && (

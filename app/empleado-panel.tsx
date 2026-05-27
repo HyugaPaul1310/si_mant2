@@ -3819,7 +3819,15 @@ function EmpleadoPanelContent() {
                 ))}
 
                 {/* Campos Fase 2 (cuando cliente aceptó: aceptado_por_cliente o cotizado, o cuando admin confirmó: finalizado_por_tecnico) */}
-                {(reporteSeleccionado.estado === 'cotizado' || reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'finalizado_por_tecnico') && (
+                {(
+                  reporteSeleccionado.estado === 'cotizado' ||
+                  reporteSeleccionado.estado === 'aceptado_por_cliente' ||
+                  reporteSeleccionado.estado === 'finalizado_por_tecnico' ||
+                  ['terminado', 'cerrado_por_cliente', 'listo_para_encuesta', 'encuesta_satisfaccion', 'cerrado', 'resuelto'].includes(String(reporteSeleccionado.estado || '').toLowerCase()) ||
+                  !!reporteSeleccionado.reparacion ||
+                  !!reporteSeleccionado.materiales_refacciones ||
+                  !!reporteSeleccionado.recomendaciones
+                ) && (
                   <>
                     <View style={{ height: 1, backgroundColor: '#1f2937', marginVertical: 16 }} />
 
@@ -3847,61 +3855,111 @@ function EmpleadoPanelContent() {
                       </View>
                     )}
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Detalla lo que fue reparado..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={3}
-                        value={reparacion}
-                        onChangeText={setReparacion}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
+                    {reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'cotizado' ? (
+                      <>
+                        <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                          <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Reparación Realizada</Text>
+                          <TextInput
+                            style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                            placeholder="Detalla lo que fue reparado..."
+                            placeholderTextColor="#cbd5e1"
+                            multiline
+                            numberOfLines={3}
+                            value={reparacion}
+                            onChangeText={setReparacion}
+                            editable={!guardandoFase2}
+                          />
+                        </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Materiales / Refacciones</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Materiales o refacciones utilizadas..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={2}
-                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !materialesRefacciones ? 'N/A' : materialesRefacciones}
-                        onChangeText={setMaterialesRefacciones}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
+                        <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                          <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldGroupMobile, { fontFamily }]}>Materiales / Refacciones</Text>
+                          <TextInput
+                            style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                            placeholder="Materiales o refacciones utilizadas..."
+                            placeholderTextColor="#cbd5e1"
+                            multiline
+                            numberOfLines={2}
+                            value={materialesRefacciones}
+                            onChangeText={setMaterialesRefacciones}
+                            editable={!guardandoFase2}
+                          />
+                        </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Recomendaciones para el cliente..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={3}
-                        value={recomendaciones}
-                        onChangeText={setRecomendaciones}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
+                        <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                          <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldGroupMobile, { fontFamily }]}>Recomendaciones</Text>
+                          <TextInput
+                            style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                            placeholder="Recomendaciones para el cliente..."
+                            placeholderTextColor="#cbd5e1"
+                            multiline
+                            numberOfLines={3}
+                            value={recomendaciones}
+                            onChangeText={setRecomendaciones}
+                            editable={!guardandoFase2}
+                          />
+                        </View>
 
-                    <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
-                      <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
-                      <TextInput
-                        style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
-                        placeholder="Recomendaciones adicionales (opcional)..."
-                        placeholderTextColor="#cbd5e1"
-                        multiline
-                        numberOfLines={2}
-                        value={reporteSeleccionado.estado === 'finalizado_por_tecnico' && !recomendacionesAdicionales ? 'N/A' : recomendacionesAdicionales}
-                        onChangeText={setRecomendacionesAdicionales}
-                        editable={reporteSeleccionado.estado !== 'finalizado_por_tecnico' && !guardandoFase2}
-                      />
-                    </View>
+                        <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                          <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldGroupMobile, { fontFamily }]}>Recomendaciones Adicionales</Text>
+                          <TextInput
+                            style={[styles.textInputArea, isMobile && styles.textInputAreaMobile, { fontFamily }]}
+                            placeholder="Recomendaciones adicionales (opcional)..."
+                            placeholderTextColor="#cbd5e1"
+                            multiline
+                            numberOfLines={2}
+                            value={recomendacionesAdicionales}
+                            onChangeText={setRecomendacionesAdicionales}
+                            editable={!guardandoFase2}
+                          />
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        {(reparacion || reporteSeleccionado.reparacion) ? (
+                          <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                            <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981' }]}>Reparación Realizada</Text>
+                            <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile, { borderLeftWidth: 3, borderLeftColor: '#10b981' }]}>
+                              <Text style={[styles.detailValueText, { fontFamily }]}>
+                                {reparacion || reporteSeleccionado.reparacion}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
+
+                        {(materialesRefacciones || reporteSeleccionado.materiales_refacciones) ? (
+                          <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                            <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#10b981' }]}>Materiales / Refacciones</Text>
+                            <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile, { borderLeftWidth: 3, borderLeftColor: '#10b981' }]}>
+                              <Text style={[styles.detailValueText, { fontFamily }]}>
+                                {materialesRefacciones || reporteSeleccionado.materiales_refacciones}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
+
+                        {(recomendaciones || reporteSeleccionado.recomendaciones) ? (
+                          <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                            <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>Recomendaciones</Text>
+                            <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile, { borderLeftWidth: 3, borderLeftColor: '#f59e0b' }]}>
+                              <Text style={[styles.detailValueText, { fontFamily }]}>
+                                {recomendaciones || reporteSeleccionado.recomendaciones}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
+
+                        {(recomendacionesAdicionales || reporteSeleccionado.recomendaciones_adicionales) ? (
+                          <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginBottom: 16 }]}>
+                            <Text style={[styles.detailFieldLabel, isMobile && styles.detailFieldLabelMobile, { fontFamily, color: '#f59e0b' }]}>Recomendaciones Adicionales</Text>
+                            <View style={[styles.detailValueBox, isMobile && styles.detailValueBoxMobile, { borderLeftWidth: 3, borderLeftColor: '#f59e0b' }]}>
+                              <Text style={[styles.detailValueText, { fontFamily }]}>
+                                {recomendacionesAdicionales || reporteSeleccionado.recomendaciones_adicionales}
+                              </Text>
+                            </View>
+                          </View>
+                        ) : null}
+                      </>
+                    )}
 
                     {/* Sección de IMAGENES DE FINALIZACION */}
                     <View style={[styles.detailFieldGroup, isMobile && styles.detailFieldGroupMobile, { marginTop: 16 }]}>
@@ -3935,7 +3993,7 @@ function EmpleadoPanelContent() {
                             {fotosPostprocesoUris.map((uri, index) => (
                               <View key={index} style={{ marginRight: 10, position: 'relative' }}>
                                 <Image source={{ uri }} style={{ width: 75, height: 75, borderRadius: 8 }} />
-                                {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
+                                {(reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'cotizado') && (
                                   <TouchableOpacity
                                     style={{
                                       position: 'absolute',
@@ -3991,7 +4049,7 @@ function EmpleadoPanelContent() {
                         )}
 
                         {/* Botón para tomar imagen de finalización */}
-                        {reporteSeleccionado.estado !== 'finalizado_por_tecnico' && (
+                        {(reporteSeleccionado.estado === 'aceptado_por_cliente' || reporteSeleccionado.estado === 'cotizado') && (
                           <TouchableOpacity
                             style={[styles.audioRecordButton, { backgroundColor: '#10b981', marginTop: 4 }]}
                             onPress={seleccionarFotoPostproceso}

@@ -107,6 +107,8 @@ export default function GestionEmpresasScreen() {
   const [editEqSerie, setEditEqSerie] = useState('');
   const [editEqImageUrl, setEditEqImageUrl] = useState('');
   const [editEqImagePreview, setEditEqImagePreview] = useState('');
+  const [editEqImageUrls, setEditEqImageUrls] = useState<string[]>([]);
+  const [editEqSelectedIdx, setEditEqSelectedIdx] = useState(0);
   const [guardandoEquipo, setGuardandoEquipo] = useState(false);
 
   // --- image viewer ---
@@ -201,6 +203,24 @@ export default function GestionEmpresasScreen() {
       setSubiendoImagen(false);
       Alert.alert('Error', err?.message || 'Error inesperado al subir imagen.');
     }
+  };
+
+  const getEquipoMainImage = (eq: EquipoSucursal): string => {
+    if (!eq.imagen_url) return '';
+    try {
+      const parsed = JSON.parse(eq.imagen_url);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed[0];
+    } catch {}
+    return eq.imagen_url;
+  };
+
+  const parseEquipoImages = (imagenUrl?: string): string[] => {
+    if (!imagenUrl) return [];
+    try {
+      const parsed = JSON.parse(imagenUrl);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {}
+    return imagenUrl ? [imagenUrl] : [];
   };
 
   // ─── Actions ──────────────────────────────────────────────────────────────
@@ -542,7 +562,7 @@ export default function GestionEmpresasScreen() {
                     }} activeOpacity={0.8}>
                       <View style={s.eqThumbBox}>
                         {eq.imagen_url ? (
-                          <Image source={{ uri: getProxyUrl(eq.imagen_url) }} style={s.eqThumb} />
+                          <Image source={{ uri: getProxyUrl(getEquipoMainImage(eq)) }} style={s.eqThumb} />
                         ) : (
                           <View style={[s.eqThumb, { backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }]}>
                             <Ionicons name="hardware-chip-outline" size={18} color="#334155" />
@@ -555,7 +575,7 @@ export default function GestionEmpresasScreen() {
                         {eq.serie ? <Text style={s.eqSub} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
                       </View>
                       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : ''); setShowEditarEquipoModal(true); }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                        <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); const imgs = parseEquipoImages(eq.imagen_url); setEditEqImageUrls(imgs); setEditEqSelectedIdx(0); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(imgs.length > 0 ? getProxyUrl(imgs[0]) : ''); setShowEditarEquipoModal(true); }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name="pencil" size={16} color="#a78bfa" />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }} style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
@@ -625,7 +645,7 @@ export default function GestionEmpresasScreen() {
                 }} activeOpacity={0.8}>
                   <View>
                     {eq.imagen_url ? (
-                      <Image source={{ uri: getProxyUrl(eq.imagen_url) }} style={{ width: 44, height: 44, borderRadius: 8 }} />
+                      <Image source={{ uri: getProxyUrl(getEquipoMainImage(eq)) }} style={{ width: 44, height: 44, borderRadius: 8 }} />
                     ) : (
                       <View style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: '#1e293b', alignItems: 'center', justifyContent: 'center' }}>
                         <Ionicons name="hardware-chip-outline" size={20} color="#334155" />
@@ -638,7 +658,7 @@ export default function GestionEmpresasScreen() {
                     {eq.serie ? <Text style={{ color: '#64748b', fontSize: 11, marginTop: 1 }} numberOfLines={1}>SERIE: {eq.serie}</Text> : null}
                   </View>
                   <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                    <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(eq.imagen_url ? getProxyUrl(eq.imagen_url) : ''); setShowEditarEquipoModal(true); }} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                    <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setEquipoEditando(eq); setEditEqNombre(eq.nombre); setEditEqModelo(eq.modelo || ''); setEditEqSerie(eq.serie || ''); const imgs = parseEquipoImages(eq.imagen_url); setEditEqImageUrls(imgs); setEditEqSelectedIdx(0); setEditEqImageUrl(eq.imagen_url || ''); setEditEqImagePreview(imgs.length > 0 ? getProxyUrl(imgs[0]) : ''); setShowEditarEquipoModal(true); }} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(167, 139, 250, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
                       <Ionicons name="pencil" size={14} color="#a78bfa" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); handleEliminarEquipo(eq); }} style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(248, 113, 113, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
@@ -1117,24 +1137,29 @@ export default function GestionEmpresasScreen() {
               </View>
 
               <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 20 }]}>
-                {/* Columna Izquierda: Imagen */}
+                {/* Columna Izquierda: Imágenes (hasta 5) */}
                 <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                  {/* Preview principal - muestra imagen seleccionada */}
                   <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
                       activeOpacity={0.9}
                       onPress={() => {
-                        if (editEqImagePreview) {
-                          setViewerImageUrl(editEqImagePreview);
+                        const url = editEqImageUrls[editEqSelectedIdx];
+                        if (url) {
+                          setViewerImageUrl(getProxyUrl(url));
                           setShowImageViewer(true);
                         }
                       }}
                     >
-                      {editEqImagePreview ? (
+                      {editEqImageUrls[editEqSelectedIdx] ? (
                         <>
-                          <Image source={{ uri: editEqImagePreview }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          <Image source={{ uri: getProxyUrl(editEqImageUrls[editEqSelectedIdx]) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                           <View style={s.imageViewOverlay}>
                             <Ionicons name="expand-outline" size={20} color="#fff" />
+                          </View>
+                          <View style={{ position: 'absolute', bottom: 12, left: 12, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>{editEqSelectedIdx + 1} / {editEqImageUrls.length}</Text>
                           </View>
                         </>
                       ) : (
@@ -1142,19 +1167,94 @@ export default function GestionEmpresasScreen() {
                           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(167,139,250,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(167,139,250,0.1)' }}>
                             <Ionicons name="camera" size={32} color="#a78bfa" />
                           </View>
-                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>No hay imagen seleccionada</Text>
+                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>Toca un slot para agregar imagen</Text>
                         </View>
                       )}
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={[s.btnImagePremium, subiendoImagen && { opacity: 0.7 }]}
-                    disabled={subiendoImagen}
-                    onPress={() => pickAndUploadImage((url) => {
-                      setEditEqImageUrl(url);
-                      setEditEqImagePreview(url);
+                  {/* Galería de 5 slots */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                    {Array.from({ length: 5 }).map((_, idx) => {
+                      const imgUrl = editEqImageUrls[idx];
+                      const isSelected = idx === editEqSelectedIdx;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          disabled={subiendoImagen}
+                          style={{
+                            flex: 1,
+                            aspectRatio: 1,
+                            borderRadius: 10,
+                            borderWidth: isSelected ? 2.5 : 1,
+                            borderColor: isSelected ? '#a78bfa' : 'rgba(255,255,255,0.12)',
+                            backgroundColor: imgUrl ? 'transparent' : 'rgba(255,255,255,0.03)',
+                            overflow: 'hidden',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          onPress={() => {
+                            if (imgUrl) {
+                              setEditEqSelectedIdx(idx);
+                            } else {
+                              setEditEqSelectedIdx(idx);
+                              pickAndUploadImage((url) => {
+                                setEditEqImageUrls(prev => {
+                                  const next = [...prev];
+                                  next[idx] = url;
+                                  return next;
+                                });
+                              });
+                            }
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          {imgUrl ? (
+                            <>
+                              <Image source={{ uri: getProxyUrl(imgUrl) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              <TouchableOpacity
+                                onPress={(e) => {
+                                  e.stopPropagation?.();
+                                  setEditEqImageUrls(prev => {
+                                    const next = prev.filter((_, i) => i !== idx);
+                                    return next;
+                                  });
+                                  setEditEqSelectedIdx(s => Math.max(0, s >= idx ? s - 1 : s));
+                                }}
+                                style={{
+                                  position: 'absolute', top: 2, right: 2,
+                                  width: 16, height: 16, borderRadius: 8,
+                                  backgroundColor: 'rgba(239,68,68,0.92)',
+                                  alignItems: 'center', justifyContent: 'center',
+                                }}
+                              >
+                                <Ionicons name="close" size={10} color="#fff" />
+                              </TouchableOpacity>
+                            </>
+                          ) : (
+                            <Ionicons name="add" size={18} color={subiendoImagen ? '#334155' : '#475569'} />
+                          )}
+                        </TouchableOpacity>
+                      );
                     })}
+                  </View>
+
+                  {/* Botón Agregar Imagen */}
+                  <TouchableOpacity
+                    style={[s.btnImagePremium, (subiendoImagen || editEqImageUrls.length >= 5) && { opacity: 0.55 }]}
+                    disabled={subiendoImagen || editEqImageUrls.length >= 5}
+                    onPress={() => {
+                      const firstEmpty = Array.from({ length: 5 }).findIndex((_, i) => !editEqImageUrls[i]);
+                      const targetIdx = firstEmpty !== -1 ? firstEmpty : editEqSelectedIdx;
+                      setEditEqSelectedIdx(targetIdx);
+                      pickAndUploadImage((url) => {
+                        setEditEqImageUrls(prev => {
+                          const next = [...prev];
+                          next[targetIdx] = url;
+                          return next.filter(Boolean).slice(0, 5);
+                        });
+                      });
+                    }}
                   >
                     {subiendoImagen ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -1162,7 +1262,9 @@ export default function GestionEmpresasScreen() {
                         <Text style={s.btnImageTextPremium}>Subiendo imagen...</Text>
                       </View>
                     ) : (
-                      <Text style={s.btnImageTextPremium}>Cambiar Imagen</Text>
+                      <Text style={s.btnImageTextPremium}>
+                        {editEqImageUrls.length >= 5 ? 'Máximo 5 imágenes' : `Agregar Imagen (${editEqImageUrls.length}/5)`}
+                      </Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -1226,7 +1328,9 @@ export default function GestionEmpresasScreen() {
                           nombre: editEqNombre.trim(),
                           modelo: editEqModelo.trim() || undefined,
                           serie: editEqSerie.trim() || undefined,
-                          imagen_url: editEqImageUrl || undefined,
+                          imagen_url: editEqImageUrls.length > 0
+                            ? (editEqImageUrls.length === 1 ? editEqImageUrls[0] : JSON.stringify(editEqImageUrls))
+                            : undefined,
                         });
                         if (res.success) {
                           setShowEditarEquipoModal(false);

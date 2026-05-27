@@ -3277,6 +3277,36 @@ function ClientePanelContent() {
                       <Text style={[styles.detailLabel, { fontFamily }]}>ANALISIS GENERAL</Text>
                       <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.analisis_general || 'N/A'}</Text>
                     </View>
+
+                    {/* Datos de reparación express — se muestran solo si existen */}
+                    {cotizacionSeleccionada.reparacion && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>REPARACIÓN REALIZADA</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.reparacion}</Text>
+                      </View>
+                    )}
+
+                    {cotizacionSeleccionada.materiales_refacciones && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>MATERIALES / REFACCIONES</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.materiales_refacciones}</Text>
+                      </View>
+                    )}
+
+                    {cotizacionSeleccionada.recomendaciones && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>RECOMENDACIONES</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.recomendaciones}</Text>
+                      </View>
+                    )}
+
+                    {cotizacionSeleccionada.recomendaciones_adicionales && (
+                      <View style={styles.detailField}>
+                        <Text style={[styles.detailLabel, { fontFamily }]}>RECOMENDACIONES ADICIONALES</Text>
+                        <Text style={[styles.detailValue, { fontFamily }]}>{cotizacionSeleccionada.recomendaciones_adicionales}</Text>
+                      </View>
+                    )}
+
                     <View style={styles.detailField}>
                       <Text style={[styles.detailLabel, { fontFamily }]}>Precio Cotizado</Text>
                       {(parseFloat(cotizacionSeleccionada.precio_cotizacion) > 0 && (cotizacionSeleccionada.estado || '').toLowerCase() !== 'en_cotizacion') ? (
