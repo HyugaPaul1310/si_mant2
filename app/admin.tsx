@@ -3667,11 +3667,11 @@ function AdminPanelContent() {
                       <View key={rep.id} style={styles.reportCard}>
                         <View style={[styles.reportHeader, isMobile && styles.reportHeaderMobile]}>
                           <View style={styles.reportHeaderText}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                              <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={1}>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                              <Text style={[styles.reportTitle, isMobile && styles.reportTitleMobile, { fontFamily }]} numberOfLines={2}>
                                 {rep.equipo_descripcion || 'Equipo / servicio'}
                               </Text>
-                              <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                              <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)', marginTop: 2 }}>
                                 <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {rep.id}</Text>
                               </View>
                             </View>
@@ -3731,7 +3731,7 @@ function AdminPanelContent() {
                         {/* Removidos botones de cambio manual de estado para automatización */}
 
                         {(rep.estado === 'pendiente' || !rep.estado) && (
-                          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                          <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                             <TouchableOpacity
                               onPress={() => {
                                 setReporteAAsignar(rep);
@@ -3747,15 +3747,14 @@ function AdminPanelContent() {
                                 borderWidth: 1,
                                 borderRadius: 8,
                                 paddingVertical: 8,
-                                paddingHorizontal: 12,
+                                paddingHorizontal: 6,
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: 6,
+                                gap: 0,
                               }}
                             >
-                              <Ionicons name="person-add-outline" size={16} color="#3b82f6" />
-                              <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
+                              <Text style={[{ color: '#3b82f6', fontWeight: '600', fontSize: 13, textAlign: 'center' }, { fontFamily }]}>
                                 Asignar a empleado
                               </Text>
                             </TouchableOpacity>
@@ -3773,16 +3772,15 @@ function AdminPanelContent() {
                                 borderWidth: 1,
                                 borderRadius: 8,
                                 paddingVertical: 8,
-                                paddingHorizontal: 12,
+                                paddingHorizontal: 6,
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: 6,
+                                gap: 0,
                               }}
                             >
-                              <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                              <Text style={[{ color: '#ef4444', fontWeight: '600', fontSize: 13 }, { fontFamily }]}>
-                                Rechazar / Eliminar
+                              <Text style={[{ color: '#ef4444', fontWeight: '600', fontSize: 13, textAlign: 'center' }, { fontFamily }]}>
+                                Eliminar
                               </Text>
                             </TouchableOpacity>
                           </View>
@@ -4051,11 +4049,11 @@ function AdminPanelContent() {
                     <View key={rep.id} style={styles.reportCard}>
                       <View style={styles.reportHeader}>
                         <View style={styles.reportHeaderText}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={1}>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
+                            <Text style={[styles.reportTitle, { fontFamily }]} numberOfLines={2}>
                               {rep.equipo_descripcion || 'Equipo / servicio'}
                             </Text>
-                            <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)' }}>
+                            <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)', marginTop: 2 }}>
                               <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {rep.id}</Text>
                             </View>
                           </View>
@@ -5459,9 +5457,9 @@ function AdminPanelContent() {
             <View style={[styles.detailModal, isMobile && styles.detailModalMobile]}>
               <View style={[styles.detailHeader, isMobile && styles.detailHeaderMobile]}>
                 <View style={[styles.detailHeaderText, isMobile && styles.detailHeaderTextMobile]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily }]}>Detalles del reporte</Text>
-                    <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+                    <Text style={[styles.detailTitle, isMobile && styles.detailTitleMobile, { fontFamily, flexShrink: 1 }]}>Detalles del reporte</Text>
+                    <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)', flexShrink: 0, marginTop: isMobile ? 2 : 0 }}>
                       <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800', fontFamily }}>Reporte ID: {selectedReporteDetail.id}</Text>
                     </View>
                   </View>
