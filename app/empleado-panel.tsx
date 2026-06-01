@@ -4201,172 +4201,117 @@ function EmpleadoPanelContent() {
             </ScrollView>
 
 
-            <View style={[styles.detailFooter, isMobile && styles.detailFooterMobile]}>
-              <TouchableOpacity
-                style={[styles.detailCloseButton, isMobile && { width: '100%', flex: 0 }]}
-                onPress={() => cerrarModalReporteDetalle()}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
-              </TouchableOpacity>
-
-              <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 2, width: isMobile ? '100%' : undefined }}>
-                {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
-                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }}>
-                    {reparacion.trim().length > 0 && materialesRefacciones.trim().length > 0 && recomendaciones.trim().length > 0 && (
-                      <TouchableOpacity
-                        onPress={generarPDFBorrador}
-                        disabled={generandoPDFBorrador}
-                        activeOpacity={0.85}
-                        style={{
-                          flex: 1,
-                          backgroundColor: '#164e63',
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: '#0891b2',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          flexDirection: 'row',
-                          gap: 8,
-                          minHeight: 48
-                        }}
-                      >
-                        {generandoPDFBorrador ? (
-                          <ActivityIndicator color="#06b6d4" />
-                        ) : (
-                          <Ionicons name="document-text-outline" size={20} color="#06b6d4" />
-                        )}
-                        <Text style={[styles.detailActionButtonText, { fontFamily, color: '#ecfdf5' }]}>
-                          {generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <LinearGradient
-                      colors={['#10b981', '#06b6d4']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={[styles.detailActionButton, { flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }]}
-                    >
-                      <TouchableOpacity
-                        onPress={async () => {
-                          if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) {
-                            showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning');
-                            return;
-                          }
-                          setShowConfirmarFinalizarModal(true);
-                        }}
-                        disabled={guardandoFase2}
-                        activeOpacity={0.85}
-                        style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
-                      >
-                        <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                          {guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}
-                        </Text>
-                      </TouchableOpacity>
-                    </LinearGradient>
-                  </View>
-                )}
-
-                {reporteSeleccionado.estado === 'asignado' && (
-                  <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, flex: isMobile ? 0 : 1, width: isMobile ? '100%' : undefined }}>
-
-                    {/* Botón Vista Previa PDF — aparece solo cuando hay análisis escrito */}
-                    {descripcionTrabajo.trim().length > 0 && (
-                      <TouchableOpacity
-                        onPress={generarPDFBorrador}
-                        disabled={generandoPDFBorrador}
-                        activeOpacity={0.85}
-                        style={{
-                          flex: 1,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          minHeight: 48,
-                          borderRadius: 14,
-                          borderWidth: 1.5,
-                          borderColor: generandoPDFBorrador ? '#334155' : '#06b6d4',
-                          backgroundColor: generandoPDFBorrador ? 'rgba(6,182,212,0.05)' : 'rgba(6,182,212,0.12)',
-                          shadowColor: '#06b6d4',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: generandoPDFBorrador ? 0 : 0.25,
-                          shadowRadius: 6,
-                          elevation: generandoPDFBorrador ? 0 : 3,
-                        }}
-                      >
-                        <Ionicons
-                          name={generandoPDFBorrador ? 'hourglass-outline' : 'document-text-outline'}
-                          size={18}
-                          color={generandoPDFBorrador ? '#64748b' : '#06b6d4'}
-                        />
-                        <Text style={[{
-                          color: generandoPDFBorrador ? '#64748b' : '#06b6d4',
-                          fontWeight: '700',
-                          fontSize: isMobile ? 12 : 14,
-                        }, { fontFamily }]}>
-                          {generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <LinearGradient
-                      colors={['#d97706', '#f59e0b']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
-                    >
-                      <TouchableOpacity
-                        onPress={confirmarEnvioAnalisis}
-                        disabled={guardandoCotizacion}
-                        activeOpacity={0.85}
-                        style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
-                      >
-                        <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                          {guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}
-                        </Text>
-                      </TouchableOpacity>
-                    </LinearGradient>
-
-                    <TouchableOpacity
-                      style={[styles.detailCloseButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }, isMobile && { flex: 0, width: '100%' }]}
-                      onPress={() => {
-                        setReporteARechazar(reporteSeleccionado);
-                        setShowRechazarModal(true);
-                        setShowReporteDetalle(false);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
-                        <Text style={[styles.detailCloseButtonText, { fontFamily, color: '#ef4444' }]}>Rechazar Asignación</Text>
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {(reporteSeleccionado.estado === 'pendiente' || (reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general)) && (
-                  <LinearGradient
-                    colors={['#d97706', '#f59e0b']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.detailActionButton, isMobile && { flex: 0, width: '100%' }]}
+            <View style={[styles.detailFooter, isMobile && { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingVertical: 12, gap: 8, justifyContent: 'center' }]}>
+              {/* Web uses the old layout structure, Mobile uses a flat wrapped row */}
+              {!isMobile ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.detailCloseButton}
+                    onPress={() => cerrarModalReporteDetalle()}
+                    activeOpacity={0.7}
                   >
-                    <TouchableOpacity
-                      onPress={() => {
-                        setShowReporteDetalle(false);
-                        setShowCotizarModal(true);
-                      }}
-                      activeOpacity={0.85}
-                      style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}
-                    >
-                      <Text style={[styles.detailActionButtonText, { fontFamily }]}>
-                        Enviar Análisis
-                      </Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                )}
-              </View>
+                    <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 12, flex: 2 }}>
+                    {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
+                      <View style={{ flexDirection: 'row', gap: 12, flex: 1 }}>
+                        {reparacion.trim().length > 0 && materialesRefacciones.trim().length > 0 && recomendaciones.trim().length > 0 && (
+                          <TouchableOpacity onPress={generarPDFBorrador} disabled={generandoPDFBorrador} activeOpacity={0.85} style={{ flex: 1, backgroundColor: '#164e63', borderRadius: 12, borderWidth: 1, borderColor: '#0891b2', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 48 }}>
+                            {generandoPDFBorrador ? <ActivityIndicator color="#06b6d4" /> : <Ionicons name="document-text-outline" size={20} color="#06b6d4" />}
+                            <Text style={[styles.detailActionButtonText, { fontFamily, color: '#ecfdf5' }]}>{generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}</Text>
+                          </TouchableOpacity>
+                        )}
+                        <LinearGradient colors={['#10b981', '#06b6d4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.detailActionButton, { flex: 1 }]}>
+                          <TouchableOpacity onPress={async () => { if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) { showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning'); return; } setShowConfirmarFinalizarModal(true); }} disabled={guardandoFase2} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                            <Text style={[styles.detailActionButtonText, { fontFamily }]}>{guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}</Text>
+                          </TouchableOpacity>
+                        </LinearGradient>
+                      </View>
+                    )}
+                    {reporteSeleccionado.estado === 'asignado' && (
+                      <View style={{ flexDirection: 'row', gap: 12, flex: 1 }}>
+                        {descripcionTrabajo.trim().length > 0 && (
+                          <TouchableOpacity onPress={generarPDFBorrador} disabled={generandoPDFBorrador} activeOpacity={0.85} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, borderRadius: 14, borderWidth: 1.5, borderColor: generandoPDFBorrador ? '#334155' : '#06b6d4', backgroundColor: generandoPDFBorrador ? 'rgba(6,182,212,0.05)' : 'rgba(6,182,212,0.12)', shadowColor: '#06b6d4', shadowOffset: { width: 0, height: 2 }, shadowOpacity: generandoPDFBorrador ? 0 : 0.25, shadowRadius: 6, elevation: generandoPDFBorrador ? 0 : 3 }}>
+                            <Ionicons name={generandoPDFBorrador ? 'hourglass-outline' : 'document-text-outline'} size={18} color={generandoPDFBorrador ? '#64748b' : '#06b6d4'} />
+                            <Text style={[{ color: generandoPDFBorrador ? '#64748b' : '#06b6d4', fontWeight: '700', fontSize: 14 }, { fontFamily }]}>{generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}</Text>
+                          </TouchableOpacity>
+                        )}
+                        <LinearGradient colors={['#d97706', '#f59e0b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.detailActionButton}>
+                          <TouchableOpacity onPress={confirmarEnvioAnalisis} disabled={guardandoCotizacion} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                            <Text style={[styles.detailActionButtonText, { fontFamily }]}>{guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}</Text>
+                          </TouchableOpacity>
+                        </LinearGradient>
+                        <TouchableOpacity style={[styles.detailCloseButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]} onPress={() => { setReporteARechazar(reporteSeleccionado); setShowRechazarModal(true); setShowReporteDetalle(false); }} activeOpacity={0.7}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="close-circle-outline" size={18} color="#ef4444" />
+                            <Text style={[styles.detailCloseButtonText, { fontFamily, color: '#ef4444' }]}>Rechazar Asignación</Text>
+                          </View>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {(reporteSeleccionado.estado === 'pendiente' || (reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general)) && (
+                      <LinearGradient colors={['#d97706', '#f59e0b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.detailActionButton}>
+                        <TouchableOpacity onPress={() => { setShowReporteDetalle(false); setShowCotizarModal(true); }} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                          <Text style={[styles.detailActionButtonText, { fontFamily }]}>Enviar Análisis</Text>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                    )}
+                  </View>
+                </>
+              ) : (
+                /* MOBILE FLAT GRID LAYOUT */
+                <>
+                  <TouchableOpacity style={[styles.detailCloseButton, { flex: 1, minWidth: '45%' }]} onPress={() => cerrarModalReporteDetalle()} activeOpacity={0.7}>
+                    <Text style={[styles.detailCloseButtonText, { fontFamily }]}>Cerrar</Text>
+                  </TouchableOpacity>
+
+                  {reporteSeleccionado.estado === 'aceptado_por_cliente' && (
+                    <>
+                      {reparacion.trim().length > 0 && materialesRefacciones.trim().length > 0 && recomendaciones.trim().length > 0 && (
+                        <TouchableOpacity onPress={generarPDFBorrador} disabled={generandoPDFBorrador} activeOpacity={0.85} style={{ flex: 1, minWidth: '45%', backgroundColor: '#164e63', borderRadius: 12, borderWidth: 1, borderColor: '#0891b2', justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 48 }}>
+                          {generandoPDFBorrador ? <ActivityIndicator color="#06b6d4" /> : <Ionicons name="document-text-outline" size={20} color="#06b6d4" />}
+                          <Text style={[styles.detailActionButtonText, { fontFamily, color: '#ecfdf5', fontSize: 13 }]}>{generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}</Text>
+                        </TouchableOpacity>
+                      )}
+                      <LinearGradient colors={['#10b981', '#06b6d4']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.detailActionButton, { flex: 1, minWidth: '45%' }]}>
+                        <TouchableOpacity onPress={async () => { if (!reparacion.trim() || !materialesRefacciones.trim() || !recomendaciones.trim()) { showToast('Por favor completa los campos obligatorios: Reparación, Materiales y Recomendaciones', 'warning'); return; } setShowConfirmarFinalizarModal(true); }} disabled={guardandoFase2} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                          <Text style={[styles.detailActionButtonText, { fontFamily, fontSize: 13 }]}>{guardandoFase2 ? 'Enviando...' : 'Finalizar Trabajo'}</Text>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                    </>
+                  )}
+
+                  {reporteSeleccionado.estado === 'asignado' && (
+                    <>
+                      {descripcionTrabajo.trim().length > 0 && (
+                        <TouchableOpacity onPress={generarPDFBorrador} disabled={generandoPDFBorrador} activeOpacity={0.85} style={{ flex: 1, minWidth: '45%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 48, borderRadius: 14, borderWidth: 1.5, borderColor: generandoPDFBorrador ? '#334155' : '#06b6d4', backgroundColor: generandoPDFBorrador ? 'rgba(6,182,212,0.05)' : 'rgba(6,182,212,0.12)' }}>
+                          <Ionicons name={generandoPDFBorrador ? 'hourglass-outline' : 'document-text-outline'} size={16} color={generandoPDFBorrador ? '#64748b' : '#06b6d4'} />
+                          <Text style={[{ color: generandoPDFBorrador ? '#64748b' : '#06b6d4', fontWeight: '700', fontSize: 12 }, { fontFamily }]}>{generandoPDFBorrador ? 'Generando...' : 'Generar PDF'}</Text>
+                        </TouchableOpacity>
+                      )}
+                      <LinearGradient colors={['#d97706', '#f59e0b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.detailActionButton, { flex: 1, minWidth: '45%' }]}>
+                        <TouchableOpacity onPress={confirmarEnvioAnalisis} disabled={guardandoCotizacion} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                          <Text style={[styles.detailActionButtonText, { fontFamily, fontSize: 13 }]}>{guardandoCotizacion ? 'Enviando...' : 'Enviar Análisis'}</Text>
+                        </TouchableOpacity>
+                      </LinearGradient>
+                      <TouchableOpacity style={[styles.detailCloseButton, { flex: 1, minWidth: '45%', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]} onPress={() => { setReporteARechazar(reporteSeleccionado); setShowRechazarModal(true); setShowReporteDetalle(false); }} activeOpacity={0.7}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                          <Ionicons name="close-circle-outline" size={16} color="#ef4444" />
+                          <Text style={[styles.detailCloseButtonText, { fontFamily, color: '#ef4444', fontSize: 13 }]}>Rechazar Asignación</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {(reporteSeleccionado.estado === 'pendiente' || (reporteSeleccionado.estado === 'en_proceso' && !reporteSeleccionado.analisis_general)) && (
+                    <LinearGradient colors={['#d97706', '#f59e0b']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.detailActionButton, { flex: 1, minWidth: '45%' }]}>
+                      <TouchableOpacity onPress={() => { setShowReporteDetalle(false); setShowCotizarModal(true); }} activeOpacity={0.85} style={{ justifyContent: 'center', alignItems: 'center', minHeight: 48, paddingVertical: 14 }}>
+                        <Text style={[styles.detailActionButtonText, { fontFamily, fontSize: 13 }]}>Enviar Análisis</Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                  )}
+                </>
+              )}
             </View>
           </View>
         </View >
