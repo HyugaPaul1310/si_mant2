@@ -23,6 +23,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -1014,7 +1017,22 @@ function EmpleadoPanelContent() {
           Alert.alert('Error', 'No se pudo generar el PDF');
         }
       } else {
-        Alert.alert('PDF', 'La descarga de PDF está optimizada para la versión Web.');
+        // Generación móvil usando expo-print + expo-sharing
+        try {
+          const { uri } = await Print.printToFileAsync({ html: htmlTemplate });
+          const fileName = `Reporte_${reporte.id}_${new Date().getTime()}.pdf`;
+          const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
+          const downloadPath = `${storageDir}${fileName}`;
+          await FileSystem.moveAsync({ from: uri, to: downloadPath });
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadPath, { mimeType: 'application/pdf', dialogTitle: 'Abrir PDF de Reporte', UTI: 'com.adobe.pdf' });
+          } else {
+            Alert.alert('PDF Generado', 'El archivo se ha guardado exitosamente.', [{ text: 'OK' }]);
+          }
+        } catch (error) {
+          console.error('[PDF] Error móvil:', error);
+          Alert.alert('Error', 'No se pudo generar el PDF en este dispositivo.');
+        }
       }
     } catch (error) {
       console.error('[PDF] Error general:', error);
@@ -1356,7 +1374,22 @@ function EmpleadoPanelContent() {
         setTimeout(() => URL.revokeObjectURL(url), 100);
         showToast('Vista previa descargada. Revísala y si está correcta, haz clic en Enviar Análisis.', 'info');
       } else {
-        showToast('La vista previa PDF está disponible en la versión Web.', 'info');
+        // Generación móvil del borrador
+        try {
+          const { uri } = await Print.printToFileAsync({ html: htmlTemplate });
+          const fileName = `VistaPrevia_Reporte_${reporte.id}.pdf`;
+          const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
+          const downloadPath = `${storageDir}${fileName}`;
+          await FileSystem.moveAsync({ from: uri, to: downloadPath });
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadPath, { mimeType: 'application/pdf', dialogTitle: 'Vista previa PDF', UTI: 'com.adobe.pdf' });
+          } else {
+            showToast('Vista previa descargada.', 'info');
+          }
+        } catch (error) {
+          console.error('[PDF-BORRADOR] Error móvil:', error);
+          showToast('Error al generar la vista previa PDF', 'error');
+        }
       }
     } catch (error: any) {
       console.error('[PDF-BORRADOR] Error:', error);
@@ -1700,7 +1733,22 @@ function EmpleadoPanelContent() {
         setTimeout(() => URL.revokeObjectURL(url), 100);
         showToast('Vista previa descargada. Revísala y si está correcta, haz clic en Finalizar Servicio CSC.', 'info');
       } else {
-        showToast('La vista previa PDF está disponible en la versión Web.', 'info');
+        // Generación móvil del borrador express
+        try {
+          const { uri } = await Print.printToFileAsync({ html: htmlTemplate });
+          const fileName = `VistaPrevia_Express_${reporte.id}.pdf`;
+          const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
+          const downloadPath = `${storageDir}${fileName}`;
+          await FileSystem.moveAsync({ from: uri, to: downloadPath });
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadPath, { mimeType: 'application/pdf', dialogTitle: 'Vista previa PDF', UTI: 'com.adobe.pdf' });
+          } else {
+            showToast('Vista previa descargada.', 'info');
+          }
+        } catch (error) {
+          console.error('[PDF-BORRADOR-EXPRESS] Error móvil:', error);
+          showToast('Error al generar la vista previa PDF', 'error');
+        }
       }
     } catch (error: any) {
       console.error('[PDF-BORRADOR] Error:', error);

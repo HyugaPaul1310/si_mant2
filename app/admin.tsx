@@ -33,8 +33,11 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Print from 'expo-print';
 import { useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -1423,7 +1426,22 @@ function AdminPanelContent() {
           Alert.alert('Error', 'No se pudo generar el PDF');
         }
       } else {
-        Alert.alert('PDF', 'La descarga de PDF está optimizada para la versión Web.');
+        // Generación móvil usando expo-print + expo-sharing
+        try {
+          const { uri } = await Print.printToFileAsync({ html: htmlTemplate });
+          const fileName = `Reporte_${reporte.id}_Admin.pdf`;
+          const storageDir = Platform.OS === 'android' ? FileSystem.cacheDirectory : FileSystem.documentDirectory;
+          const downloadPath = `${storageDir}${fileName}`;
+          await FileSystem.moveAsync({ from: uri, to: downloadPath });
+          if (await Sharing.isAvailableAsync()) {
+            await Sharing.shareAsync(downloadPath, { mimeType: 'application/pdf', dialogTitle: 'Abrir PDF de Reporte', UTI: 'com.adobe.pdf' });
+          } else {
+            Alert.alert('PDF Generado', 'El archivo se ha guardado exitosamente.', [{ text: 'OK' }]);
+          }
+        } catch (error) {
+          console.error('[PDF-ADMIN] Error móvil:', error);
+          Alert.alert('Error', 'No se pudo generar el PDF en este dispositivo.');
+        }
       }
     } catch (error) {
       console.error('[PDF-ADMIN] Error general:', error);
