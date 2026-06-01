@@ -3072,10 +3072,15 @@ function ClientePanelContent() {
                         >
                           <View style={styles.reportHeader}>
                             <View style={[styles.reportHeaderText, { gap: 6 }]}>
-                              {/* 1. Nombre del Equipo */}
-                              <Text style={[styles.reportTitle, { fontFamily, fontSize: 16 }]} numberOfLines={1}>
-                                {cot.equipo_descripcion || cot.reportes?.equipo_descripcion || 'Equipo'}
-                              </Text>
+                              {/* 1. Nombre del Equipo e ID */}
+                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                                <Text style={[styles.reportTitle, { fontFamily, fontSize: 16 }]} numberOfLines={2}>
+                                  {cot.equipo_descripcion || cot.reportes?.equipo_descripcion || 'Equipo'}
+                                </Text>
+                                <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.2)', marginTop: 2 }}>
+                                  <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700', fontFamily }}>Reporte ID: {cot.reporte_id || cot.id}</Text>
+                                </View>
+                              </View>
 
                               {/* 2. Modelo y Serie (extraídos de descripcion) */}
                               {(() => {
@@ -3188,9 +3193,9 @@ function ClientePanelContent() {
             <View style={[styles.largeModal, { flex: 1, flexDirection: 'column', paddingTop: isMobile ? 60 : 0 }]}>
               <View style={styles.largeModalHeader}>
                 <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
                     <Text style={[styles.largeModalTitle, { fontFamily }]}>Detalle de Cotización</Text>
-                    <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                    <View style={{ backgroundColor: 'rgba(56, 189, 248, 0.15)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.3)', marginTop: 2 }}>
                       <Text style={{ color: '#38bdf8', fontSize: 11, fontWeight: '800', fontFamily }}>Reporte ID: {cotizacionSeleccionada.reporte_id || cotizacionSeleccionada.id}</Text>
                     </View>
                   </View>
