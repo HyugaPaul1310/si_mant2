@@ -939,16 +939,37 @@ export default function GestionEmpresasScreen() {
 
       {/* Nuevo Equipo */}
       <Modal visible={showNuevoEquipoModal} transparent animationType="fade">
-        <View style={s.overlay}>
-          <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
-            <View style={[s.modalCardPremium, !isWide && s.modalCardPremiumMobile]}>
-              <View style={{ marginBottom: 32 }}>
+        <View style={[s.overlay, !isWide && { backgroundColor: BG }]}>
+          <ScrollView style={{ width: '100%', flex: 1 }} contentContainerStyle={isWide ? { alignItems: 'center', flexGrow: 1, paddingVertical: 40 } : { flexGrow: 1 }} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+            <View style={isWide ? s.modalCardPremium : s.modalCardPremiumMobile}>
+              <View style={{ marginBottom: 24 }}>
                 <Text style={s.modalTitlePremium}>Nuevo Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 20 }]}>
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 24, flex: 0 }]}>
                 {/* Columna Izquierda: Imagen */}
                 <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.08)', marginBottom: 14, opacity: subiendoImagen ? 0.55 : 1 }}
+                    disabled={subiendoImagen}
+                    onPress={() => pickAndUploadImage((url) => {
+                      setNuevoEquipoImageUrl(url);
+                      setNuevoEquipoImagePreview(url);
+                    })}
+                  >
+                    {subiendoImagen ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator color="#a78bfa" size="small" />
+                        <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '600' }}>Subiendo...</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-upload-outline" size={18} color="#a78bfa" />
+                        <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '700', letterSpacing: 0.3 }}>Agregar Imagen</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
                   <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
@@ -970,7 +991,7 @@ export default function GestionEmpresasScreen() {
                       ) : (
                         <View style={{ alignItems: 'center', gap: 16 }}>
                           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(6,182,212,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(6,182,212,0.1)' }}>
-                            <Ionicons name="camera" size={32} color={CC} />
+                            <Ionicons name="image-outline" size={32} color={CC} />
                           </View>
                           <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>No hay imagen seleccionada</Text>
                         </View>
@@ -978,23 +999,23 @@ export default function GestionEmpresasScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity
-                    style={[s.btnImagePremium, subiendoImagen && { opacity: 0.7 }]}
-                    disabled={subiendoImagen}
-                    onPress={() => pickAndUploadImage((url) => {
-                      setNuevoEquipoImageUrl(url);
-                      setNuevoEquipoImagePreview(url);
-                    })}
-                  >
-                    {subiendoImagen ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <ActivityIndicator color={CC} size="small" />
-                        <Text style={s.btnImageTextPremium}>Subiendo imagen...</Text>
-                      </View>
-                    ) : (
-                      <Text style={s.btnImageTextPremium}>Cambiar Imagen</Text>
-                    )}
-                  </TouchableOpacity>
+                  {nuevoEquipoImagePreview && (
+                     <TouchableOpacity
+                       style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.05)', marginTop: 10 }}
+                       onPress={() => {
+                         Alert.alert('Eliminar Imagen', '¿Estás seguro de que quieres eliminar esta imagen?', [
+                           { text: 'Cancelar', style: 'cancel' },
+                           { text: 'Eliminar', style: 'destructive', onPress: () => {
+                               setNuevoEquipoImageUrl('');
+                               setNuevoEquipoImagePreview('');
+                           }}
+                         ]);
+                       }}
+                     >
+                       <Ionicons name="trash-outline" size={16} color="#f87171" />
+                       <Text style={{ color: '#f87171', fontSize: 13, fontWeight: '600' }}>Eliminar imagen</Text>
+                     </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* Columna Derecha: Formulario */}
@@ -1129,16 +1150,48 @@ export default function GestionEmpresasScreen() {
 
       {/* Edit Equipment Modal */}
       <Modal visible={showEditarEquipoModal} transparent animationType="fade" onRequestClose={() => setShowEditarEquipoModal(false)}>
-        <View style={s.overlay}>
-          <ScrollView style={{ width: '100%' }} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center', minHeight: '100%', paddingVertical: 20 }}>
-            <View style={[s.modalCardPremium, !isWide && s.modalCardPremiumMobile]}>
-              <View style={{ marginBottom: 32 }}>
+        <View style={[s.overlay, !isWide && { backgroundColor: BG }]}>
+          <ScrollView style={{ width: '100%', flex: 1 }} contentContainerStyle={isWide ? { alignItems: 'center', flexGrow: 1, paddingVertical: 40 } : { flexGrow: 1 }} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+            <View style={isWide ? s.modalCardPremium : s.modalCardPremiumMobile}>
+              <View style={{ marginBottom: 24 }}>
                 <Text style={s.modalTitlePremium}>Editar Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 20 }]}>
+              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 24, flex: 0 }]}>
                 {/* Columna Izquierda: Imágenes (hasta 5) */}
                 <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                  {/* Botón Agregar Imagen */}
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.08)', marginBottom: 14, opacity: (subiendoImagen || editEqImageUrls.length >= 5) ? 0.5 : 1 }}
+                    disabled={subiendoImagen || editEqImageUrls.length >= 5}
+                    onPress={() => {
+                      const firstEmpty = Array.from({ length: 5 }).findIndex((_, i) => !editEqImageUrls[i]);
+                      const targetIdx = firstEmpty !== -1 ? firstEmpty : editEqSelectedIdx;
+                      setEditEqSelectedIdx(targetIdx);
+                      pickAndUploadImage((url) => {
+                        setEditEqImageUrls(prev => {
+                          const next = [...prev];
+                          next[targetIdx] = url;
+                          return next.filter(Boolean).slice(0, 5);
+                        });
+                      });
+                    }}
+                  >
+                    {subiendoImagen ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator color="#a78bfa" size="small" />
+                        <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '600' }}>Subiendo...</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <Ionicons name="cloud-upload-outline" size={18} color="#a78bfa" />
+                        <Text style={{ color: '#a78bfa', fontSize: 14, fontWeight: '700', letterSpacing: 0.3 }}>
+                          {editEqImageUrls.length >= 5 ? 'Máximo 5 imágenes' : `Agregar Imagen (${editEqImageUrls.length}/5)`}
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
                   {/* Preview principal - muestra imagen seleccionada */}
                   <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
                     <TouchableOpacity
@@ -1165,9 +1218,9 @@ export default function GestionEmpresasScreen() {
                       ) : (
                         <View style={{ alignItems: 'center', gap: 16 }}>
                           <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(167,139,250,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(167,139,250,0.1)' }}>
-                            <Ionicons name="camera" size={32} color="#a78bfa" />
+                            <Ionicons name="image-outline" size={32} color="#a78bfa" />
                           </View>
-                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>Toca un slot para agregar imagen</Text>
+                          <Text style={{ color: '#64748b', fontSize: 14, textAlign: 'center' }}>{editEqImageUrls.length > 0 ? "Selecciona una miniatura" : "No hay imágenes registradas"}</Text>
                         </View>
                       )}
                     </TouchableOpacity>
@@ -1181,7 +1234,7 @@ export default function GestionEmpresasScreen() {
                       return (
                         <TouchableOpacity
                           key={idx}
-                          disabled={subiendoImagen}
+                          disabled={subiendoImagen || !imgUrl}
                           style={{
                             flex: 1,
                             aspectRatio: 1,
@@ -1196,77 +1249,41 @@ export default function GestionEmpresasScreen() {
                           onPress={() => {
                             if (imgUrl) {
                               setEditEqSelectedIdx(idx);
-                            } else {
-                              setEditEqSelectedIdx(idx);
-                              pickAndUploadImage((url) => {
-                                setEditEqImageUrls(prev => {
-                                  const next = [...prev];
-                                  next[idx] = url;
-                                  return next;
-                                });
-                              });
                             }
                           }}
                           activeOpacity={0.75}
                         >
                           {imgUrl ? (
-                            <>
-                              <Image source={{ uri: getProxyUrl(imgUrl) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                              <TouchableOpacity
-                                onPress={(e) => {
-                                  e.stopPropagation?.();
-                                  setEditEqImageUrls(prev => {
-                                    const next = prev.filter((_, i) => i !== idx);
-                                    return next;
-                                  });
-                                  setEditEqSelectedIdx(s => Math.max(0, s >= idx ? s - 1 : s));
-                                }}
-                                style={{
-                                  position: 'absolute', top: 2, right: 2,
-                                  width: 16, height: 16, borderRadius: 8,
-                                  backgroundColor: 'rgba(239,68,68,0.92)',
-                                  alignItems: 'center', justifyContent: 'center',
-                                }}
-                              >
-                                <Ionicons name="close" size={10} color="#fff" />
-                              </TouchableOpacity>
-                            </>
+                            <Image source={{ uri: getProxyUrl(imgUrl) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                           ) : (
-                            <Ionicons name="add" size={18} color={subiendoImagen ? '#334155' : '#475569'} />
+                            <Ionicons name="image-outline" size={18} color={'rgba(255,255,255,0.1)'} />
                           )}
                         </TouchableOpacity>
                       );
                     })}
                   </View>
 
-                  {/* Botón Agregar Imagen */}
-                  <TouchableOpacity
-                    style={[s.btnImagePremium, (subiendoImagen || editEqImageUrls.length >= 5) && { opacity: 0.55 }]}
-                    disabled={subiendoImagen || editEqImageUrls.length >= 5}
-                    onPress={() => {
-                      const firstEmpty = Array.from({ length: 5 }).findIndex((_, i) => !editEqImageUrls[i]);
-                      const targetIdx = firstEmpty !== -1 ? firstEmpty : editEqSelectedIdx;
-                      setEditEqSelectedIdx(targetIdx);
-                      pickAndUploadImage((url) => {
-                        setEditEqImageUrls(prev => {
-                          const next = [...prev];
-                          next[targetIdx] = url;
-                          return next.filter(Boolean).slice(0, 5);
-                        });
-                      });
-                    }}
-                  >
-                    {subiendoImagen ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <ActivityIndicator color={CC} size="small" />
-                        <Text style={s.btnImageTextPremium}>Subiendo imagen...</Text>
-                      </View>
-                    ) : (
-                      <Text style={s.btnImageTextPremium}>
-                        {editEqImageUrls.length >= 5 ? 'Máximo 5 imágenes' : `Agregar Imagen (${editEqImageUrls.length}/5)`}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
+                  {/* Botón Eliminar Imagen Seleccionada */}
+                  {editEqImageUrls[editEqSelectedIdx] && (
+                     <TouchableOpacity
+                       style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.05)', marginTop: 6 }}
+                       onPress={() => {
+                         Alert.alert('Eliminar Imagen', '¿Estás seguro de que quieres eliminar esta imagen?', [
+                           { text: 'Cancelar', style: 'cancel' },
+                           { text: 'Eliminar', style: 'destructive', onPress: () => {
+                               setEditEqImageUrls(prev => {
+                                 const next = prev.filter((_, i) => i !== editEqSelectedIdx);
+                                 return next;
+                               });
+                               setEditEqSelectedIdx(s => Math.max(0, s >= editEqSelectedIdx ? s - 1 : s));
+                           }}
+                         ]);
+                       }}
+                     >
+                       <Ionicons name="trash-outline" size={16} color="#f87171" />
+                       <Text style={{ color: '#f87171', fontSize: 13, fontWeight: '600' }}>Eliminar imagen</Text>
+                     </TouchableOpacity>
+                  )}
                 </View>
 
                 {/* Columna Derecha: Formulario */}
@@ -1498,9 +1515,9 @@ const s = StyleSheet.create({
   },
   modalCardPremiumMobile: {
     width: '100%',
-    height: '100%',
     backgroundColor: BG,
-    paddingVertical: 20,
+    paddingTop: 50,
+    paddingBottom: 30,
     paddingHorizontal: 20,
     borderRadius: 0,
   },
