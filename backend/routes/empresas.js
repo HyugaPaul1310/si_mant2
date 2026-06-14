@@ -27,6 +27,7 @@ const { verifyToken } = require('../middleware/auth');
     await addColumnIfMissing('sucursales', 'imagen_url', 'VARCHAR(2048) DEFAULT NULL');
     await addColumnIfMissing('reportes',   'equipo_id',  'INT DEFAULT NULL');
     await addColumnIfMissing('reportes',   'sucursal_id','INT DEFAULT NULL');
+    await addColumnIfMissing('equipos_sucursal', 'imagen_url', 'VARCHAR(2048) DEFAULT NULL');
 
     // Create equipos_sucursal table if missing
     await pool.query(`
