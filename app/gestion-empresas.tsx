@@ -1003,13 +1003,13 @@ export default function GestionEmpresasScreen() {
                      <TouchableOpacity
                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.05)', marginTop: 10 }}
                        onPress={() => {
-                         Alert.alert('Eliminar Imagen', '¿Estás seguro de que quieres eliminar esta imagen?', [
-                           { text: 'Cancelar', style: 'cancel' },
-                           { text: 'Eliminar', style: 'destructive', onPress: () => {
-                               setNuevoEquipoImageUrl('');
-                               setNuevoEquipoImagePreview('');
-                           }}
-                         ]);
+                         setConfirmTitle('Eliminar Imagen');
+                         setConfirmMsg('¿Estás seguro de que quieres eliminar esta imagen?');
+                         setConfirmAction(() => async () => {
+                           setNuevoEquipoImageUrl('');
+                           setNuevoEquipoImagePreview('');
+                         });
+                         setShowConfirmModal(true);
                        }}
                      >
                        <Ionicons name="trash-outline" size={16} color="#f87171" />
@@ -1094,59 +1094,7 @@ export default function GestionEmpresasScreen() {
         </View>
       </Modal>
 
-      {/* Custom Confirmation Modal */}
-      <Modal visible={showConfirmModal} transparent animationType="fade" onRequestClose={() => setShowConfirmModal(false)}>
-        <View style={s.overlay}>
-          <View style={[s.modalCard, { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 }]}>
-            {/* Warning Icon */}
-            <View style={{
-              width: 60, height: 60, borderRadius: 30,
-              backgroundColor: 'rgba(239, 68, 68, 0.12)',
-              borderWidth: 2, borderColor: 'rgba(239, 68, 68, 0.25)',
-              alignItems: 'center', justifyContent: 'center', marginBottom: 16,
-            }}>
-              <Ionicons name="trash-outline" size={28} color="#ef4444" />
-            </View>
 
-            <Text style={{ color: '#f8fafc', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 6 }}>
-              {confirmTitle}
-            </Text>
-            <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
-              {confirmMsg}
-            </Text>
-
-            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
-              <TouchableOpacity
-                onPress={() => { setShowConfirmModal(false); setConfirmAction(null); }}
-                style={{
-                  flex: 1, height: 46, borderRadius: 10,
-                  backgroundColor: 'rgba(30, 41, 59, 0.5)',
-                  alignItems: 'center', justifyContent: 'center',
-                  borderWidth: 1, borderColor: '#334155',
-                }}
-              >
-                <Text style={{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={async () => {
-                  setShowConfirmModal(false);
-                  if (confirmAction) await confirmAction();
-                  setConfirmAction(null);
-                }}
-                style={{
-                  flex: 1, height: 46, borderRadius: 10,
-                  backgroundColor: '#ef4444',
-                  alignItems: 'center', justifyContent: 'center',
-                  flexDirection: 'row', gap: 6,
-                }}
-              >
-                <Ionicons name="trash" size={16} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Edit Equipment Modal */}
       <Modal visible={showEditarEquipoModal} transparent animationType="fade" onRequestClose={() => setShowEditarEquipoModal(false)}>
@@ -1268,16 +1216,13 @@ export default function GestionEmpresasScreen() {
                      <TouchableOpacity
                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.05)', marginTop: 6 }}
                        onPress={() => {
-                         Alert.alert('Eliminar Imagen', '¿Estás seguro de que quieres eliminar esta imagen?', [
-                           { text: 'Cancelar', style: 'cancel' },
-                           { text: 'Eliminar', style: 'destructive', onPress: () => {
-                               setEditEqImageUrls(prev => {
-                                 const next = prev.filter((_, i) => i !== editEqSelectedIdx);
-                                 return next;
-                               });
-                               setEditEqSelectedIdx(s => Math.max(0, s >= editEqSelectedIdx ? s - 1 : s));
-                           }}
-                         ]);
+                         setConfirmTitle('Eliminar Imagen');
+                         setConfirmMsg('¿Estás seguro de que quieres eliminar esta imagen?');
+                         setConfirmAction(() => async () => {
+                           setEditEqImageUrls(prev => prev.filter((_, i) => i !== editEqSelectedIdx));
+                           setEditEqSelectedIdx(s => Math.max(0, s >= editEqSelectedIdx ? s - 1 : s));
+                         });
+                         setShowConfirmModal(true);
                        }}
                      >
                        <Ionicons name="trash-outline" size={16} color="#f87171" />
@@ -1393,6 +1338,60 @@ export default function GestionEmpresasScreen() {
           {viewerImageUrl ? (
             <Image source={{ uri: viewerImageUrl }} style={{ width: '90%', height: '70%' }} resizeMode="contain" />
           ) : null}
+        </View>
+      </Modal>
+
+      {/* Custom Confirmation Modal (Moved to end to appear on top) */}
+      <Modal visible={showConfirmModal} transparent animationType="fade" onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={[s.overlay, { zIndex: 9999, elevation: 9999 }]}>
+          <View style={[s.modalCard, { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 }]}>
+            {/* Warning Icon */}
+            <View style={{
+              width: 60, height: 60, borderRadius: 30,
+              backgroundColor: 'rgba(239, 68, 68, 0.12)',
+              borderWidth: 2, borderColor: 'rgba(239, 68, 68, 0.25)',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+            }}>
+              <Ionicons name="trash-outline" size={28} color="#ef4444" />
+            </View>
+
+            <Text style={{ color: '#f8fafc', fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 6 }}>
+              {confirmTitle}
+            </Text>
+            <Text style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+              {confirmMsg}
+            </Text>
+
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity
+                onPress={() => { setShowConfirmModal(false); setConfirmAction(null); }}
+                style={{
+                  flex: 1, height: 46, borderRadius: 10,
+                  backgroundColor: 'rgba(30, 41, 59, 0.5)',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: '#334155',
+                }}
+              >
+                <Text style={{ color: '#94a3b8', fontSize: 14, fontWeight: '700' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  setShowConfirmModal(false);
+                  if (confirmAction) await confirmAction();
+                  setConfirmAction(null);
+                }}
+                style={{
+                  flex: 1, height: 46, borderRadius: 10,
+                  backgroundColor: '#ef4444',
+                  alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'row', gap: 6,
+                }}
+              >
+                <Ionicons name="trash" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
