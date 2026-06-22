@@ -946,9 +946,9 @@ export default function GestionEmpresasScreen() {
                 <Text style={s.modalTitlePremium}>Nuevo Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 24, flex: 0 }]}>
+              <View style={isWide ? s.modalBodyPremium : { flexDirection: 'column', gap: 24 }}>
                 {/* Columna Izquierda: Imagen */}
-                <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                <View style={isWide ? s.modalLeftPremium : undefined}>
                   <TouchableOpacity
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.08)', marginBottom: 14, opacity: subiendoImagen ? 0.55 : 1 }}
                     disabled={subiendoImagen}
@@ -970,7 +970,7 @@ export default function GestionEmpresasScreen() {
                     )}
                   </TouchableOpacity>
 
-                  <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
+                  <View style={isWide ? s.imageBoxPremium : { width: '100%', marginBottom: 16, height: 180 }}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
                       activeOpacity={0.9}
@@ -1019,7 +1019,7 @@ export default function GestionEmpresasScreen() {
                 </View>
 
                 {/* Columna Derecha: Formulario */}
-                <View style={[s.modalRightPremium, !isWide && { flex: undefined }]}>
+                <View style={isWide ? s.modalRightPremium : undefined}>
                   <View>
                     <View style={s.inputContainerPremium}>
                       <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
@@ -1105,9 +1105,9 @@ export default function GestionEmpresasScreen() {
                 <Text style={s.modalTitlePremium}>Editar Equipo</Text>
               </View>
 
-              <View style={[s.modalBodyPremium, !isWide && { flexDirection: 'column', gap: 24, flex: 0 }]}>
+              <View style={isWide ? s.modalBodyPremium : { flexDirection: 'column', gap: 24 }}>
                 {/* Columna Izquierda: Imágenes (hasta 5) */}
-                <View style={[s.modalLeftPremium, !isWide && { flex: undefined }]}>
+                <View style={isWide ? s.modalLeftPremium : undefined}>
                   {/* Botón Agregar Imagen */}
                   <TouchableOpacity
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.3)', backgroundColor: 'rgba(139,92,246,0.08)', marginBottom: 14, opacity: (subiendoImagen || editEqImageUrls.length >= 5) ? 0.5 : 1 }}
@@ -1141,7 +1141,7 @@ export default function GestionEmpresasScreen() {
                   </TouchableOpacity>
 
                   {/* Preview principal - muestra imagen seleccionada */}
-                  <View style={[s.imageBoxPremium, !isWide && { height: 180, flex: undefined }]}>
+                  <View style={isWide ? s.imageBoxPremium : { width: '100%', marginBottom: 16, height: 180 }}>
                     <TouchableOpacity
                       style={s.imagePickerPremium}
                       activeOpacity={0.9}
@@ -1232,7 +1232,7 @@ export default function GestionEmpresasScreen() {
                 </View>
 
                 {/* Columna Derecha: Formulario */}
-                <View style={[s.modalRightPremium, !isWide && { flex: undefined }]}>
+                <View style={isWide ? s.modalRightPremium : undefined}>
                   <View>
                     <View style={s.inputContainerPremium}>
                       <Text style={s.inputLabelPremium}>Nombre del Equipo *</Text>
